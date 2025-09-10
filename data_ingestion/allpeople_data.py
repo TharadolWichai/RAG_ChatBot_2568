@@ -1,12 +1,13 @@
-import requests
 import json
-from dotenv import load_dotenv
 import os
+import uuid
+
+import requests
+from astrapy import DataAPIClient
+from dotenv import load_dotenv
 from langchain.schema import Document
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from astrapy import DataAPIClient
-import uuid
 
 load_dotenv()
 

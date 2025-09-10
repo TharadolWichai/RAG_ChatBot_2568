@@ -1,0 +1,6 @@
+pip install python-dotenv
+pip install langchain
+pip install langchain-community
+pip install astrapy
+pip install sentence-transformers   # สำหรับ HuggingFaceEmbeddings
+pip install requests beautifulsoup4 lxml # web scrapping
