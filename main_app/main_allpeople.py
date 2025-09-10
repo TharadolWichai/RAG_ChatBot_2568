@@ -65,55 +65,64 @@ class AllPeopleRetriever(BaseRetriever):
         print("🧠 เริ่ม Vector Search...")
         vector_results = self._vector_search(query)
         
-        # Combine results with smart prioritization
+        # Combine results with hybrid scoring and ranking
         all_documents = []
         seen_content = set()
         
-        print("🔄 รวมผลลัพธ์...")
+        print("🔄 รวมผลลัพธ์พร้อมคำนวณคะแนนรวม...")
         
-        # Extract keywords for relevance scoring
-        query_keywords = self._extract_search_keywords(query)
+        # Collect all unique documents with their scores
+        candidate_docs = []
         
-        # Smart merge: prioritize exact matches first
-        prioritized_docs = []
-        regular_docs = []
-        
-        # Check text search results first (exact matches)
+        # Add text search results
         for i, doc in enumerate(text_results):
             if doc.page_content not in seen_content:
-                content_lower = doc.page_content.lower()
-                has_exact_match = any(keyword.lower() in content_lower 
-                                    for keyword in query_keywords 
-                                    if len(keyword) >= 3)
-                
-                if has_exact_match:
-                    prioritized_docs.append(doc)
-                    print(f"🎯 เพิ่มจาก Text Search #{i+1} (ความสำคัญสูง): {doc.page_content[:50]}...")
-                else:
-                    regular_docs.append(doc)
-                    print(f"➕ เพิ่มจาก Text Search #{i+1}: {doc.page_content[:50]}...")
+                bm25_score = doc.metadata.get("bm25_score", 0.0)
+                doc.metadata["combined_score"] = self._calculate_hybrid_score(doc, bm25_score, 0.0, query)
+                candidate_docs.append(doc)
                 seen_content.add(doc.page_content)
+                content_preview = doc.page_content[:50]
+                print(f"➕ Text Search #{i+1}: {content_preview}... (BM25: {bm25_score:.4f})")
         
-        # Check vector search results
+        # Add vector search results
         for i, doc in enumerate(vector_results):
             if doc.page_content not in seen_content:
-                content_lower = doc.page_content.lower()
-                has_semantic_match = any(keyword.lower() in content_lower 
-                                       for keyword in query_keywords 
-                                       if len(keyword) >= 3)
-                
-                if has_semantic_match:
-                    prioritized_docs.append(doc)
-                    print(f"🎯 เพิ่มจาก Vector Search #{i+1} (ความสำคัญสูง): {doc.page_content[:50]}...")
-                else:
-                    regular_docs.append(doc)
-                    print(f"➕ เพิ่มจาก Vector Search #{i+1}: {doc.page_content[:50]}...")
+                vector_score = doc.metadata.get("vector_score", 0.0)
+                doc.metadata["combined_score"] = self._calculate_hybrid_score(doc, 0.0, vector_score, query)
+                candidate_docs.append(doc)
                 seen_content.add(doc.page_content)
+                content_preview = doc.page_content[:50]
+                print(f"➕ Vector Search #{i+1}: {content_preview}... (Vector: {vector_score:.4f})")
             else:
-                print(f"⚠️ ข้าม Vector Search #{i+1}: ซ้ำกับ Text Search")
+                # Update existing document with vector score
+                for existing_doc in candidate_docs:
+                    if existing_doc.page_content == doc.page_content:
+                        vector_score = doc.metadata.get("vector_score", 0.0)
+                        bm25_score = existing_doc.metadata.get("bm25_score", 0.0)
+                        existing_doc.metadata["vector_score"] = vector_score
+                        existing_doc.metadata["combined_score"] = self._calculate_hybrid_score(existing_doc, bm25_score, vector_score, query)
+                        content_preview = existing_doc.page_content[:50]
+                        print(f"🔄 อัปเดตคะแนน: {content_preview}... (BM25: {bm25_score:.4f}, Vector: {vector_score:.4f})")
+                        break
         
-        # Combine: prioritized first, then regular
-        all_documents = prioritized_docs + regular_docs
+        # Sort by combined score (descending)
+        candidate_docs.sort(key=lambda doc: doc.metadata.get("combined_score", 0), reverse=True)
+        
+        # Take top results
+        all_documents = candidate_docs
+        
+        # Show final ranking with scores
+        print("\n🏆 ผลลัพธ์สุดท้าย (เรียงตามคะแนนรวม):")
+        print("-" * 60)
+        for i, doc in enumerate(all_documents[:5], 1):
+            combined_score = doc.metadata.get("combined_score", 0.0)
+            bm25_score = doc.metadata.get("bm25_score", 0.0)
+            vector_score = doc.metadata.get("vector_score", 0.0)
+            content_preview = doc.page_content[:60]
+            
+            print(f"#{i}: {content_preview}...")
+            print(f"    🎯 Combined: {combined_score:.4f} | 📝 BM25: {bm25_score:.4f} | 🧠 Vector: {vector_score:.4f}")
+            print("-" * 40)
         
         print(f"📊 สรุป: Text={len(text_results)}, Vector={len(vector_results)}, รวม={len(all_documents)} (unique)")
         
@@ -145,7 +154,7 @@ class AllPeopleRetriever(BaseRetriever):
         return all_documents
     
     def _vector_search(self, query: str) -> List[Document]:
-        """ค้นหาแบบ vector search จาก collection"""
+        """ค้นหาแบบ vector search จาก collection พร้อมคะแนนความใกล้เคียง"""
         all_documents = []
         
         try:
@@ -155,25 +164,38 @@ class AllPeopleRetriever(BaseRetriever):
             query_vector = self._embedding.embed_query(query)
             print(f"📊 Vector Search: สร้าง embedding แล้ว (dimension: {len(query_vector)})")
             
-            # Perform vector search
+            # Perform vector search with similarity scores
             results = self._collection.find(
                 {},
                 sort={"$vector": query_vector},
-                limit=15  # Top 10 semantic matches
+                limit=15,  # Top 15 semantic matches
+                include_similarity=True  # Include cosine similarity scores
             )
             
             for result in results:
+                # Get similarity score (cosine similarity from AstraDB)
+                similarity_score = result.get("$similarity", 0.0)
+                
+                # Create metadata with score
+                metadata = result.get("metadata", {}).copy()
+                metadata["vector_score"] = similarity_score
+                metadata["search_type"] = "vector"
+                
                 doc = Document(
                     page_content=result.get("content", ""),
-                    metadata=result.get("metadata", {})
+                    metadata=metadata
                 )
                 all_documents.append(doc)
             
             print(f"🧠 Vector search: พบ {len(all_documents)} documents จาก semantic similarity")
             
-            # Show top match
+            # Show top matches with scores
             if all_documents:
-                print(f"   Top match: {all_documents[0].page_content[:50]}...")
+                print("   🏆 Top Vector Matches:")
+                for i, doc in enumerate(all_documents[:3]):
+                    score = doc.metadata.get("vector_score", 0.0)
+                    content_preview = doc.page_content[:50]
+                    print(f"   #{i+1}: {content_preview}... (score: {score:.4f})")
             
             return all_documents
             
@@ -226,7 +248,7 @@ class AllPeopleRetriever(BaseRetriever):
         return processed if processed else query
 
     def _text_search(self, query: str) -> List[Document]:
-        """ค้นหาแบบ BM25 text search จาก collection"""
+        """ค้นหาแบบ BM25 text search จาก collection พร้อมคะแนนความเกี่ยวข้อง"""
         try:
             # Ensure BM25 is initialized
             self._ensure_bm25_initialized()
@@ -258,9 +280,17 @@ class AllPeopleRetriever(BaseRetriever):
                 try:
                     variant_results = self._bm25_retriever.get_relevant_documents(q_variant)
                     
-                    # Add unique results
-                    for doc in variant_results:
+                    # Calculate BM25 scores for this variant
+                    scored_results = self._calculate_bm25_scores(variant_results, q_variant)
+                    
+                    # Add unique results with scores
+                    for doc, bm25_score in scored_results:
                         if doc.page_content not in seen_content:
+                            # Add BM25 score to metadata
+                            doc.metadata["bm25_score"] = bm25_score
+                            doc.metadata["search_type"] = "text"
+                            doc.metadata["query_variant"] = q_variant
+                            
                             all_bm25_results.append(doc)
                             seen_content.add(doc.page_content)
                     
@@ -269,17 +299,135 @@ class AllPeopleRetriever(BaseRetriever):
                 except Exception as e:
                     print(f"   Error with variant '{q_variant}': {e}")
             
+            # Sort by BM25 score (descending)
+            all_bm25_results.sort(key=lambda doc: doc.metadata.get("bm25_score", 0), reverse=True)
+            
             print(f"📝 BM25 search: พบ {len(all_bm25_results)} documents รวม")
             
-            # Show top matches
-            for i, doc in enumerate(all_bm25_results[:3]):
-                print(f"   BM25 Match #{i+1}: {doc.page_content[:50]}...")
+            # Show top matches with scores
+            if all_bm25_results:
+                print("   🏆 Top BM25 Matches:")
+                for i, doc in enumerate(all_bm25_results[:3]):
+                    score = doc.metadata.get("bm25_score", 0.0)
+                    content_preview = doc.page_content[:50]
+                    print(f"   #{i+1}: {content_preview}... (BM25: {score:.4f})")
             
             return all_bm25_results[:15]  # Limit to top 15
             
         except Exception as e:
             print(f"❌ Error in BM25 search: {e}")
             return self._fallback_keyword_search(query)
+    
+    def _calculate_bm25_scores(self, documents: List[Document], query: str) -> List[tuple]:
+        """คำนวณคะแนน BM25 สำหรับ documents (ปรับปรุงสำหรับข้อมูลอาจารย์)"""
+        try:
+            # Simple BM25-like scoring based on term frequency and document length
+            import re
+            from collections import Counter
+            
+            query_terms = re.findall(r'\w+', query.lower())
+            if not query_terms:
+                return [(doc, 0.0) for doc in documents]
+            
+            scored_docs = []
+            
+            for doc in documents:
+                content_lower = doc.page_content.lower()
+                content_terms = re.findall(r'\w+', content_lower)
+                
+                if not content_terms:
+                    scored_docs.append((doc, 0.0))
+                    continue
+                
+                # Calculate term frequency
+                term_freq = Counter(content_terms)
+                doc_length = len(content_terms)
+                
+                # Simple BM25-like score
+                score = 0.0
+                for term in query_terms:
+                    if term in term_freq:
+                        tf = term_freq[term]
+                        # Simplified BM25 formula (without IDF calculation)
+                        score += (tf * 2.2) / (tf + 1.2 * (0.25 + 0.75 * doc_length / 50))
+                
+                # Boost score for exact matches in names and positions
+                # Check for name matches (higher boost for faculty data)
+                for term in query_terms:
+                    if term in content_lower:
+                        # Higher boost for name matches in faculty data
+                        if any(keyword in content_lower for keyword in ["ชื่อ", "name", "อาจารย์"]):
+                            score += 3.0  # High boost for name context
+                        elif any(keyword in content_lower for keyword in ["ตำแหน่ง", "position", "หัวหน้า"]):
+                            score += 2.0  # Medium boost for position context
+                        else:
+                            score += 1.0  # Base boost for other matches
+                
+                scored_docs.append((doc, score))
+            
+            return scored_docs
+            
+        except Exception as e:
+            print(f"❌ Error calculating BM25 scores: {e}")
+            return [(doc, 0.0) for doc in documents]
+    
+    def _calculate_hybrid_score(self, doc: Document, bm25_score: float, vector_score: float, query: str) -> float:
+        """คำนวณคะแนนรวมจาก BM25 และ Vector similarity (สำหรับข้อมูลอาจารย์)"""
+        try:
+            # Weights for different components
+            bm25_weight = 0.4      # 40% for text matching
+            vector_weight = 0.4    # 40% for semantic similarity
+            bonus_weight = 0.2     # 20% for exact matches and metadata
+            
+            # Base scores (normalized)
+            normalized_bm25 = min(bm25_score / 10.0, 1.0)  # Normalize BM25 to 0-1
+            normalized_vector = vector_score  # Vector score is already 0-1
+            
+            # Calculate bonus score for exact matches (faculty-specific)
+            bonus_score = 0.0
+            query_lower = query.lower()
+            content_lower = doc.page_content.lower()
+            
+            # Name match bonus (high priority for faculty search)
+            query_words = [word for word in query_lower.split() if len(word) >= 2]
+            for word in query_words:
+                if word in content_lower:
+                    # Higher bonus for exact name matches
+                    if any(name_indicator in content_lower for name_indicator in ["ชื่อ", "name", "อาจารย์"]):
+                        bonus_score += 0.6  # High bonus for name context
+                    elif any(pos_indicator in content_lower for pos_indicator in ["ตำแหน่ง", "position", "หัวหน้า"]):
+                        bonus_score += 0.4  # Medium bonus for position context
+                    else:
+                        bonus_score += 0.2  # Base bonus for other matches
+            
+            # Faculty-specific bonus terms
+            faculty_bonuses = {
+                "อาจารย์": 0.3 if "อาจารย์" in content_lower else 0,
+                "ผู้ช่วย": 0.2 if "ผู้ช่วย" in content_lower else 0,
+                "รอง": 0.2 if "รอง" in content_lower else 0,
+                "ศาสตราจารย์": 0.3 if "ศาสตราจารย์" in content_lower else 0,
+                "หัวหน้า": 0.2 if "หัวหน้า" in content_lower else 0,
+            }
+            
+            for term, bonus in faculty_bonuses.items():
+                if term in query_lower:
+                    bonus_score += bonus
+            
+            # Normalize bonus score
+            normalized_bonus = min(bonus_score, 1.0)
+            
+            # Calculate combined score
+            combined_score = (
+                bm25_weight * normalized_bm25 +
+                vector_weight * normalized_vector +
+                bonus_weight * normalized_bonus
+            )
+            
+            return combined_score
+            
+        except Exception as e:
+            print(f"❌ Error calculating hybrid score: {e}")
+            return max(bm25_score / 10.0, vector_score)  # Fallback to max of normalized scores
     
     def _fallback_keyword_search(self, query: str) -> List[Document]:
         """Fallback keyword search if BM25 fails - with better Thai name matching"""
@@ -469,7 +617,13 @@ def manual_qa_chain(question: str) -> str:
         print("="*60)
         
         for i, doc in enumerate(retrieved_docs, 1):
+            combined_score = doc.metadata.get('combined_score', 0.0)
+            bm25_score = doc.metadata.get('bm25_score', 0.0)
+            vector_score = doc.metadata.get('vector_score', 0.0)
+            
             print(f"\n🔸 ผลลัพธ์ที่ {i}:")
+            if combined_score > 0:
+                print(f"   📊 คะแนนความเกี่ยวข้อง: {combined_score:.4f} (BM25: {bm25_score:.4f}, Vector: {vector_score:.4f})")
             print("-" * 40)
             print(doc.page_content.strip())
             print("-" * 40)
