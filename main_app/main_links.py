@@ -1,4 +1,15 @@
+# -*- coding: utf-8 -*-
 # main_links.py - AstraDB Version สำหรับ links_data.py โดยเฉพาะ (Enhanced with PyThaiNLP)
+
+import sys
+import os
+
+# Fix encoding for Windows terminal
+if sys.platform == "win32":
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.detach())
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.detach())
+
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.chat_models import ChatOpenAI
 from langchain_community.retrievers import BM25Retriever
@@ -23,6 +34,18 @@ except ImportError:
     print("⚠️ PyThaiNLP not available - falling back to basic search")
 
 load_dotenv()
+
+# ✅ Helper function for safe Thai text output
+def safe_print(text):
+    """Safely print Thai text to terminal"""
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        # Fallback for terminals that don't support Thai
+        safe_text = text.encode('ascii', 'ignore').decode('ascii')
+        print(f"[Thai text] {safe_text}")
+    except Exception as e:
+        print(f"[Output error: {e}]")
 
 # ✅ เตรียม embedding
 embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
@@ -59,11 +82,11 @@ class LinksRetriever(BaseRetriever):
     def _get_relevant_documents(
         self, query: str, *, run_manager: CallbackManagerForRetrieverRun
     ) -> List[Document]:
-        print(f"🔍 Debug: กำลังค้นหาลิงก์ด้วย query: '{query}'")
+        safe_print(f"🔍 Debug: กำลังค้นหาลิงก์ด้วย query: '{query}'")
         
         # ถ้าต้องการข้อมูลลิงก์ทั้งหมด
         if any(word in query.lower() for word in ["ทั้งหมด", "ทุกอัน", "all", "รายการ", "ลิงก์ทั้งหมด"]):
-            print("🎯 ตรวจพบคำขอลิงก์ทั้งหมด - ใช้การค้นหาแบบครอบคลุม")
+            safe_print("🎯 ตรวจพบคำขอลิงก์ทั้งหมด - ใช้การค้นหาแบบครอบคลุม")
             return self._get_comprehensive_search()
         
         # Try multiple search strategies
@@ -96,7 +119,7 @@ class LinksRetriever(BaseRetriever):
         # Collect all unique documents with their scores
         candidate_docs = []
         
-        # Add Thai advanced search results first (highest priority)
+                # Add Thai advanced search results first (highest priorityexit
         if thai_results:
             for i, doc in enumerate(thai_results[:5]):  # Top 5 Thai matches
                 if doc.page_content not in seen_content:
@@ -104,13 +127,18 @@ class LinksRetriever(BaseRetriever):
                     thai_score = doc.metadata.get("thai_advanced_score", 0.0) or doc.metadata.get("thai_exact_score", 0.0)
                     search_type = doc.metadata.get("search_type", "thai_unknown")
                     
-                    # Give Thai matches very high combined score
-                    if thai_score > 10:  # Very high score
-                        doc.metadata["combined_score"] = 0.9 + min(thai_score * 0.01, 0.1)  # 0.9-1.0
-                    else:
-                        doc.metadata["combined_score"] = 0.7 + (thai_score * 0.05)  # 0.7-0.95
+                    # Calculate proper combined score using hybrid scoring
+                    # Treat Thai score as BM25-like score for consistency
+                    normalized_thai_score = min(thai_score / 50.0, 1.0)  # Normalize Thai score to 0-1 (max 50)
+                    doc.metadata["combined_score"] = self._calculate_hybrid_score(doc, thai_score, 0.0, query)
                     
-                    doc.metadata["bm25_score"] = 0.0
+                    # Add Thai bonus for very relevant matches
+                    if thai_score > 20:  # Very high Thai relevance
+                        doc.metadata["combined_score"] += 0.2  # Extra boost for highly relevant Thai matches
+                    elif thai_score > 10:  # Medium Thai relevance  
+                        doc.metadata["combined_score"] += 0.1  # Small boost for relevant Thai matches
+                    
+                    doc.metadata["bm25_score"] = thai_score  # Store original Thai score as BM25-equivalent
                     doc.metadata["vector_score"] = 0.0
                     candidate_docs.append(doc)
                     seen_content.add(doc.page_content)
@@ -159,10 +187,15 @@ class LinksRetriever(BaseRetriever):
             combined_score = doc.metadata.get("combined_score", 0.0)
             bm25_score = doc.metadata.get("bm25_score", 0.0)
             vector_score = doc.metadata.get("vector_score", 0.0)
+            search_type = doc.metadata.get("search_type", "unknown")
             link_text = doc.metadata.get('link_text', 'Unknown')
             
-            print(f"#{i}: {link_text}")
-            print(f"    🎯 Combined: {combined_score:.4f} | 📝 BM25: {bm25_score:.4f} | 🧠 Vector: {vector_score:.4f}")
+            # Show search type icon
+            type_icon = "🇹🇭" if "thai" in search_type else "📝" if "bm25" in search_type else "🧠" if "vector" in search_type else "❓"
+            
+            print(f"#{i}: {type_icon} {link_text}")
+            print(f"    🎯 Combined: {combined_score:.4f} | 📝 BM25/Thai: {bm25_score:.4f} | 🧠 Vector: {vector_score:.4f}")
+            print(f"    🔍 Search Type: {search_type}")
             print("-" * 40)
         
         print(f"📊 สรุป: Text={len(text_results)}, Vector={len(vector_results)}, รวม={len(all_documents)} (unique)")
@@ -548,7 +581,11 @@ class LinksRetriever(BaseRetriever):
             bonus_weight = 0.2     # 20% for exact matches and metadata
             
             # Base scores (normalized)
-            normalized_bm25 = min(bm25_score / 10.0, 1.0)  # Normalize BM25 to 0-1
+            # Handle both regular BM25 and Thai scores (which can be higher)
+            if bm25_score > 15:  # Likely Thai score
+                normalized_bm25 = min(bm25_score / 50.0, 1.0)  # Normalize Thai score to 0-1 (max 50)
+            else:
+                normalized_bm25 = min(bm25_score / 10.0, 1.0)  # Normalize regular BM25 to 0-1 (max 10)
             normalized_vector = vector_score  # Vector score is already 0-1
             
             # Calculate bonus score for exact matches
