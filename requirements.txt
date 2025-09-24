@@ -16,3 +16,5 @@ langchain-astradb
 astrapy
 beautifulsoup4
 lxml
+pip install requests beautifulsoup4 lxml # web scrapping
+faiss-cpu

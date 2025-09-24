@@ -1,8 +1,6 @@
 import os
-import re
 import time
 import uuid
-
 from astrapy import DataAPIClient
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
@@ -21,7 +19,7 @@ load_dotenv()
 ASTRA_TOKEN = os.getenv("ASTRA_DB_APPLICATION_TOKEN")
 ASTRA_ENDPOINT = os.getenv("ASTRA_DB_API_ENDPOINT")
 ASTRA_KEYSPACE = os.getenv("ASTRA_DB_KEYSPACE", "default_keyspace")
-COLLECTION_NAME = "bsc_entrance_embedding"
+COLLECTION_NAME = "researchgroup_embedding"
 
 if not ASTRA_TOKEN or not ASTRA_ENDPOINT:
     raise ValueError("Missing AstraDB credentials in .env")
@@ -37,89 +35,103 @@ driver_path = "D:/CS YEAR 4/chatbot_kkucp2568/RAG_ChatBot_2568/chromedriver-win6
 service = Service(driver_path)
 driver = webdriver.Chrome(service=service, options=chrome_options)
 
-url = "https://computing.kku.ac.th/bsc-entrance"
-driver.get(url)
-time.sleep(5)  # รอโหลด JS
-soup = BeautifulSoup(driver.page_source, "html.parser")
-driver.quit()
+# -------------------------------
+# List URLs
+# -------------------------------
+urls = [
+    "https://computing.kku.ac.th/hardware-human",
+    "https://computing.kku.ac.th/mlislab",
+    "https://computing.kku.ac.th/aiii",
+    "https://computing.kku.ac.th/agtlab",
+    "https://computing.kku.ac.th/asclab",
+    "https://computing.kku.ac.th/nlsplab",
+    "https://computing.kku.ac.th/aidalab",
+    "https://computing.kku.ac.th/i-serg"
+]
 
 # -------------------------------
-# Scrape kku-content
+# Scrape multiple URLs
 # -------------------------------
 docs = []
 
-content_divs = soup.find_all("div", class_="kku-content")
-for div_index, div in enumerate(content_divs, start=1):
+for url_index, url in enumerate(urls, start=1):
+    print(f"\n🌐 [URL {url_index}] Fetching: {url}")
+    driver.get(url)
+    time.sleep(3)  # wait for JS
+
+    soup = BeautifulSoup(driver.page_source, "html.parser")
+
+    # -------------------------
+    # หา div class="w-100 h-100"
+    # -------------------------
+    content_div = soup.find("div", class_="w-100 h-100")
+
+    if not content_div:
+        print("❌ ไม่เจอ div.w-100.h-100")
+        continue
+
     parts = []
-    
-    for child in div.find_all(recursive=False):
-        # h3, h4
-        if child.name in ["h3", "h4"]:
-            parts.append(child.get_text(strip=True))
-        
-        # p มี <a> อยู่ข้างใน
+    seen_texts = set()
+
+    for child in content_div.find_all(recursive=False):
+        # h2, h3
+        if child.name in ["h2", "h3"]:
+            text = child.get_text(strip=True)
+            if text and text not in seen_texts:
+                parts.append(text)
+                seen_texts.add(text)
+
+        # p
         elif child.name == "p":
-            text_parts = []
+            texts = []
             for elem in child.children:
                 if getattr(elem, "name", None) == "a":
                     href = elem.get("href")
                     link_text = elem.get_text(strip=True)
-                    text_parts.append(f"{link_text} ({href})")
+                    texts.append(f"{link_text} ({href})")
                 else:
                     text = elem.get_text(strip=True) if hasattr(elem, "get_text") else str(elem).strip()
                     if text:
-                        text_parts.append(text)
-            parts.append(" ".join(text_parts))
-        
-        # ol + li + year-links
-        elif child.name == "ol":
+                        texts.append(text)
+            text_joined = " ".join(texts)
+            if text_joined and text_joined not in seen_texts:
+                parts.append(text_joined)
+                seen_texts.add(text_joined)
+
+        # ul/ol + li
+        elif child.name in ["ul", "ol"]:
             for li in child.find_all("li"):
                 li_text = li.get_text(" ", strip=True)
-                parts.append(f"- {li_text}")
-                
-                year_links_divs = li.find_all("div", class_="year-links")
-                for yl_div in year_links_divs:
-                    for a in yl_div.find_all("a"):
-                        href = a.get("href")
-                        link_text = a.get_text(strip=True)
-                        parts.append(f"  > Link: {link_text} ({href})")
-        
+                if li_text and li_text not in seen_texts:
+                    parts.append(f"- {li_text}")
+                    seen_texts.add(li_text)
+
         # table
-        elif child.name == "table" and "kku-table" in child.get("class", []):
-            table_rows = []
+        elif child.name == "table":
+            rows = []
             for row in child.find_all("tr"):
                 cells = row.find_all(["th", "td"])
                 cell_texts = [cell.get_text(" ", strip=True) for cell in cells]
-                table_rows.append("\t".join(cell_texts))
-            parts.append("Table:\n" + "\n".join(table_rows))
-        
-        # kku-note
-        elif child.name == "div" and "kku-note" in child.get("class", []):
-            strong_tags = child.find_all("strong")
-            links = child.find_all("a")
-            
-            for i, a in enumerate(links):
-                description = ""
-                if i < len(strong_tags):
-                    strong = strong_tags[i]
-                    u_tag = strong.find("u")
-                    if u_tag:
-                        description = u_tag.get_text(strip=True)
-                    else:
-                        description = strong.get_text(strip=True)
-                        if description.strip() in [a.get_text(strip=True).strip(), a.get("href").strip()]:
-                            description = ""
-                if description:
-                    parts.append(f"Description: {description}")
-                link_text = a.get_text(strip=True)
-                href = a.get("href")
-                parts.append(f"- {link_text} ({href})")
-    
-    content = "\n".join(parts)
-    metadata = {"div_index": div_index, "source": url}
-    docs.append(Document(page_content=content, metadata=metadata))
+                rows.append("\t".join(cell_texts))
+            table_text = "Table:\n" + "\n".join(rows)
+            if table_text not in seen_texts:
+                parts.append(table_text)
+                seen_texts.add(table_text)
 
-print(f"📝 Scraped {len(docs)} documents")
+        # div.note
+        elif child.name == "div" and "note" in child.get("class", []):
+            note_text = child.get_text(" ", strip=True)
+            if note_text and note_text not in seen_texts:
+                parts.append(f"Note: {note_text}")
+                seen_texts.add(note_text)
+
+    if parts:
+        content = "\n".join(parts)
+        metadata = {"source": url}
+        docs.append(Document(page_content=content, metadata=metadata))
+        print(f"📝 Scraped {len(parts)} items from {url}")
+
+driver.quit()
 
 # -------------------------------
 # Split documents into chunks
@@ -160,7 +172,7 @@ for i, chunk in enumerate(chunks):
         "metadata": chunk.metadata
     }
     documents_to_insert.append(doc)
-    
+
     if len(documents_to_insert) >= batch_size or i == len(chunks) - 1:
         try:
             result = collection.insert_many(documents_to_insert)
