@@ -33,7 +33,8 @@ chrome_options = Options()
 chrome_options.add_argument("--headless")
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
-driver_path = "D:/CS YEAR 4/chatbot_kkucp2568/RAG_ChatBot_2568/chromedriver-win64/chromedriver.exe"
+# ใช้ relative path ในโปรเจค
+driver_path = os.path.join(os.path.dirname(__file__), "..", "drivers", "chromedriver.exe")
 service = Service(driver_path)
 driver = webdriver.Chrome(service=service, options=chrome_options)
 

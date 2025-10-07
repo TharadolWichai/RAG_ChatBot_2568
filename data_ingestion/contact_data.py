@@ -33,7 +33,8 @@ chrome_options = Options()
 chrome_options.add_argument("--headless")
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
-driver_path = "D:/CS YEAR 4/chatbot_kkucp2568/RAG_ChatBot_2568/chromedriver-win64/chromedriver.exe"
+# ใช้ relative path ในโปรเจค
+driver_path = os.path.join(os.path.dirname(__file__), "..", "drivers", "chromedriver.exe")
 service = Service(driver_path)
 driver = webdriver.Chrome(service=service, options=chrome_options)
 
@@ -50,76 +51,108 @@ driver.quit()
 docs = []
 
 def extract_contact_info():
-    """ดึงข้อมูลติดต่อจากโครงสร้าง HTML ตามที่เห็นในรูป"""
+    """ดึงข้อมูลติดต่อจากโครงสร้าง HTML ตามที่เห็นในรูป - ปรับปรุงให้ scrape ตารางอย่างถูกต้อง"""
     contact_sections = []
     
-    # ค้นหา div ที่มี class col-12 หรือ container ที่มีข้อมูลติดต่อ
-    main_containers = soup.find_all("div", class_=["col-12", "container"])
+    # 1. ดึงข้อมูลหัวข้อหลักของวิทยาลัย
+    college_info = extract_college_basic_info()
+    if college_info:
+        contact_sections.extend(college_info)
     
-    for container in main_containers:
-        # ค้นหาข้อมูลในแต่ละ section
-        
-        # 1. ดึงข้อมูลหัวข้อหลัก (วิทยาลัยการคอมพิวเตอร์ มหาวิทยาลัยขอนแก่น)
-        title_elements = container.find_all(["h1", "h2", "h3", "strong"])
-        for title in title_elements:
-            title_text = title.get_text(strip=True)
-            if "วิทยาลัยการคอมพิวเตอร์" in title_text or "มหาวิทยาลัยขอนแก่น" in title_text:
-                contact_sections.append(f"หน่วยงาน: {title_text}")
-        
-        # 2. ดึงข้อมูลที่อยู่
-        address_patterns = [
-            r'\d+\s+อาคาร.*',
-            r'.*อำเภอ.*จังหวัด.*',
-            r'.*\d{5}.*'  # รหัสไปรษณีย์
-        ]
-        
-        text_content = container.get_text()
-        for pattern in address_patterns:
-            matches = re.findall(pattern, text_content)
-            for match in matches:
-                if len(match.strip()) > 10:  # กรองข้อความที่สั้นเกินไป
-                    contact_sections.append(f"ที่อยู่: {match.strip()}")
-        
-        # 3. ดึงข้อมูลโทรศัพท์
-        phone_elements = container.find_all(text=re.compile(r'โทรศัพท์|Tel|Phone|043-\d+'))
-        for phone in phone_elements:
-            phone_text = str(phone).strip()
-            if "043-" in phone_text or "โทรศัพท์" in phone_text:
-                contact_sections.append(f"โทรศัพท์: {phone_text}")
-        
-        # 4. ดึงข้อมูล Hot Line
-        hotline_elements = container.find_all(text=re.compile(r'Hot Line|089-\d+'))
-        for hotline in hotline_elements:
-            hotline_text = str(hotline).strip()
-            if "089-" in hotline_text or "Hot Line" in hotline_text:
-                contact_sections.append(f"Hot Line: {hotline_text}")
-        
-        # 5. ดึงข้อมูลอีเมล
-        email_elements = container.find_all(text=re.compile(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'))
-        for email in email_elements:
-            email_text = str(email).strip()
-            if "@" in email_text:
-                contact_sections.append(f"อีเมล: {email_text}")
-        
-        # 6. ดึงข้อมูลจาก span elements ที่มี style font-size:16px
-        span_elements = container.find_all("span", style=re.compile(r'font-size:\s*16px'))
-        for span in span_elements:
-            span_text = span.get_text(strip=True)
-            if len(span_text) > 5:  # กรองข้อความที่สั้นเกินไป
-                contact_sections.append(f"ข้อมูล: {span_text}")
-        
-        # 7. ดึงข้อมูลจาก p elements
-        p_elements = container.find_all("p")
-        for p in p_elements:
-            p_text = p.get_text(strip=True)
-            # ตรวจสอบว่าเป็นข้อมูลติดต่อหรือไม่
-            if any(keyword in p_text for keyword in ["คณบดี", "รองคณบดี", "ผู้ช่วย", "งาน", "ฝ่าย", "แผนก"]):
-                contact_sections.append(f"บุคลากร: {p_text}")
+    # 2. ดึงข้อมูลบุคลากรจากตาราง
+    staff_info = extract_staff_table_info()
+    if staff_info:
+        contact_sections.extend(staff_info)
     
     return contact_sections
 
+def extract_college_basic_info():
+    """ดึงข้อมูลพื้นฐานของวิทยาลัย"""
+    basic_info = []
+    
+    # ค้นหาข้อมูลที่อยู่และข้อมูลติดต่อหลัก
+    # ตามรูปที่เห็น
+    
+    # หาข้อมูลที่อยู่และโทรศัพท์หลัก
+    text_content = soup.get_text()
+    
+    # หาชื่อวิทยาลัย
+    if "วิทยาลัยการคอมพิวเตอร์" in text_content:
+        basic_info.append("หน่วยงาน: วิทยาลัยการคอมพิวเตอร์ มหาวิทยาลัยขอนแก่น")
+    
+    # หาที่อยู่
+    address_match = re.search(r'123 อาคารวิทยวิภาส.*?ขอนแก่น 40002', text_content)
+    if address_match:
+        basic_info.append(f"ที่อยู่: {address_match.group()}")
+    
+    # หาโทรศัพท์หลัก
+    phone_match = re.search(r'043-009700 ต่อ 50528', text_content)
+    if phone_match:
+        basic_info.append(f"โทรศัพท์: {phone_match.group()}")
+    
+    # หา Hot Line
+    hotline_match = re.search(r'089-7102651, 089-7102645', text_content)
+    if hotline_match:
+        basic_info.append(f"Hot Line: {hotline_match.group()}")
+    
+    # หาอีเมล
+    email_match = re.search(r'computing\.kku@kku\.ac\.th', text_content)
+    if email_match:
+        basic_info.append(f"อีเมล: {email_match.group()}")
+    
+    return basic_info
+
+def extract_staff_table_info():
+    """ดึงข้อมูลบุคลากรจากตารางอย่างถูกต้อง"""
+    staff_info = []
+    
+    # หาตารางที่มีข้อมูลบุคลากร
+    tables = soup.find_all('table')
+    
+    for table in tables:
+        # หาแถวหัวข้อ (ถ้ามี)
+        headers = table.find_all('th')
+        if not headers:
+            continue
+            
+        header_texts = [th.get_text(strip=True) for th in headers]
+        print(f"พบหัวตาราง: {header_texts}")
+        
+        # ตรวจสอบว่าเป็นตารางบุคลากรหรือไม่
+        if any(keyword in ' '.join(header_texts) for keyword in ['การะงานตำแหน่ง', 'ติดต่อ', 'ตำแหน่ง', 'เบอร์โทร']):
+            # ดึงข้อมูลจากแต่ละแถว
+            rows = table.find_all('tr')[1:]  # ข้ามหัวตาราง
+            
+            for row in rows:
+                cells = row.find_all(['td', 'th'])
+                if len(cells) >= 4:  # ต้องมีอย่างน้อย 4 คอลัมน์
+                    
+                    # ดึงข้อมูลจากแต่ละ cell
+                    position = cells[0].get_text(strip=True) if len(cells) > 0 else ''
+                    name = cells[1].get_text(strip=True) if len(cells) > 1 else ''
+                    department = cells[2].get_text(strip=True) if len(cells) > 2 else ''
+                    phone_ext = cells[3].get_text(strip=True) if len(cells) > 3 else ''
+                    
+                    # ตรวจสอบว่ามีข้อมูลที่มีความหมาย
+                    if position and name and len(position) > 2:
+                        # สร้างข้อมูลบุคลากรแต่ละคน
+                        staff_record = f"บุคลากร: {position}"
+                        if name:
+                            staff_record += f" - ชื่อ: {name}"
+                        if department:
+                            staff_record += f" - หน่วยงาน: {department}"
+                        if phone_ext:
+                            staff_record += f" - ต่อ: {phone_ext}"
+                        
+                        staff_info.append(staff_record)
+                        print(f"เพิ่มข้อมูลบุคลากร: {staff_record}")
+    
+    return staff_info
+
 # ดึงข้อมูลติดต่อ
+print("🔍 เริ่มดึงข้อมูลติดต่อจากเว็บไซต์...")
 contact_info = extract_contact_info()
+print(f"📝 ดึงข้อมูลได้ {len(contact_info)} รายการ")
 
 # หากไม่พบข้อมูลจากโครงสร้างเฉพาะ ให้ดึงจาก div ทั้งหมด
 if not contact_info:
