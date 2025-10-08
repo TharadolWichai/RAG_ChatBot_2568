@@ -4,12 +4,6 @@ import sys
 import uuid
 from typing import List
 
-# Fix encoding for Windows terminal
-if sys.platform == "win32":
-    import codecs
-    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.detach())
-    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.detach())
-
 from astrapy import DataAPIClient
 from dotenv import load_dotenv
 from langchain.callbacks.manager import CallbackManagerForRetrieverRun
@@ -975,6 +969,12 @@ def manual_qa_chain(question: str) -> str:
 # Interactive Loop
 # -------------------------------
 if __name__ == "__main__":
+    # Fix encoding for Windows terminal (only when running as main script)
+    if sys.platform == "win32":
+        import codecs
+        sys.stdout = codecs.getwriter('utf-8')(sys.stdout.detach())
+        sys.stderr = codecs.getwriter('utf-8')(sys.stderr.detach())
+    
     print("📞 ระบบถาม-ตอบข้อมูลติดต่อคณะวิทยาการคอมพิวเตอร์")
     print("พิมพ์ 'exit' เพื่อออก\n")
     while True:
