@@ -62,10 +62,10 @@ if not token or not api_endpoint:
 client = DataAPIClient(token=token)
 database = client.get_database_by_api_endpoint(api_endpoint)
 
-# Get single collection for students data
+# Get services collection (รวมกับ contact และ links)
 try:
-    collection = database.get_collection("students_embedding")
-    print(f"✅ Connected to collection: students_embedding")
+    collection = database.get_collection("services_embedding")
+    print(f"✅ Connected to collection: services_embedding (category: students)")
 except Exception as e:
     print(f"❌ Error accessing collection: {e}")
     exit(1)
@@ -209,8 +209,8 @@ class StudentsRetriever(BaseRetriever):
         all_documents = []
         
         try:
-            print("🔍 ค้นหาจาก students_embedding collection...")
-            results = self._collection.find({}, limit=100)  # Get up to 100 student links
+            print("🔍 ค้นหาจาก services_embedding collection (category: students)...")
+            results = self._collection.find({"metadata.category": "students"}, limit=100)  # Get up to 100 student links
             
             for result in results:
                 doc = Document(
@@ -219,7 +219,7 @@ class StudentsRetriever(BaseRetriever):
                 )
                 all_documents.append(doc)
             
-            print(f"📊 จาก students_embedding: {len(all_documents)} รายการ")
+            print(f"📊 จาก services_embedding (category: students): {len(all_documents)} รายการ")
             
         except Exception as e:
             print(f"❌ Error in comprehensive search: {e}")
@@ -238,9 +238,9 @@ class StudentsRetriever(BaseRetriever):
             query_vector = self._embedding.embed_query(query)
             print(f"📊 Vector Search: สร้าง embedding แล้ว (dimension: {len(query_vector)})")
             
-            # Perform vector search with similarity scores
+            # Perform vector search with similarity scores (filter เฉพาะ students)
             results = self._collection.find(
-                {},
+                {"metadata.category": "students"},
                 sort={"$vector": query_vector},
                 limit=10,  # Top 10 semantic matches
                 include_similarity=True  # Include cosine similarity scores
@@ -282,8 +282,8 @@ class StudentsRetriever(BaseRetriever):
         if self._bm25_retriever is None:
             print("🔧 Initializing Enhanced BM25 retriever with Thai support...")
             try:
-                # Get all documents from collection for BM25
-                results = self._collection.find({}, limit=100)
+                # Get all documents from collection for BM25 (filter เฉพาะ students)
+                results = self._collection.find({"metadata.category": "students"}, limit=100)
                 documents = []
                 
                 for result in results:
@@ -676,8 +676,8 @@ class StudentsRetriever(BaseRetriever):
             print(f"   🔤 Tokenized: {query_tokens}")
             print(f"   🎯 Meaningful: {meaningful_tokens}")
             
-            # 4. Search in documents
-            all_results = list(self._collection.find({}, limit=100))
+            # 4. Search in documents (filter เฉพาะ students)
+            all_results = list(self._collection.find({"metadata.category": "students"}, limit=100))
             matched_docs = []
             
             for result in all_results:
@@ -787,8 +787,8 @@ class StudentsRetriever(BaseRetriever):
                 "จองห้องแล็บ": ["ห้องแล็บ", "ปฏิบัติการ", "laboratory", "lab"],
             }
             
-            # Get all documents from collection
-            all_results = list(self._collection.find({}, limit=100))
+            # Get all documents from collection (filter เฉพาะ students)
+            all_results = list(self._collection.find({"metadata.category": "students"}, limit=100))
             matched_docs = []
             
             query_lower = query.lower().strip()
@@ -854,7 +854,7 @@ class StudentsRetriever(BaseRetriever):
         
         try:
             keywords = self._extract_search_keywords(query)
-            results = self._collection.find({}, limit=50)
+            results = self._collection.find({"metadata.category": "students"}, limit=50)
             
             for result in results:
                 content = result.get("content", "").lower()
@@ -998,8 +998,8 @@ def manual_qa_chain(question: str) -> str:
     """
     try:
         print(f"🔍 กำลังค้นหาลิงก์นักศึกษาสำหรับคำถาม: {question}")
-        print("🌐 ใช้ AstraDB Cloud Vector Database (astrapy) - Students Collection")
-        print(f"📚 Collection: students_embedding")
+        print("🌐 ใช้ AstraDB Cloud Vector Database (astrapy) - Services Collection")
+        print(f"📚 Collection: services_embedding (category: students)")
         
         # ขั้นตอน 1: ดึงข้อมูลจาก retriever
         retrieved_docs = retriever.get_relevant_documents(question)
@@ -1011,7 +1011,7 @@ def manual_qa_chain(question: str) -> str:
         
         # ขั้นตอน 2: แสดงผลลัพธ์ทั้งหมดก่อน
         print("\n" + "="*60)
-        print("📋 ผลการค้นหาลิงก์นักศึกษาทั้งหมดจาก AstraDB (Students Collection):")
+        print("📋 ผลการค้นหาลิงก์นักศึกษาทั้งหมดจาก AstraDB (Services Collection - category: students):")
         print("="*60)
         
         for i, doc in enumerate(retrieved_docs, 1):
@@ -1079,8 +1079,8 @@ def manual_qa_chain(question: str) -> str:
 # ✅ เริ่มถาม
 if __name__ == "__main__":
     print("🎓 ระบบถาม-ตอบ ลิงก์บริการสำหรับนักศึกษา คณะคอมพิวเตอร์ มข. (Students Version with astrapy)")
-    print("🌐 ใช้ AstraDB Cloud Vector Database - Students Collection")
-    print(f"📚 Collection: students_embedding")
+    print("🌐 ใช้ AstraDB Cloud Vector Database - Services Collection")
+    print(f"📚 Collection: services_embedding (category: students)")
     print("พิมพ์ 'exit' เพื่อออก\n")
     print("ตัวอย่างคำถาม:")
     print("- ขอลิงก์จองห้องแล็บ")

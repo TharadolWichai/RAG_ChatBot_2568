@@ -312,8 +312,8 @@ def main():
         print(f"❌ Failed to connect to AstraDB: {e}")
         return False
     
-    # Get existing collection (should be created via AstraDB UI with vector support)
-    collection_name = "students_embedding"
+    # Use services collection (รวมกับ contact และ links)
+    collection_name = "services_embedding"
     try:
         # List existing collections first
         existing_collections = list(database.list_collection_names())
@@ -323,19 +323,19 @@ def main():
             collection = database.get_collection(collection_name)
             print(f"📂 Using existing collection: {collection_name}")
             
-            # Clear existing data first
-            print("🗑️ Clearing existing data from collection...")
+            # Clear only student links (not all data)
+            print("🗑️ Clearing existing student links from collection...")
             try:
-                # Delete all documents in the collection
-                delete_result = collection.delete_many({})
-                print(f"🗑️ Deleted existing documents from collection")
+                # Delete only documents with category="students"
+                delete_result = collection.delete_many({"metadata.category": "students"})
+                print(f"🗑️ Deleted {delete_result.deleted_count if hasattr(delete_result, 'deleted_count') else 'existing'} student link documents")
             except Exception as e:
-                print(f"⚠️ Warning: Could not clear collection: {e}")
+                print(f"⚠️ Warning: Could not clear student links: {e}")
                 
         else:
             print(f"❌ Collection {collection_name} not found!")
             print("Please create the collection via AstraDB UI with vector support:")
-            print("  - Collection Name: students_embedding")
+            print("  - Collection Name: services_embedding")
             print("  - Vector Dimension: 384")
             print("  - Vector Metric: cosine")
             return False
@@ -375,13 +375,14 @@ def main():
             
             content = "\n".join(content_parts)
             
-            # Create metadata
+            # Create metadata with category
             metadata = {
                 "link_text": link_text,
                 "url": link_url,
-                "type": "student_service_link",
+                "type": "service_link",
                 "keywords": keywords,
-                "category": "students"
+                "category": "students",  # Category สำหรับแยกประเภท
+                "subcategory": "student_services"
             }
             
             docs.append(Document(page_content=content, metadata=metadata))

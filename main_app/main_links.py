@@ -62,10 +62,10 @@ if not token or not api_endpoint:
 client = DataAPIClient(token=token)
 database = client.get_database_by_api_endpoint(api_endpoint)
 
-# Get single collection for links data
+# Get services collection (รวมกับ contact และ students)
 try:
-    collection = database.get_collection("links_embedding")
-    print(f"✅ Connected to collection: links_embedding")
+    collection = database.get_collection("services_embedding")
+    print(f"✅ Connected to collection: services_embedding (category: links)")
 except Exception as e:
     print(f"❌ Error accessing collection: {e}")
     exit(1)
@@ -209,8 +209,8 @@ class LinksRetriever(BaseRetriever):
         all_documents = []
         
         try:
-            print("🔍 ค้นหาจาก links_embedding collection...")
-            results = self._collection.find({}, limit=50)  # Get up to 50 links
+            print("🔍 ค้นหาจาก services_embedding collection (category: links)...")
+            results = self._collection.find({"metadata.category": "links"}, limit=50)  # Get up to 50 links
             
             for result in results:
                 doc = Document(
@@ -238,9 +238,9 @@ class LinksRetriever(BaseRetriever):
             query_vector = self._embedding.embed_query(query)
             print(f"📊 Vector Search: สร้าง embedding แล้ว (dimension: {len(query_vector)})")
             
-            # Perform vector search with similarity scores
+            # Perform vector search with similarity scores (filter เฉพาะ links)
             results = self._collection.find(
-                {},
+                {"metadata.category": "links"},
                 sort={"$vector": query_vector},
                 limit=10,  # Top 10 semantic matches
                 include_similarity=True  # Include cosine similarity scores
@@ -282,8 +282,8 @@ class LinksRetriever(BaseRetriever):
         if self._bm25_retriever is None:
             print("🔧 Initializing Enhanced BM25 retriever with Thai support...")
             try:
-                # Get all documents from collection for BM25
-                results = self._collection.find({}, limit=100)
+                # Get all documents from collection for BM25 (filter เฉพาะ links)
+                results = self._collection.find({"metadata.category": "links"}, limit=100)
                 documents = []
                 
                 for result in results:
@@ -676,8 +676,8 @@ class LinksRetriever(BaseRetriever):
             print(f"   🔤 Tokenized: {query_tokens}")
             print(f"   🎯 Meaningful: {meaningful_tokens}")
             
-            # 4. Search in documents
-            all_results = list(self._collection.find({}, limit=100))
+            # 4. Search in documents (filter เฉพาะ links)
+            all_results = list(self._collection.find({"metadata.category": "links"}, limit=100))
             matched_docs = []
             
             for result in all_results:
@@ -787,8 +787,8 @@ class LinksRetriever(BaseRetriever):
                 "จองห้องแล็บ": ["ห้องแล็บ", "ปฏิบัติการ", "laboratory", "lab"],
             }
             
-            # Get all documents from collection
-            all_results = list(self._collection.find({}, limit=100))
+            # Get all documents from collection (filter เฉพาะ links)
+            all_results = list(self._collection.find({"metadata.category": "links"}, limit=100))
             matched_docs = []
             
             query_lower = query.lower().strip()
@@ -854,7 +854,7 @@ class LinksRetriever(BaseRetriever):
         
         try:
             keywords = self._extract_search_keywords(query)
-            results = self._collection.find({}, limit=50)
+            results = self._collection.find({"metadata.category": "links"}, limit=50)
             
             for result in results:
                 content = result.get("content", "").lower()
@@ -998,8 +998,8 @@ def manual_qa_chain(question: str) -> str:
     """
     try:
         print(f"🔍 กำลังค้นหาลิงก์สำหรับคำถาม: {question}")
-        print("🌐 ใช้ AstraDB Cloud Vector Database (astrapy) - Links Collection")
-        print(f"📚 Collection: links_embedding")
+        print("🌐 ใช้ AstraDB Cloud Vector Database (astrapy) - Services Collection")
+        print(f"📚 Collection: services_embedding (category: links)")
         
         # ขั้นตอน 1: ดึงข้อมูลจาก retriever
         retrieved_docs = retriever.get_relevant_documents(question)
@@ -1079,8 +1079,8 @@ def manual_qa_chain(question: str) -> str:
 # ✅ เริ่มถาม
 if __name__ == "__main__":
     print("🔗 ระบบถาม-ตอบ ลิงก์บริการคณะคอมพิวเตอร์ มข. (Links Version with astrapy)")
-    print("🌐 ใช้ AstraDB Cloud Vector Database - Links Collection")
-    print(f"📚 Collection: links_embedding")
+    print("🌐 ใช้ AstraDB Cloud Vector Database - Services Collection")
+    print(f"📚 Collection: services_embedding (category: links)")
     print("พิมพ์ 'exit' เพื่อออก\n")
     print("ตัวอย่างคำถาม:")
     print("- ขอลิงก์จองห้องประชุม")

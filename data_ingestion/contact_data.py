@@ -21,7 +21,7 @@ load_dotenv()
 ASTRA_TOKEN = os.getenv("ASTRA_DB_APPLICATION_TOKEN")
 ASTRA_ENDPOINT = os.getenv("ASTRA_DB_API_ENDPOINT")
 ASTRA_KEYSPACE = os.getenv("ASTRA_DB_KEYSPACE", "default_keyspace")
-COLLECTION_NAME = "contactus_embedding"
+COLLECTION_NAME = "services_embedding"  # รวมกับ links และ students
 
 if not ASTRA_TOKEN or not ASTRA_ENDPOINT:
     raise ValueError("Missing AstraDB credentials in .env")
@@ -175,13 +175,24 @@ if not contact_info:
 if contact_info:
     # รวมข้อมูลทั้งหมดเป็น document เดียว
     full_content = "\n".join(contact_info)
-    metadata = {"source": url, "type": "contact_info"}
+    metadata = {
+        "source": url,
+        "type": "contact_info",
+        "category": "contact",  # Category สำหรับแยกประเภท
+        "subcategory": "contact_overview"
+    }
     docs.append(Document(page_content=full_content, metadata=metadata))
     
     # แยกข้อมูลเป็น documents ย่อย
     for i, info in enumerate(contact_info):
         if len(info.strip()) > 5:
-            metadata = {"source": url, "type": "contact_detail", "section": i+1}
+            metadata = {
+                "source": url,
+                "type": "contact_detail",
+                "category": "contact",  # Category สำหรับแยกประเภท
+                "subcategory": "contact_detail",
+                "section": i+1
+            }
             docs.append(Document(page_content=info, metadata=metadata))
 else:
     print("⚠️ ไม่พบข้อมูลติดต่อ")
