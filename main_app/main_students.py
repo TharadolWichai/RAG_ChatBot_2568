@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# main_students.py - AstraDB Version สำหรับ students_data.py โดยเฉพาะ (Enhanced with PyThaiNLP)
 
 import sys
 import os
@@ -60,16 +62,16 @@ if not token or not api_endpoint:
 client = DataAPIClient(token=token)
 database = client.get_database_by_api_endpoint(api_endpoint)
 
-# Get services collection (รวมกับ contact และ students)
+# Get services collection (รวมกับ contact และ links)
 try:
     collection = database.get_collection("services_embedding")
-    print(f"✅ Connected to collection: services_embedding (category: links)")
+    print(f"✅ Connected to collection: services_embedding (category: students)")
 except Exception as e:
     print(f"❌ Error accessing collection: {e}")
     exit(1)
 
-# ✅ สร้าง Custom Retriever สำหรับ AstraDB (Links Collection)
-class LinksRetriever(BaseRetriever):
+# ✅ สร้าง Custom Retriever สำหรับ AstraDB (Students Collection)
+class StudentsRetriever(BaseRetriever):
     def __init__(self, collection, embedding):
         super().__init__()
         self._collection = collection
@@ -80,11 +82,11 @@ class LinksRetriever(BaseRetriever):
     def _get_relevant_documents(
         self, query: str, *, run_manager: CallbackManagerForRetrieverRun
     ) -> List[Document]:
-        safe_print(f"🔍 Debug: กำลังค้นหาลิงก์ด้วย query: '{query}'")
+        safe_print(f"🔍 Debug: กำลังค้นหาลิงก์นักศึกษาด้วย query: '{query}'")
         
-        # ถ้าต้องการข้อมูลลิงก์ทั้งหมด
-        if any(word in query.lower() for word in ["ทั้งหมด", "ทุกอัน", "all", "รายการ", "ลิงก์ทั้งหมด"]):
-            safe_print("🎯 ตรวจพบคำขอลิงก์ทั้งหมด - ใช้การค้นหาแบบครอบคลุม")
+        # ถ้าต้องการข้อมูลลิงก์นักศึกษาทั้งหมด
+        if any(word in query.lower() for word in ["ทั้งหมด", "ทุกอัน", "all", "รายการ", "ลิงก์ทั้งหมด", "นักศึกษา"]):
+            safe_print("🎯 ตรวจพบคำขอลิงก์นักศึกษาทั้งหมด - ใช้การค้นหาแบบครอบคลุม")
             return self._get_comprehensive_search()
         
         # Try multiple search strategies
@@ -201,14 +203,14 @@ class LinksRetriever(BaseRetriever):
         return all_documents[:10]  # Return top 10 results
     
     def _get_comprehensive_search(self) -> List[Document]:
-        """ค้นหาลิงก์แบบครอบคลุมทั้งหมดจาก collection"""
-        print("🚀 เริ่มการค้นหาลิงก์แบบครอบคลุมจาก links_embedding collection...")
+        """ค้นหาลิงก์นักศึกษาแบบครอบคลุมทั้งหมดจาก collection"""
+        print("🚀 เริ่มการค้นหาลิงก์นักศึกษาแบบครอบคลุมจาก students_embedding collection...")
         
         all_documents = []
         
         try:
-            print("🔍 ค้นหาจาก services_embedding collection (category: links)...")
-            results = self._collection.find({"metadata.category": "links"}, limit=50)  # Get up to 50 links
+            print("🔍 ค้นหาจาก services_embedding collection (category: students)...")
+            results = self._collection.find({"metadata.category": "students"}, limit=100)  # Get up to 100 student links
             
             for result in results:
                 doc = Document(
@@ -217,12 +219,12 @@ class LinksRetriever(BaseRetriever):
                 )
                 all_documents.append(doc)
             
-            print(f"📊 จาก links_embedding: {len(all_documents)} รายการ")
+            print(f"📊 จาก services_embedding (category: students): {len(all_documents)} รายการ")
             
         except Exception as e:
             print(f"❌ Error in comprehensive search: {e}")
         
-        print(f"🎯 พบลิงก์ครอบคลุมรวม: {len(all_documents)} รายการ")
+        print(f"🎯 พบลิงก์นักศึกษาครอบคลุมรวม: {len(all_documents)} รายการ")
         return all_documents
     
     def _vector_search(self, query: str) -> List[Document]:
@@ -236,9 +238,9 @@ class LinksRetriever(BaseRetriever):
             query_vector = self._embedding.embed_query(query)
             print(f"📊 Vector Search: สร้าง embedding แล้ว (dimension: {len(query_vector)})")
             
-            # Perform vector search with similarity scores (filter เฉพาะ links)
+            # Perform vector search with similarity scores (filter เฉพาะ students)
             results = self._collection.find(
-                {"metadata.category": "links"},
+                {"metadata.category": "students"},
                 sort={"$vector": query_vector},
                 limit=10,  # Top 10 semantic matches
                 include_similarity=True  # Include cosine similarity scores
@@ -280,8 +282,8 @@ class LinksRetriever(BaseRetriever):
         if self._bm25_retriever is None:
             print("🔧 Initializing Enhanced BM25 retriever with Thai support...")
             try:
-                # Get all documents from collection for BM25 (filter เฉพาะ links)
-                results = self._collection.find({"metadata.category": "links"}, limit=100)
+                # Get all documents from collection for BM25 (filter เฉพาะ students)
+                results = self._collection.find({"metadata.category": "students"}, limit=100)
                 documents = []
                 
                 for result in results:
@@ -674,8 +676,8 @@ class LinksRetriever(BaseRetriever):
             print(f"   🔤 Tokenized: {query_tokens}")
             print(f"   🎯 Meaningful: {meaningful_tokens}")
             
-            # 4. Search in documents (filter เฉพาะ links)
-            all_results = list(self._collection.find({"metadata.category": "links"}, limit=100))
+            # 4. Search in documents (filter เฉพาะ students)
+            all_results = list(self._collection.find({"metadata.category": "students"}, limit=100))
             matched_docs = []
             
             for result in all_results:
@@ -785,8 +787,8 @@ class LinksRetriever(BaseRetriever):
                 "จองห้องแล็บ": ["ห้องแล็บ", "ปฏิบัติการ", "laboratory", "lab"],
             }
             
-            # Get all documents from collection (filter เฉพาะ links)
-            all_results = list(self._collection.find({"metadata.category": "links"}, limit=100))
+            # Get all documents from collection (filter เฉพาะ students)
+            all_results = list(self._collection.find({"metadata.category": "students"}, limit=100))
             matched_docs = []
             
             query_lower = query.lower().strip()
@@ -852,7 +854,7 @@ class LinksRetriever(BaseRetriever):
         
         try:
             keywords = self._extract_search_keywords(query)
-            results = self._collection.find({"metadata.category": "links"}, limit=50)
+            results = self._collection.find({"metadata.category": "students"}, limit=50)
             
             for result in results:
                 content = result.get("content", "").lower()
@@ -936,12 +938,12 @@ class LinksRetriever(BaseRetriever):
         print(f"🔤 Debug: Query '{query}' -> Keywords: {unique_keywords}")
         return unique_keywords
 
-retriever = LinksRetriever(collection, embedding)
+retriever = StudentsRetriever(collection, embedding)
 
-# ✅ สร้าง Prompt - ปรับปรุงเพื่อให้เหมาะกับข้อมูลลิงก์
+# ✅ สร้าง Prompt - ปรับปรุงเพื่อให้เหมาะกับข้อมูลนักศึกษา
 PROMPT = PromptTemplate.from_template("""
-บริบทต่อไปนี้คือข้อมูลเกี่ยวกับลิงก์และบริการต่างๆ ของคณะวิทยาลัยการคอมพิวเตอร์ มหาวิทยาลัยขอนแก่น
-คุณคือผู้ช่วยที่ให้ข้อมูลเกี่ยวกับลิงก์และบริการของคณะ
+บริบทต่อไปนี้คือข้อมูลเกี่ยวกับลิงก์และบริการสำหรับนักศึกษา คณะวิทยาลัยการคอมพิวเตอร์ มหาวิทยาลัยขอนแก่น
+คุณคือผู้ช่วยที่ให้ข้อมูลเกี่ยวกับลิงก์และบริการสำหรับนักศึกษาของคณะ
 
 สำคัญ: ให้ตรวจสอบข้อมูลในบริบทอย่างละเอียด หากมีข้อมูลที่ตรงกับคำถาม ให้นำมาตอบทันที
 
@@ -956,7 +958,7 @@ PROMPT = PromptTemplate.from_template("""
 - ใช้เครื่องหมาย • หรือ - นำหน้าแต่ละลิงก์
 - แสดงทั้งชื่อบริการและ URL
 
-หากไม่มีข้อมูลที่ตรงกับคำถามเลยในบริบท ให้ตอบว่า "ขอโทษ ฉันไม่พบลิงก์ที่คุณต้องการในระบบ"
+หากไม่มีข้อมูลที่ตรงกับคำถามเลยในบริบท ให้ตอบว่า "ขอโทษ ฉันไม่พบลิงก์บริการสำหรับนักศึกษาที่คุณต้องการในระบบ"
 
 ---------------------
 {context}
@@ -981,7 +983,7 @@ else:
             openai_api_base="https://openrouter.ai/api/v1",
             default_headers={
                 "HTTP-Referer": "https://github.com/your-repo",
-                "X-Title": "Links RAG Chatbot"
+                "X-Title": "Students RAG Chatbot"
             }
         )
         print("✅ OpenRouter LLM initialized successfully")
@@ -992,24 +994,24 @@ else:
 # ✅ สร้าง Manual QA Function
 def manual_qa_chain(question: str) -> str:
     """
-    Manual QA chain สำหรับตอบคำถามเกี่ยวกับลิงก์ - Links Version with astrapy
+    Manual QA chain สำหรับตอบคำถามเกี่ยวกับลิงก์นักศึกษา - Students Version with astrapy
     """
     try:
-        print(f"🔍 กำลังค้นหาลิงก์สำหรับคำถาม: {question}")
+        print(f"🔍 กำลังค้นหาลิงก์นักศึกษาสำหรับคำถาม: {question}")
         print("🌐 ใช้ AstraDB Cloud Vector Database (astrapy) - Services Collection")
-        print(f"📚 Collection: services_embedding (category: links)")
+        print(f"📚 Collection: services_embedding (category: students)")
         
         # ขั้นตอน 1: ดึงข้อมูลจาก retriever
         retrieved_docs = retriever.get_relevant_documents(question)
         
         if not retrieved_docs:
-            return "ขอโทษ ฉันไม่พบลิงก์ที่คุณต้องการในระบบ"
+            return "ขอโทษ ฉันไม่พบลิงก์บริการสำหรับนักศึกษาที่คุณต้องการในระบบ"
         
-        print(f"📚 พบข้อมูลลิงก์ {len(retrieved_docs)} รายการจาก AstraDB")
+        print(f"📚 พบข้อมูลลิงก์นักศึกษา {len(retrieved_docs)} รายการจาก AstraDB")
         
         # ขั้นตอน 2: แสดงผลลัพธ์ทั้งหมดก่อน
         print("\n" + "="*60)
-        print("📋 ผลการค้นหาลิงก์ทั้งหมดจาก AstraDB (Links Collection):")
+        print("📋 ผลการค้นหาลิงก์นักศึกษาทั้งหมดจาก AstraDB (Services Collection - category: students):")
         print("="*60)
         
         for i, doc in enumerate(retrieved_docs, 1):
@@ -1029,7 +1031,7 @@ def manual_qa_chain(question: str) -> str:
         # ขั้นตอน 3: ใช้ข้อมูลทั้งหมดที่ค้นหาได้
         selected_docs = retrieved_docs  # ใช้ทั้งหมด
         
-        print(f"🎯 ใช้ข้อมูลลิงก์ทั้งหมด {len(selected_docs)} รายการ สำหรับการตอบคำถาม")
+        print(f"🎯 ใช้ข้อมูลลิงก์นักศึกษาทั้งหมด {len(selected_docs)} รายการ สำหรับการตอบคำถาม")
         print("="*60)
         
         # จัดเตรียม context สำหรับ LLM
@@ -1040,7 +1042,7 @@ def manual_qa_chain(question: str) -> str:
         for i, doc in enumerate(selected_docs, 1):
             link_text = doc.metadata.get('link_text', 'Unknown')
             print(f"📄 Context {i}: {link_text}")
-            context_parts.append(f"ลิงก์ที่ {i}:\n{doc.page_content}\n")
+            context_parts.append(f"ลิงก์นักศึกษาที่ {i}:\n{doc.page_content}\n")
         
         context = "\n".join(context_parts)
         print("\n" + "="*60)
@@ -1063,7 +1065,7 @@ def manual_qa_chain(question: str) -> str:
         except Exception as llm_error:
             print(f"❌ LLM Error: {llm_error}")
             # Return search results directly if LLM fails
-            result_text = f"พบลิงก์ที่เกี่ยวข้อง {len(retrieved_docs)} รายการ:\n\n"
+            result_text = f"พบลิงก์บริการสำหรับนักศึกษาที่เกี่ยวข้อง {len(retrieved_docs)} รายการ:\n\n"
             for i, doc in enumerate(retrieved_docs, 1):
                 link_text = doc.metadata.get('link_text', 'Unknown')
                 url = doc.metadata.get('url', 'Unknown')
@@ -1076,14 +1078,14 @@ def manual_qa_chain(question: str) -> str:
 
 # ✅ เริ่มถาม
 if __name__ == "__main__":
-    print("🔗 ระบบถาม-ตอบ ลิงก์บริการคณะคอมพิวเตอร์ มข. (Links Version with astrapy)")
+    print("🎓 ระบบถาม-ตอบ ลิงก์บริการสำหรับนักศึกษา คณะคอมพิวเตอร์ มข. (Students Version with astrapy)")
     print("🌐 ใช้ AstraDB Cloud Vector Database - Services Collection")
-    print(f"📚 Collection: services_embedding (category: links)")
+    print(f"📚 Collection: services_embedding (category: students)")
     print("พิมพ์ 'exit' เพื่อออก\n")
     print("ตัวอย่างคำถาม:")
-    print("- ขอลิงก์จองห้องประชุม")
-    print("- ลิงก์อัปโหลดไฟล์")
-    print("- แสดงลิงก์ทั้งหมด")
+    print("- ขอลิงก์จองห้องแล็บ")
+    print("- ลิงก์ระบบโครงงาน")
+    print("- แสดงลิงก์ทั้งหมดสำหรับนักศึกษา")
     print("-" * 50)
 
     while True:

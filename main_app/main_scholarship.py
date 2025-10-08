@@ -1,3 +1,4 @@
+# main_scholarship.py - AstraDB Version สำหรับ scholarship_data.py โดยเฉพาะ (Enhanced with PyThaiNLP)
 
 import sys
 import os
@@ -31,6 +32,8 @@ except ImportError:
     PYTHAINLP_AVAILABLE = False
     print("⚠️ PyThaiNLP not available - falling back to basic search")
 
+os.environ['PYTHONIOENCODING'] = 'utf-8'
+
 load_dotenv()
 
 # ✅ Helper function for safe Thai text output
@@ -60,16 +63,16 @@ if not token or not api_endpoint:
 client = DataAPIClient(token=token)
 database = client.get_database_by_api_endpoint(api_endpoint)
 
-# Get services collection (รวมกับ contact และ students)
+# Get scholarship collection
 try:
-    collection = database.get_collection("services_embedding")
-    print(f"✅ Connected to collection: services_embedding (category: links)")
+    collection = database.get_collection("scholarship_embedding")
+    print(f"✅ Connected to collection: scholarship_embedding")
 except Exception as e:
     print(f"❌ Error accessing collection: {e}")
     exit(1)
 
-# ✅ สร้าง Custom Retriever สำหรับ AstraDB (Links Collection)
-class LinksRetriever(BaseRetriever):
+# ✅ สร้าง Custom Retriever สำหรับ AstraDB (Scholarship Collection)
+class ScholarshipRetriever(BaseRetriever):
     def __init__(self, collection, embedding):
         super().__init__()
         self._collection = collection
@@ -80,17 +83,17 @@ class LinksRetriever(BaseRetriever):
     def _get_relevant_documents(
         self, query: str, *, run_manager: CallbackManagerForRetrieverRun
     ) -> List[Document]:
-        safe_print(f"🔍 Debug: กำลังค้นหาลิงก์ด้วย query: '{query}'")
+        safe_print(f"🔍 Debug: กำลังค้นหาทุนการศึกษาด้วย query: '{query}'")
         
-        # ถ้าต้องการข้อมูลลิงก์ทั้งหมด
-        if any(word in query.lower() for word in ["ทั้งหมด", "ทุกอัน", "all", "รายการ", "ลิงก์ทั้งหมด"]):
-            safe_print("🎯 ตรวจพบคำขอลิงก์ทั้งหมด - ใช้การค้นหาแบบครอบคลุม")
+        # ถ้าต้องการข้อมูลทั้งหมด ให้ใช้วิธีพิเศษ
+        if any(word in query.lower() for word in ["ทั้งหมด", "ทุกทุน", "all", "รายการ", "มีทุนอะไรบ้าง"]):
+            safe_print("🎯 ตรวจพบคำขอข้อมูลทุนทั้งหมด - ใช้การค้นหาแบบครอบคลุม")
             return self._get_comprehensive_search()
         
         # Try multiple search strategies
         print("🔍 กำลังค้นหาด้วย AstraDB hybrid search...")
         
-        # Strategy 0: Thai Exact Search (for Thai queries)
+        # Strategy 0: Thai Advanced Search (for Thai queries)
         thai_results = []
         is_thai_query = any('\u0e00' <= char <= '\u0e7f' for char in query)  # Check if contains Thai characters
         
@@ -117,7 +120,7 @@ class LinksRetriever(BaseRetriever):
         # Collect all unique documents with their scores
         candidate_docs = []
         
-                # Add Thai advanced search results first (highest priorityexit
+        # Add Thai advanced search results first (highest priority)
         if thai_results:
             for i, doc in enumerate(thai_results[:5]):  # Top 5 Thai matches
                 if doc.page_content not in seen_content:
@@ -126,23 +129,22 @@ class LinksRetriever(BaseRetriever):
                     search_type = doc.metadata.get("search_type", "thai_unknown")
                     
                     # Calculate proper combined score using hybrid scoring
-                    # Treat Thai score as BM25-like score for consistency
-                    normalized_thai_score = min(thai_score / 50.0, 1.0)  # Normalize Thai score to 0-1 (max 50)
                     doc.metadata["combined_score"] = self._calculate_hybrid_score(doc, thai_score, 0.0, query)
                     
                     # Add Thai bonus for very relevant matches
                     if thai_score > 20:  # Very high Thai relevance
-                        doc.metadata["combined_score"] += 0.2  # Extra boost for highly relevant Thai matches
+                        doc.metadata["combined_score"] += 0.2
                     elif thai_score > 10:  # Medium Thai relevance  
-                        doc.metadata["combined_score"] += 0.1  # Small boost for relevant Thai matches
+                        doc.metadata["combined_score"] += 0.1
                     
-                    doc.metadata["bm25_score"] = thai_score  # Store original Thai score as BM25-equivalent
+                    doc.metadata["bm25_score"] = thai_score
                     doc.metadata["vector_score"] = 0.0
                     candidate_docs.append(doc)
                     seen_content.add(doc.page_content)
                     
                     search_type_display = "🇹🇭 Advanced" if search_type == "thai_advanced" else "🎯 Exact"
-                    print(f"➕ Thai {search_type_display} #{i+1}: {doc.metadata.get('link_text', 'Unknown')} (Thai: {thai_score:.2f}, Combined: {doc.metadata['combined_score']:.4f})")
+                    scholarship_type = doc.metadata.get('scholarship_type', 'Unknown')
+                    print(f"➕ Thai {search_type_display} #{i+1}: {scholarship_type[:40]}... (Thai: {thai_score:.2f}, Combined: {doc.metadata['combined_score']:.4f})")
         
         # Add text search results
         for i, doc in enumerate(text_results):
@@ -151,7 +153,8 @@ class LinksRetriever(BaseRetriever):
                 doc.metadata["combined_score"] = self._calculate_hybrid_score(doc, bm25_score, 0.0, query)
                 candidate_docs.append(doc)
                 seen_content.add(doc.page_content)
-                print(f"➕ Text Search #{i+1}: {doc.metadata.get('link_text', 'Unknown')} (BM25: {bm25_score:.4f})")
+                scholarship_type = doc.metadata.get('scholarship_type', 'Unknown')
+                print(f"➕ Text Search #{i+1}: {scholarship_type[:40]}... (BM25: {bm25_score:.4f})")
         
         # Add vector search results
         for i, doc in enumerate(vector_results):
@@ -160,7 +163,8 @@ class LinksRetriever(BaseRetriever):
                 doc.metadata["combined_score"] = self._calculate_hybrid_score(doc, 0.0, vector_score, query)
                 candidate_docs.append(doc)
                 seen_content.add(doc.page_content)
-                print(f"➕ Vector Search #{i+1}: {doc.metadata.get('link_text', 'Unknown')} (Vector: {vector_score:.4f})")
+                scholarship_type = doc.metadata.get('scholarship_type', 'Unknown')
+                print(f"➕ Vector Search #{i+1}: {scholarship_type[:40]}... (Vector: {vector_score:.4f})")
             else:
                 # Update existing document with vector score
                 for existing_doc in candidate_docs:
@@ -169,7 +173,8 @@ class LinksRetriever(BaseRetriever):
                         bm25_score = existing_doc.metadata.get("bm25_score", 0.0)
                         existing_doc.metadata["vector_score"] = vector_score
                         existing_doc.metadata["combined_score"] = self._calculate_hybrid_score(existing_doc, bm25_score, vector_score, query)
-                        print(f"🔄 อัปเดตคะแนน: {existing_doc.metadata.get('link_text', 'Unknown')} (BM25: {bm25_score:.4f}, Vector: {vector_score:.4f})")
+                        scholarship_type = existing_doc.metadata.get('scholarship_type', 'Unknown')
+                        print(f"🔄 อัปเดตคะแนน: {scholarship_type[:40]}... (BM25: {bm25_score:.4f}, Vector: {vector_score:.4f})")
                         break
         
         # Sort by combined score (descending)
@@ -186,29 +191,29 @@ class LinksRetriever(BaseRetriever):
             bm25_score = doc.metadata.get("bm25_score", 0.0)
             vector_score = doc.metadata.get("vector_score", 0.0)
             search_type = doc.metadata.get("search_type", "unknown")
-            link_text = doc.metadata.get('link_text', 'Unknown')
+            scholarship_type = doc.metadata.get("scholarship_type", "Unknown")
             
             # Show search type icon
             type_icon = "🇹🇭" if "thai" in search_type else "📝" if "bm25" in search_type else "🧠" if "vector" in search_type else "❓"
             
-            print(f"#{i}: {type_icon} {link_text}")
+            print(f"#{i}: {type_icon} {scholarship_type[:50]}...")
             print(f"    🎯 Combined: {combined_score:.4f} | 📝 BM25/Thai: {bm25_score:.4f} | 🧠 Vector: {vector_score:.4f}")
             print(f"    🔍 Search Type: {search_type}")
             print("-" * 40)
         
         print(f"📊 สรุป: Text={len(text_results)}, Vector={len(vector_results)}, รวม={len(all_documents)} (unique)")
         
-        return all_documents[:10]  # Return top 10 results
+        return all_documents[:15]  # Return top 15 results
     
     def _get_comprehensive_search(self) -> List[Document]:
-        """ค้นหาลิงก์แบบครอบคลุมทั้งหมดจาก collection"""
-        print("🚀 เริ่มการค้นหาลิงก์แบบครอบคลุมจาก links_embedding collection...")
+        """ค้นหาข้อมูลทุนแบบครอบคลุมทั้งหมดจาก collection"""
+        print("🚀 เริ่มการค้นหาทุนการศึกษาแบบครอบคลุมจาก scholarship_embedding collection...")
         
         all_documents = []
         
         try:
-            print("🔍 ค้นหาจาก services_embedding collection (category: links)...")
-            results = self._collection.find({"metadata.category": "links"}, limit=50)  # Get up to 50 links
+            print("🔍 ค้นหาจาก scholarship_embedding collection...")
+            results = self._collection.find({}, limit=50)  # Get all scholarship records
             
             for result in results:
                 doc = Document(
@@ -217,12 +222,12 @@ class LinksRetriever(BaseRetriever):
                 )
                 all_documents.append(doc)
             
-            print(f"📊 จาก links_embedding: {len(all_documents)} รายการ")
+            print(f"📊 จาก scholarship_embedding: {len(all_documents)} รายการ")
             
         except Exception as e:
             print(f"❌ Error in comprehensive search: {e}")
         
-        print(f"🎯 พบลิงก์ครอบคลุมรวม: {len(all_documents)} รายการ")
+        print(f"🎯 พบข้อมูลทุนครอบคลุมรวม: {len(all_documents)} รายการ")
         return all_documents
     
     def _vector_search(self, query: str) -> List[Document]:
@@ -236,11 +241,11 @@ class LinksRetriever(BaseRetriever):
             query_vector = self._embedding.embed_query(query)
             print(f"📊 Vector Search: สร้าง embedding แล้ว (dimension: {len(query_vector)})")
             
-            # Perform vector search with similarity scores (filter เฉพาะ links)
+            # Perform vector search with similarity scores
             results = self._collection.find(
-                {"metadata.category": "links"},
+                {},
                 sort={"$vector": query_vector},
-                limit=10,  # Top 10 semantic matches
+                limit=10,  # Top 10 semantic matches for scholarships
                 include_similarity=True  # Include cosine similarity scores
             )
             
@@ -266,8 +271,9 @@ class LinksRetriever(BaseRetriever):
                 print("   🏆 Top Vector Matches:")
                 for i, doc in enumerate(all_documents[:3]):
                     score = doc.metadata.get("vector_score", 0.0)
-                    link_text = doc.metadata.get('link_text', 'Unknown')
-                    print(f"   #{i+1}: {link_text} (score: {score:.4f})")
+                    scholarship_type = doc.metadata.get("scholarship_type", "Unknown")
+                    content_preview = doc.page_content[:50]
+                    print(f"   #{i+1}: {content_preview}... (score: {score:.4f}, ทุน: {scholarship_type[:30]}...)")
             
             return all_documents
             
@@ -280,8 +286,8 @@ class LinksRetriever(BaseRetriever):
         if self._bm25_retriever is None:
             print("🔧 Initializing Enhanced BM25 retriever with Thai support...")
             try:
-                # Get all documents from collection for BM25 (filter เฉพาะ links)
-                results = self._collection.find({"metadata.category": "links"}, limit=100)
+                # Get all documents from collection for BM25
+                results = self._collection.find({}, limit=100)
                 documents = []
                 
                 for result in results:
@@ -292,7 +298,7 @@ class LinksRetriever(BaseRetriever):
                     documents.append(doc)
                 
                 self._documents_cache = documents
-                print(f"📚 Loaded {len(documents)} documents for BM25")
+                print(f"📚 Loaded {len(documents)} scholarship documents for BM25")
                 
                 # Create Enhanced BM25 with Thai tokenization
                 if documents and PYTHAINLP_AVAILABLE:
@@ -301,7 +307,7 @@ class LinksRetriever(BaseRetriever):
                 elif documents:
                     # Fallback to standard BM25
                     self._bm25_retriever = BM25Retriever.from_documents(documents)
-                    self._bm25_retriever.k = 10
+                    self._bm25_retriever.k = 10  # Return top 10 results
                     print("✅ Standard BM25 initialized successfully (PyThaiNLP not available)")
                 else:
                     print("⚠️ No documents found for BM25 initialization")
@@ -349,19 +355,11 @@ class LinksRetriever(BaseRetriever):
             self._bm25_retriever.k = 10
 
     def _preprocess_query_for_bm25(self, query: str) -> str:
-        """ประมวลผลคำถามก่อนส่งให้ BM25"""
+        """ประมวลผลคำถามก่อนส่งให้ BM25 เพื่อแก้ปัญหาการไม่เว้นวรรค"""
         import re
         
-        # Remove common prefixes but keep the core keywords
-        processed = query.replace("ขอ", "").replace("ลิงก์", "").replace("ลิงค์", "").replace("ระบบ", "").strip()
-        
-        # แยกคำสำคัญสำหรับการค้นหาที่ดีขึ้น
-        if "จองห้องประชุม" in query:
-            processed = "จองห้อง ห้องประชุม"
-        elif "จองห้องแล็บ" in query:
-            processed = "จองห้อง ห้องแล็บ ปฏิบัติการ"
-        elif "จองห้อง" in query:
-            processed = "จองห้อง"
+        # Remove common prefixes but keep the core terms
+        processed = query.replace("ขอข้อมูล", "").replace("ทุน", "").strip()
         
         print(f"🔤 Query preprocessing: '{query}' → '{processed}'")
         return processed if processed else query
@@ -438,8 +436,8 @@ class LinksRetriever(BaseRetriever):
                 print("   🏆 Top Thai BM25 Matches:")
                 for i, doc in enumerate(results[:3]):
                     score = doc.metadata.get("bm25_score", 0.0)
-                    link_text = doc.metadata.get('link_text', 'Unknown')
-                    print(f"   #{i+1}: {link_text} (Thai BM25: {score:.4f})")
+                    scholarship_type = doc.metadata.get('scholarship_type', 'Unknown')
+                    print(f"   #{i+1}: {scholarship_type[:40]}... (Thai BM25: {score:.4f})")
             
             return results[:10]  # Return top 10
             
@@ -456,14 +454,8 @@ class LinksRetriever(BaseRetriever):
             query_variations = [
                 query,  # Original query
                 self._preprocess_query_for_bm25(query),  # Preprocessed
-                query.replace("ขอ", "").replace("ลิงก์", "").replace("ลิงค์", "").strip(),  # Clean version
+                query.replace("ทุน", "").replace("ขอข้อมูล", "").strip(),  # Clean version
             ]
-            
-            # Add word-by-word variations for compound queries
-            if "จองห้องประชุม" in query:
-                query_variations.extend(["จองห้อง", "ห้องประชุม", "จอง ห้องประชุม"])
-            if "จองห้องแล็บ" in query or "จองแล็บ" in query:
-                query_variations.extend(["จองห้อง", "ห้องแล็บ", "ปฏิบัติการ", "จอง ปฏิบัติการ"])
             
             # Remove duplicates while preserving order
             unique_variations = []
@@ -509,138 +501,14 @@ class LinksRetriever(BaseRetriever):
                 print("   🏆 Top BM25 Matches:")
                 for i, doc in enumerate(all_bm25_results[:3]):
                     score = doc.metadata.get("bm25_score", 0.0)
-                    link_text = doc.metadata.get('link_text', 'Unknown')
-                    print(f"   #{i+1}: {link_text} (BM25: {score:.4f})")
+                    scholarship_type = doc.metadata.get("scholarship_type", "Unknown")
+                    print(f"   #{i+1}: {scholarship_type[:40]}... (BM25: {score:.4f})")
             
             return all_bm25_results[:10]  # Limit to top 10
             
         except Exception as e:
-            print(f"❌ Error in standard BM25 search: {e}")
+            print(f"❌ Error in BM25 search: {e}")
             return self._fallback_keyword_search(query)
-    
-    def _calculate_bm25_scores(self, documents: List[Document], query: str) -> List[tuple]:
-        """คำนวณคะแนน BM25 สำหรับ documents"""
-        try:
-            # Simple BM25-like scoring based on term frequency and document length
-            import re
-            from collections import Counter
-            
-            query_terms = re.findall(r'\w+', query.lower())
-            if not query_terms:
-                return [(doc, 0.0) for doc in documents]
-            
-            scored_docs = []
-            
-            for doc in documents:
-                content_lower = doc.page_content.lower()
-                content_terms = re.findall(r'\w+', content_lower)
-                
-                if not content_terms:
-                    scored_docs.append((doc, 0.0))
-                    continue
-                
-                # Calculate term frequency
-                term_freq = Counter(content_terms)
-                doc_length = len(content_terms)
-                
-                # Simple BM25-like score
-                score = 0.0
-                for term in query_terms:
-                    if term in term_freq:
-                        tf = term_freq[term]
-                        # Simplified BM25 formula (without IDF calculation)
-                        score += (tf * 2.2) / (tf + 1.2 * (0.25 + 0.75 * doc_length / 50))
-                
-                # Boost score for exact matches in metadata
-                link_text = doc.metadata.get('link_text', '').lower()
-                keywords = doc.metadata.get('keywords', [])
-                
-                for term in query_terms:
-                    if term in link_text:
-                        score += 2.0  # Boost for title match
-                    for keyword in keywords:
-                        if term in keyword.lower():
-                            score += 1.0  # Boost for keyword match
-                
-                scored_docs.append((doc, score))
-            
-            return scored_docs
-            
-        except Exception as e:
-            print(f"❌ Error calculating BM25 scores: {e}")
-            return [(doc, 0.0) for doc in documents]
-    
-    def _calculate_hybrid_score(self, doc: Document, bm25_score: float, vector_score: float, query: str) -> float:
-        """คำนวณคะแนนรวมจาก BM25 และ Vector similarity"""
-        try:
-            # Weights for different components
-            bm25_weight = 0.4      # 40% for text matching
-            vector_weight = 0.4    # 40% for semantic similarity
-            bonus_weight = 0.2     # 20% for exact matches and metadata
-            
-            # Base scores (normalized)
-            # Handle both regular BM25 and Thai scores (which can be higher)
-            if bm25_score > 15:  # Likely Thai score
-                normalized_bm25 = min(bm25_score / 50.0, 1.0)  # Normalize Thai score to 0-1 (max 50)
-            else:
-                normalized_bm25 = min(bm25_score / 10.0, 1.0)  # Normalize regular BM25 to 0-1 (max 10)
-            normalized_vector = vector_score  # Vector score is already 0-1
-            
-            # Calculate bonus score for exact matches
-            bonus_score = 0.0
-            query_lower = query.lower()
-            link_text = doc.metadata.get('link_text', '').lower()
-            keywords = doc.metadata.get('keywords', [])
-            
-            # Exact title match bonus
-            if any(word in link_text for word in query_lower.split() if len(word) >= 2):
-                bonus_score += 0.5
-            
-            # Keyword match bonus
-            for keyword in keywords:
-                if any(word in keyword.lower() for word in query_lower.split() if len(word) >= 2):
-                    bonus_score += 0.3
-                    break
-            
-            # Service type bonus (for specific service queries) - Enhanced
-            service_bonuses = {
-                "จอง": 0.5 if "จอง" in link_text else 0,  # Increased bonus for booking
-                "ห้องประชุม": 0.5 if "ห้องประชุม" in link_text else 0,  # Increased bonus for meeting room
-                "ห้องแล็บ": 0.3 if ("ห้องแล็บ" in link_text or "ปฏิบัติการ" in link_text) else 0,
-                "อัปโหลด": 0.3 if ("อัปโหลด" in link_text or "upload" in link_text.lower()) else 0,
-                "reservation": 0.4 if "reservation" in link_text.lower() else 0,  # Added reservation bonus
-            }
-            
-            for service_term, bonus in service_bonuses.items():
-                if service_term in query_lower:
-                    bonus_score += bonus
-            
-            # Special exact match bonus for common queries
-            exact_match_bonuses = {
-                "จองห้องประชุม": 1.0 if ("จอง" in query_lower and "ห้องประชุม" in query_lower and "จอง" in link_text and "ห้องประชุม" in link_text) else 0,
-                "จองห้องแล็บ": 1.0 if ("จอง" in query_lower and ("ห้องแล็บ" in query_lower or "แล็บ" in query_lower) and "จอง" in link_text and "ปฏิบัติการ" in link_text) else 0,
-            }
-            
-            for exact_term, bonus in exact_match_bonuses.items():
-                if bonus > 0:
-                    bonus_score += bonus
-                    print(f"🎯 Exact match bonus for '{exact_term}': +{bonus}")
-            
-            # Normalize bonus score
-            normalized_bonus = min(bonus_score, 1.0)
-            
-            # Calculate combined score
-            combined_score = (
-                bm25_weight * normalized_bm25 +
-                vector_weight * normalized_vector +
-                bonus_weight * normalized_bonus
-            )
-            
-            return combined_score
-            
-        except Exception as e:
-            print(f"❌ Error calculating hybrid score: {e}")
-            return max(bm25_score / 10.0, vector_score)  # Fallback to max of normalized scores
     
     def _advanced_thai_search(self, query: str) -> List[Document]:
         """ค้นหาขั้นสูงด้วย PyThaiNLP - รองรับทั้ง exact และ semantic matching"""
@@ -674,19 +542,17 @@ class LinksRetriever(BaseRetriever):
             print(f"   🔤 Tokenized: {query_tokens}")
             print(f"   🎯 Meaningful: {meaningful_tokens}")
             
-            # 4. Search in documents (filter เฉพาะ links)
-            all_results = list(self._collection.find({"metadata.category": "links"}, limit=100))
+            # 4. Search in documents
+            all_results = list(self._collection.find({}, limit=100))
             matched_docs = []
             
             for result in all_results:
                 content = result.get("content", "")
                 metadata = result.get("metadata", {})
-                link_text = metadata.get("link_text", "")
-                keywords = metadata.get("keywords", [])
                 
                 # Calculate advanced matching score
                 match_score = self._calculate_thai_match_score(
-                    meaningful_tokens, query_tokens, content, link_text, keywords
+                    meaningful_tokens, query_tokens, content, metadata
                 )
                 
                 if match_score > 0:
@@ -700,7 +566,8 @@ class LinksRetriever(BaseRetriever):
                         }
                     )
                     matched_docs.append((doc, match_score))
-                    print(f"  ✅ Match: {link_text} (score: {match_score:.2f})")
+                    scholarship_type = metadata.get('scholarship_type', 'Unknown')
+                    print(f"  ✅ Match: {scholarship_type[:40]}... (score: {match_score:.2f})")
             
             # Sort by match score
             matched_docs.sort(key=lambda x: x[1], reverse=True)
@@ -716,77 +583,68 @@ class LinksRetriever(BaseRetriever):
             return self._exact_thai_keyword_search(query)
     
     def _calculate_thai_match_score(self, meaningful_tokens: List[str], all_tokens: List[str], 
-                                   content: str, link_text: str, keywords: List[str]) -> float:
-        """คำนวณคะแนนการ match แบบขั้นสูงสำหรับภาษาไทย"""
+                                   content: str, metadata: dict) -> float:
+        """คำนวณคะแนนการ match แบบขั้นสูงสำหรับภาษาไทย (สำหรับทุนการศึกษา)"""
         score = 0.0
         
         content_lower = content.lower()
-        link_text_lower = link_text.lower()
-        keywords_lower = [k.lower() for k in keywords]
+        scholarship_type = metadata.get('scholarship_type', '').lower()
         
-        # 1. Exact token matching in title (highest priority)
+        # 1. Exact token matching in scholarship type (highest priority)
         for token in meaningful_tokens:
-            if token.lower() in link_text_lower:
-                score += 5.0  # High score for title match
+            token_lower = token.lower()
+            if token_lower in scholarship_type:
+                score += 15.0  # Very high score for scholarship type match
                 
         # 2. Exact token matching in content
         for token in meaningful_tokens:
             if token.lower() in content_lower:
-                score += 3.0  # Medium score for content match
-                
-        # 3. Keyword matching
-        for token in meaningful_tokens:
-            for keyword in keywords_lower:
-                if token.lower() in keyword or keyword in token.lower():
-                    score += 2.0  # Medium score for keyword match
-                    break
+                score += 5.0  # Medium score for content match
         
-        # 4. Partial matching (for compound words)
+        # 3. Partial matching (for compound scholarship names)
         for token in all_tokens:
             if len(token) > 2:  # Only check longer tokens
-                if token.lower() in link_text_lower:
-                    score += 1.5
-                elif token.lower() in content_lower:
-                    score += 1.0
+                token_lower = token.lower()
+                if token_lower in scholarship_type:
+                    score += 8.0
+                elif token_lower in content_lower:
+                    score += 2.0
         
-        # 5. Semantic bonus for service-related queries
-        service_patterns = {
-            'จอง': ['จอง', 'booking', 'reservation'],
-            'ห้อง': ['ห้อง', 'room'],
-            'ประชุม': ['ประชุม', 'meeting'],
-            'ปฏิบัติการ': ['ปฏิบัติการ', 'lab', 'laboratory'],
-            'แล็บ': ['แล็บ', 'lab', 'laboratory']
+        # 4. Scholarship-specific semantic bonus
+        scholarship_patterns = {
+            'ทุน': ['ทุน', 'scholarship', 'grant'],
+            'วิจัย': ['วิจัย', 'research'],
+            'บัณฑิต': ['บัณฑิต', 'graduate'],
+            'นานาชาติ': ['นานาชาติ', 'international'],
+            'อาเซียน': ['อาเซียน', 'asean'],
+            'ผลการเรียน': ['ผลการเรียน', 'academic', 'excellence']
         }
         
         for token in meaningful_tokens:
-            if token in service_patterns:
-                related_words = service_patterns[token]
+            if token in scholarship_patterns:
+                related_words = scholarship_patterns[token]
                 for word in related_words:
-                    if word in link_text_lower or word in content_lower:
-                        score += 1.0
+                    if word in content_lower:
+                        score += 3.0
         
         return score
     
     def _exact_thai_keyword_search(self, query: str) -> List[Document]:
-        """ค้นหาแบบ exact match สำหรับคำสำคัญภาษาไทย"""
+        """ค้นหาแบบ exact match สำหรับคำสำคัญภาษาไทย (สำหรับทุนการศึกษา)"""
         try:
-            # Thai keyword mappings for exact matching
+            # Thai keyword mappings for exact matching (scholarship-specific)
             thai_keyword_mappings = {
-                # จองห้อง patterns
-                "จองห้อง": ["จองห้อง", "ห้องประชุม", "reservation", "meeting"],
-                "จองห้องประชุม": ["จองห้อง", "ห้องประชุม", "reservation", "meeting"],
-                "ห้องประชุม": ["จองห้อง", "ห้องประชุม", "reservation", "meeting"],
-                
-                # ห้องแล็บ patterns  
-                "ห้องแล็บ": ["ห้องแล็บ", "ปฏิบัติการ", "laboratory", "lab"],
-                "แล็บ": ["ห้องแล็บ", "ปฏิบัติการ", "laboratory", "lab"],
-                "ห้องปฏิบัติการ": ["ห้องแล็บ", "ปฏิบัติการ", "laboratory", "lab"],
-                "จองแล็บ": ["ห้องแล็บ", "ปฏิบัติการ", "laboratory", "lab"],
-                "จองห้องแล็บ": ["ห้องแล็บ", "ปฏิบัติการ", "laboratory", "lab"],
+                # Scholarship patterns
+                "ทุน": ["ทุน", "scholarship", "grant"],
+                "วิจัย": ["วิจัย", "research"],
+                "บัณฑิต": ["บัณฑิต", "graduate"],
+                "นานาชาติ": ["นานาชาติ", "international"],
+                "อาเซียน": ["อาเซียน", "asean"],
+                "ผลการเรียน": ["ผลการเรียน", "academic"],
             }
             
-            # Get all documents from collection (filter เฉพาะ links)
-            all_results = list(self._collection.find({"metadata.category": "links"}, limit=100))
+            # Get all documents from collection
+            all_results = list(self._collection.find({}, limit=100))
             matched_docs = []
             
             query_lower = query.lower().strip()
@@ -799,8 +657,6 @@ class LinksRetriever(BaseRetriever):
             for result in all_results:
                 content = result.get("content", "").lower()
                 metadata = result.get("metadata", {})
-                link_text = metadata.get("link_text", "").lower()
-                keywords = [k.lower() for k in metadata.get("keywords", [])]
                 
                 # Calculate match score
                 match_score = 0.0
@@ -808,15 +664,9 @@ class LinksRetriever(BaseRetriever):
                 
                 # Check matches in different fields
                 for keyword in target_keywords:
-                    if keyword in link_text:
-                        match_score += 3.0  # High score for title match
-                        matches.append(f"title:{keyword}")
-                    elif keyword in content:
-                        match_score += 2.0  # Medium score for content match
+                    if keyword in content:
+                        match_score += 5.0  # High score for content match
                         matches.append(f"content:{keyword}")
-                    elif any(keyword in kw for kw in keywords):
-                        match_score += 1.5  # Medium score for keyword match
-                        matches.append(f"keywords:{keyword}")
                 
                 # If we have matches, create document with score
                 if match_score > 0:
@@ -830,7 +680,8 @@ class LinksRetriever(BaseRetriever):
                         }
                     )
                     matched_docs.append((doc, match_score))
-                    print(f"  ✅ Match: {metadata.get('link_text', 'Unknown')} (score: {match_score:.2f}, matches: {matches})")
+                    scholarship_type = metadata.get('scholarship_type', 'Unknown')
+                    print(f"  ✅ Match: {scholarship_type[:40]}... (score: {match_score:.2f}, matches: {matches})")
             
             # Sort by match score (descending)
             matched_docs.sort(key=lambda x: x[1], reverse=True)
@@ -844,33 +695,139 @@ class LinksRetriever(BaseRetriever):
         except Exception as e:
             print(f"❌ Error in Thai exact search: {e}")
             return []
-
+    
+    def _calculate_bm25_scores(self, documents: List[Document], query: str) -> List[tuple]:
+        """คำนวณคะแนน BM25 สำหรับ documents (ปรับปรุงสำหรับข้อมูลทุนการศึกษา)"""
+        try:
+            import re
+            from collections import Counter
+            
+            query_terms = re.findall(r'\w+', query.lower())
+            if not query_terms:
+                return [(doc, 0.0) for doc in documents]
+            
+            scored_docs = []
+            
+            for doc in documents:
+                content_lower = doc.page_content.lower()
+                content_terms = re.findall(r'\w+', content_lower)
+                
+                if not content_terms:
+                    scored_docs.append((doc, 0.0))
+                    continue
+                
+                # Calculate term frequency
+                term_freq = Counter(content_terms)
+                doc_length = len(content_terms)
+                
+                # Simple BM25-like score
+                score = 0.0
+                for term in query_terms:
+                    if term in term_freq:
+                        tf = term_freq[term]
+                        # Simplified BM25 formula
+                        score += (tf * 2.2) / (tf + 1.2 * (0.25 + 0.75 * doc_length / 100))
+                
+                # Boost score for exact matches in scholarship context
+                for term in query_terms:
+                    if term in content_lower:
+                        # Higher boost for scholarship-specific terms
+                        if any(keyword in content_lower for keyword in ["ทุน", "scholarship", "คุณสมบัติ", "เงื่อนไข"]):
+                            score += 2.0  # High boost for scholarship context
+                        elif any(keyword in content_lower for keyword in ["นักศึกษา", "student", "การศึกษา"]):
+                            score += 1.5  # Medium boost for student context
+                        else:
+                            score += 1.0  # Base boost for other matches
+                
+                scored_docs.append((doc, score))
+            
+            return scored_docs
+            
+        except Exception as e:
+            print(f"❌ Error calculating BM25 scores: {e}")
+            return [(doc, 0.0) for doc in documents]
+    
+    def _calculate_hybrid_score(self, doc: Document, bm25_score: float, vector_score: float, query: str) -> float:
+        """คำนวณคะแนนรวมจาก BM25 และ Vector similarity (สำหรับข้อมูลทุนการศึกษา)"""
+        try:
+            # Weights for different components
+            bm25_weight = 0.4      # 40% for text matching
+            vector_weight = 0.4    # 40% for semantic similarity
+            bonus_weight = 0.2     # 20% for exact matches and metadata
+            
+            # Base scores (normalized)
+            # Handle both regular BM25 and Thai scores (which can be higher)
+            if bm25_score > 15:  # Likely Thai score
+                normalized_bm25 = min(bm25_score / 50.0, 1.0)  # Normalize Thai score to 0-1 (max 50)
+            else:
+                normalized_bm25 = min(bm25_score / 8.0, 1.0)  # Normalize regular BM25 to 0-1 (max 8)
+            normalized_vector = vector_score  # Vector score is already 0-1
+            
+            # Calculate bonus score for exact matches (scholarship-specific)
+            bonus_score = 0.0
+            query_lower = query.lower()
+            content_lower = doc.page_content.lower()
+            
+            # Scholarship match bonus
+            query_words = [word for word in query_lower.split() if len(word) >= 2]
+            for word in query_words:
+                if word in content_lower:
+                    # Higher bonus for scholarship-specific matches
+                    if any(scholarship_indicator in content_lower for scholarship_indicator in ["ทุน", "scholarship", "คุณสมบัติ"]):
+                        bonus_score += 0.5  # High bonus for scholarship context
+                    elif any(student_indicator in content_lower for student_indicator in ["นักศึกษา", "student", "บัณฑิต"]):
+                        bonus_score += 0.3  # Medium bonus for student context
+                    else:
+                        bonus_score += 0.2  # Base bonus for other matches
+            
+            # Scholarship-specific bonus terms
+            scholarship_bonuses = {
+                "ทุน": 0.3 if "ทุน" in content_lower else 0,
+                "นักศึกษา": 0.2 if "นักศึกษา" in content_lower else 0,
+                "บัณฑิต": 0.2 if "บัณฑิต" in content_lower else 0,
+                "วิจัย": 0.2 if "วิจัย" in content_lower else 0,
+                "นานาชาติ": 0.2 if "นานาชาติ" in content_lower else 0,
+                "asean": 0.2 if "asean" in content_lower else 0,
+            }
+            
+            for term, bonus in scholarship_bonuses.items():
+                if term in query_lower:
+                    bonus_score += bonus
+            
+            # Normalize bonus score
+            normalized_bonus = min(bonus_score, 1.0)
+            
+            # Calculate combined score
+            combined_score = (
+                bm25_weight * normalized_bm25 +
+                vector_weight * normalized_vector +
+                bonus_weight * normalized_bonus
+            )
+            
+            return combined_score
+            
+        except Exception as e:
+            print(f"❌ Error calculating hybrid score: {e}")
+            return max(bm25_score / 8.0, vector_score)  # Fallback to max of normalized scores
+    
     def _fallback_keyword_search(self, query: str) -> List[Document]:
         """Fallback keyword search if BM25 fails"""
-        print("🔄 Using fallback keyword search...")
+        print("🔄 Using fallback keyword search for scholarships...")
         all_documents = []
         
         try:
             keywords = self._extract_search_keywords(query)
-            results = self._collection.find({"metadata.category": "links"}, limit=50)
+            results = self._collection.find({}, limit=50)
             
             for result in results:
                 content = result.get("content", "").lower()
                 original_content = result.get("content", "")
-                link_text = result.get("metadata", {}).get("link_text", "").lower()
                 
                 matched = False
                 for keyword in keywords:
                     keyword_lower = keyword.lower()
                     
-                    # Check in content or link text
-                    if keyword_lower in content or keyword_lower in link_text:
-                        matched = True
-                        break
-                    
-                    # Check in keywords metadata
-                    metadata_keywords = result.get("metadata", {}).get("keywords", [])
-                    if any(keyword_lower in mk.lower() for mk in metadata_keywords):
+                    if keyword_lower in content:
                         matched = True
                         break
                 
@@ -890,42 +847,68 @@ class LinksRetriever(BaseRetriever):
             return []
     
     def _extract_search_keywords(self, query: str) -> List[str]:
-        """แยกคำสำคัญจากคำค้นหา"""
+        """แยกคำสำคัญจากคำค้นหา - ใช้ PyThaiNLP ถ้ามี"""
         import re
-        
-        # Remove common words
-        stop_words = ["ขอ", "ลิงก์", "ลิงค์", "หา", "ค้นหา", "บอก", "แสดง", "ใคร", "คือ", "ของ", "ใน", "ที่", "และ", "หรือ"]
         
         keywords = []
         
-        # Method 1: Clean version - remove stop words first
-        query_clean = query
-        for stop_word in stop_words:
-            query_clean = query_clean.replace(stop_word, " ")
-        query_clean = re.sub(r'\s+', ' ', query_clean).strip()
+        if PYTHAINLP_AVAILABLE:
+            # ใช้ PyThaiNLP ตัดคำ
+            try:
+                # ตัดคำด้วย PyThaiNLP
+                tokens = word_tokenize(query, engine='newmm')
+                
+                # ใช้ stopwords จาก PyThaiNLP
+                stop_words = thai_stopwords()
+                custom_stops = {"ขอ", "ข้อมูล", "ทุน", "หา", "ค้นหา", "บอก", "แสดง", "ใคร", "คือ"}
+                all_stop_words = stop_words.union(custom_stops)
+                
+                # กรองคำที่ไม่ใช่ stopwords
+                filtered_tokens = [
+                    token.strip() for token in tokens 
+                    if token.strip() not in all_stop_words 
+                    and len(token.strip()) >= 2
+                    and not token.isspace()
+                ]
+                
+                keywords.extend(filtered_tokens)
+                print(f"🔤 PyThaiNLP tokenized: {tokens}")
+                print(f"🔤 Filtered keywords: {filtered_tokens}")
+                
+            except Exception as e:
+                print(f"⚠️ PyThaiNLP error: {e}, falling back to basic method")
+                # Don't set PYTHAINLP_AVAILABLE = False globally, just use fallback for this call
         
-        if query_clean and len(query_clean) >= 2:
-            keywords.append(query_clean)
+        if not PYTHAINLP_AVAILABLE or not keywords:
+            # Fallback: ใช้วิธีเดิม
+            stop_words = ["ขอ", "ข้อมูล", "ทุน", "หา", "ค้นหา", "บอก", "แสดง", "ใคร", "คือ", "ของ", "ใน", "ที่", "และ", "หรือ"]
+            
+            # Clean version - remove stop words first
+            query_clean = query
+            for stop_word in stop_words:
+                query_clean = query_clean.replace(stop_word, " ")
+            query_clean = re.sub(r'\s+', ' ', query_clean).strip()
+            
+            if query_clean and len(query_clean) >= 2:
+                keywords.append(query_clean)
+            
+            # Split by spaces
+            words_by_space = query.split()
+            for word in words_by_space:
+                clean_word = word.strip()
+                if clean_word not in stop_words and len(clean_word) >= 2:
+                    keywords.append(clean_word)
+            
+            # Extract Thai scholarship patterns
+            thai_scholarship_pattern = r'[ก-๙]{3,20}'
+            potential_terms = re.findall(thai_scholarship_pattern, query)
+            for term in potential_terms:
+                if term not in stop_words and len(term) >= 3 and term not in keywords:
+                    keywords.append(term)
         
-        # Method 2: Split by spaces
-        words_by_space = query.split()
-        for word in words_by_space:
-            clean_word = word.strip()
-            if clean_word not in stop_words and len(clean_word) >= 2:
-                keywords.append(clean_word)
-        
-        # Method 3: Add specific service keywords
-        service_keywords = {
-            "จอง": ["จอง", "booking", "reservation"],
-            "ห้องประชุม": ["ห้องประชุม", "meeting", "room"],
-            "ห้องแล็บ": ["ห้องแล็บ", "lab", "laboratory"],
-            "อัปโหลด": ["อัปโหลด", "upload"],
-            "เฟสบุ๊ก": ["เฟสบุ๊ก", "facebook"]
-        }
-        
-        for service, related_words in service_keywords.items():
-            if any(word in query.lower() for word in related_words):
-                keywords.extend(related_words)
+        # Add the original query as fallback
+        if query.strip() not in keywords:
+            keywords.append(query.strip())
         
         # Remove duplicates while preserving order
         unique_keywords = []
@@ -933,30 +916,32 @@ class LinksRetriever(BaseRetriever):
             if keyword not in unique_keywords and len(keyword) >= 2:
                 unique_keywords.append(keyword)
         
-        print(f"🔤 Debug: Query '{query}' -> Keywords: {unique_keywords}")
+        print(f"🔤 Debug: Query '{query}' -> Final Keywords: {unique_keywords}")
         return unique_keywords
 
-retriever = LinksRetriever(collection, embedding)
+retriever = ScholarshipRetriever(collection, embedding)
 
-# ✅ สร้าง Prompt - ปรับปรุงเพื่อให้เหมาะกับข้อมูลลิงก์
+# ✅ สร้าง Prompt - ปรับปรุงเพื่อให้เหมาะกับข้อมูลทุนการศึกษา
 PROMPT = PromptTemplate.from_template("""
-บริบทต่อไปนี้คือข้อมูลเกี่ยวกับลิงก์และบริการต่างๆ ของคณะวิทยาลัยการคอมพิวเตอร์ มหาวิทยาลัยขอนแก่น
-คุณคือผู้ช่วยที่ให้ข้อมูลเกี่ยวกับลิงก์และบริการของคณะ
+บริบทต่อไปนี้คือข้อมูลเกี่ยวกับทุนการศึกษาในคณะวิทยาลัยการคอมพิวเตอร์ มหาวิทยาลัยขอนแก่น
+คุณคือผู้ช่วยที่ให้ข้อมูลเกี่ยวกับทุนการศึกษาต่างๆ ในคณะวิทยาลัยการคอมพิวเตอร์ มหาวิทยาลัยขอนแก่น
 
-สำคัญ: ให้ตรวจสอบข้อมูลในบริบทอย่างละเอียด หากมีข้อมูลที่ตรงกับคำถาม ให้นำมาตอบทันที
+สำคัญ: ให้ตรวจสอบข้อมูลในบริบทอย่างละเอียด หากมีข้อมูลที่ตรงกับคำถาม ให้นำมาตอบทันที อย่าตอบว่าไม่พบข้อมูลถ้าจริงๆ แล้วมีข้อมูลอยู่
 
-หากคำถามเกี่ยวกับลิงก์เฉพาะ ให้ตอบในรูปแบบ:
-- ชื่อบริการ: [ชื่อบริการ]
-- ลิงก์: [URL]
-- คำอธิบาย: [อธิบายสั้นๆ ว่าใช้ทำอะไร]
+หากคำถามเกี่ยวกับรายการทุนการศึกษา ให้แสดงผลแบบรายการที่ชัดเจน ดังนี้:
+- ใช้หัวข้อชัดเจน เช่น "ทุนการศึกษาในคณะวิทยาลัยการคอมพิวเตอร์:"
+- แยกแต่ละทุนเป็นบรรทัดใหม่
+- ใช้เครื่องหมาย • หรือ - นำหน้าแต่ละทุน
+- แสดงข้อมูลที่มี เช่น ชื่อทุน ประเภท คุณสมบัติ
 
-หากคำถามเกี่ยวกับรายการลิงก์ ให้แสดงผลแบบรายการที่ชัดเจน:
-- ใช้หัวข้อชัดเจน เช่น "รายการลิงก์บริการ:"
-- แยกแต่ละลิงก์เป็นบรรทัดใหม่
-- ใช้เครื่องหมาย • หรือ - นำหน้าแต่ละลิงก์
-- แสดงทั้งชื่อบริการและ URL
+หากคำถามเกี่ยวกับข้อมูลเฉพาะของทุนใดทุนหนึ่ง ให้แสดงข้อมูลที่ครบถ้วน:
+- ชื่อทุน (ทั้งไทยและอังกฤษ)
+- รายละเอียดของทุน
+- คุณสมบัติผู้สมัคร
+- เงื่อนไขการรับทุน
+- ผลประโยชน์ที่ได้รับ
 
-หากไม่มีข้อมูลที่ตรงกับคำถามเลยในบริบท ให้ตอบว่า "ขอโทษ ฉันไม่พบลิงก์ที่คุณต้องการในระบบ"
+หากไม่มีข้อมูลที่ตรงกับคำถามเลยในบริบท ให้ตอบว่า "ขอโทษ ฉันไม่พบข้อมูลทุนการศึกษาในระบบ"
 
 ---------------------
 {context}
@@ -981,7 +966,7 @@ else:
             openai_api_base="https://openrouter.ai/api/v1",
             default_headers={
                 "HTTP-Referer": "https://github.com/your-repo",
-                "X-Title": "Links RAG Chatbot"
+                "X-Title": "Scholarship RAG Chatbot"
             }
         )
         print("✅ OpenRouter LLM initialized successfully")
@@ -992,36 +977,38 @@ else:
 # ✅ สร้าง Manual QA Function
 def manual_qa_chain(question: str) -> str:
     """
-    Manual QA chain สำหรับตอบคำถามเกี่ยวกับลิงก์ - Links Version with astrapy
+    Manual QA chain ที่ควบคุมการทำงานได้ทุกขั้นตอน - Scholarship Version with astrapy
     """
     try:
-        print(f"🔍 กำลังค้นหาลิงก์สำหรับคำถาม: {question}")
-        print("🌐 ใช้ AstraDB Cloud Vector Database (astrapy) - Services Collection")
-        print(f"📚 Collection: services_embedding (category: links)")
+        print(f"🔍 กำลังค้นหาข้อมูลทุนการศึกษาสำหรับคำถาม: {question}")
+        print("🌐 ใช้ AstraDB Cloud Vector Database (astrapy) - Scholarship Collection")
+        print(f"📚 Collection: scholarship_embedding")
         
         # ขั้นตอน 1: ดึงข้อมูลจาก retriever
         retrieved_docs = retriever.get_relevant_documents(question)
         
         if not retrieved_docs:
-            return "ขอโทษ ฉันไม่พบลิงก์ที่คุณต้องการในระบบ"
+            return "ขอโทษ ฉันไม่พบข้อมูลทุนการศึกษาในระบบ"
         
-        print(f"📚 พบข้อมูลลิงก์ {len(retrieved_docs)} รายการจาก AstraDB")
+        print(f"📚 พบข้อมูลทุน {len(retrieved_docs)} รายการจาก AstraDB")
         
         # ขั้นตอน 2: แสดงผลลัพธ์ทั้งหมดก่อน
         print("\n" + "="*60)
-        print("📋 ผลการค้นหาลิงก์ทั้งหมดจาก AstraDB (Links Collection):")
+        print("📋 ผลการค้นหาทุนการศึกษาทั้งหมดจาก AstraDB (Scholarship Collection):")
         print("="*60)
         
         for i, doc in enumerate(retrieved_docs, 1):
             combined_score = doc.metadata.get('combined_score', 0.0)
             bm25_score = doc.metadata.get('bm25_score', 0.0)
             vector_score = doc.metadata.get('vector_score', 0.0)
+            scholarship_type = doc.metadata.get('scholarship_type', 'Unknown')
             
-            print(f"\n🔸 ลิงก์ที่ {i}:")
-            print(f"   ชื่อ: {doc.metadata.get('link_text', 'Unknown')}")
-            print(f"   URL: {doc.metadata.get('url', 'Unknown')}")
+            print(f"\n🔸 ผลลัพธ์ที่ {i}:")
+            print(f"   🎓 ประเภททุน: {scholarship_type}")
             if combined_score > 0:
                 print(f"   📊 คะแนนความเกี่ยวข้อง: {combined_score:.4f} (BM25: {bm25_score:.4f}, Vector: {vector_score:.4f})")
+            print("-" * 40)
+            print(doc.page_content.strip())
             print("-" * 40)
         
         print("\n" + "="*60)
@@ -1029,7 +1016,8 @@ def manual_qa_chain(question: str) -> str:
         # ขั้นตอน 3: ใช้ข้อมูลทั้งหมดที่ค้นหาได้
         selected_docs = retrieved_docs  # ใช้ทั้งหมด
         
-        print(f"🎯 ใช้ข้อมูลลิงก์ทั้งหมด {len(selected_docs)} รายการ สำหรับการตอบคำถาม")
+        print(f"🎯 ใช้ข้อมูลทุนทั้งหมด {len(selected_docs)} รายการ สำหรับการตอบคำถาม")
+        print(f"💡 เหตุผล: ใช้ข้อมูลทั้งหมดเพื่อให้ครอบคลุมและแม่นยำที่สุด")
         print("="*60)
         
         # จัดเตรียม context สำหรับ LLM
@@ -1038,9 +1026,9 @@ def manual_qa_chain(question: str) -> str:
         print("-" * 40)
         
         for i, doc in enumerate(selected_docs, 1):
-            link_text = doc.metadata.get('link_text', 'Unknown')
-            print(f"📄 Context {i}: {link_text}")
-            context_parts.append(f"ลิงก์ที่ {i}:\n{doc.page_content}\n")
+            scholarship_type = doc.metadata.get('scholarship_type', 'Unknown')
+            print(f"📄 Context {i} ({scholarship_type[:30]}...): {doc.page_content.strip()[:100]}...")
+            context_parts.append(f"ข้อมูลทุนที่ {i}:\n{doc.page_content}\n")
         
         context = "\n".join(context_parts)
         print("\n" + "="*60)
@@ -1063,12 +1051,7 @@ def manual_qa_chain(question: str) -> str:
         except Exception as llm_error:
             print(f"❌ LLM Error: {llm_error}")
             # Return search results directly if LLM fails
-            result_text = f"พบลิงก์ที่เกี่ยวข้อง {len(retrieved_docs)} รายการ:\n\n"
-            for i, doc in enumerate(retrieved_docs, 1):
-                link_text = doc.metadata.get('link_text', 'Unknown')
-                url = doc.metadata.get('url', 'Unknown')
-                result_text += f"{i}. {link_text}\n   ลิงก์: {url}\n\n"
-            return result_text
+            return f"พบข้อมูลทุนที่เกี่ยวข้อง {len(retrieved_docs)} รายการ แต่ไม่สามารถประมวลผลคำตอบได้"
         
     except Exception as e:
         print(f"❌ เกิดข้อผิดพลาด: {e}")
@@ -1076,18 +1059,13 @@ def manual_qa_chain(question: str) -> str:
 
 # ✅ เริ่มถาม
 if __name__ == "__main__":
-    print("🔗 ระบบถาม-ตอบ ลิงก์บริการคณะคอมพิวเตอร์ มข. (Links Version with astrapy)")
-    print("🌐 ใช้ AstraDB Cloud Vector Database - Services Collection")
-    print(f"📚 Collection: services_embedding (category: links)")
+    print("🎓 ระบบถาม-ตอบ ข้อมูลทุนการศึกษา คณะคอมพิวเตอร์ มข. (Scholarship Version with astrapy)")
+    print("🌐 ใช้ AstraDB Cloud Vector Database - Scholarship Collection")
+    print(f"📚 Collection: scholarship_embedding")
     print("พิมพ์ 'exit' เพื่อออก\n")
-    print("ตัวอย่างคำถาม:")
-    print("- ขอลิงก์จองห้องประชุม")
-    print("- ลิงก์อัปโหลดไฟล์")
-    print("- แสดงลิงก์ทั้งหมด")
-    print("-" * 50)
 
     while True:
-        question = input("❓ ถามมาเลย: ")
+        question = input("❓ ถามเกี่ยวกับทุนการศึกษา: ")
         if question.lower() == "exit":
             break
 

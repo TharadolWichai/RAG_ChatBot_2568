@@ -56,7 +56,7 @@ embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L
 ASTRA_TOKEN = os.getenv("ASTRA_DB_APPLICATION_TOKEN")
 ASTRA_ENDPOINT = os.getenv("ASTRA_DB_API_ENDPOINT")
 ASTRA_KEYSPACE = os.getenv("ASTRA_DB_KEYSPACE", "default_keyspace")
-COLLECTION_NAME = "contactus_embedding"
+COLLECTION_NAME = "services_embedding"  # รวมกับ links และ students
 
 if not ASTRA_TOKEN or not ASTRA_ENDPOINT:
     print("❌ Missing AstraDB credentials in .env")
@@ -67,7 +67,7 @@ database = client.get_database_by_api_endpoint(ASTRA_ENDPOINT)
 
 try:
     collection = database.get_collection(COLLECTION_NAME)
-    print(f"✅ Connected to collection: {COLLECTION_NAME}")
+    print(f"✅ Connected to collection: {COLLECTION_NAME} (category: contact)")
 except Exception as e:
     print(f"❌ Error accessing collection: {e}")
     exit(1)
@@ -207,7 +207,7 @@ class ContactInfoRetriever(BaseRetriever):
         print("🚀 Comprehensive search in contact info collection...")
         docs = []
         try:
-            results = self._collection.find({}, limit=50)
+            results = self._collection.find({"metadata.category": "contact"}, limit=50)
             for r in results:
                 docs.append(Document(page_content=r.get("content", ""), metadata=r.get("metadata", {})))
             print(f"📊 Found {len(docs)} contact documents")
@@ -226,9 +226,9 @@ class ContactInfoRetriever(BaseRetriever):
             query_vector = self._embedding.embed_query(query)
             print(f"📊 Vector Search: สร้าง embedding แล้ว (dimension: {len(query_vector)})")
             
-            # Perform vector search with similarity scores
+            # Perform vector search with similarity scores (filter เฉพาะ contact)
             results = self._collection.find(
-                {},
+                {"metadata.category": "contact"},
                 sort={"$vector": query_vector},
                 limit=10,  # Top 10 semantic matches
                 include_similarity=True  # Include cosine similarity scores
@@ -269,8 +269,8 @@ class ContactInfoRetriever(BaseRetriever):
         if self._bm25_retriever is None:
             print("🔧 Initializing Enhanced BM25 retriever with Thai support...")
             try:
-                # Get all documents from collection for BM25
-                results = self._collection.find({}, limit=100)
+                # Get all documents from collection for BM25 (filter เฉพาะ contact)
+                results = self._collection.find({"metadata.category": "contact"}, limit=100)
                 documents = []
                 
                 for result in results:
@@ -626,8 +626,8 @@ class ContactInfoRetriever(BaseRetriever):
             print(f"   🔤 Tokenized: {query_tokens}")
             print(f"   🎯 Meaningful: {meaningful_tokens}")
             
-            # 4. Search in documents
-            all_results = list(self._collection.find({}, limit=100))
+            # 4. Search in documents (filter เฉพาะ contact)
+            all_results = list(self._collection.find({"metadata.category": "contact"}, limit=100))
             matched_docs = []
             
             for result in all_results:
@@ -721,8 +721,8 @@ class ContactInfoRetriever(BaseRetriever):
                 "hotline": ["hotline", "hot line", "089-"],
             }
             
-            # Get all documents from collection
-            all_results = list(self._collection.find({}, limit=100))
+            # Get all documents from collection (filter เฉพาะ contact)
+            all_results = list(self._collection.find({"metadata.category": "contact"}, limit=100))
             matched_docs = []
             
             query_lower = query.lower().strip()
@@ -784,7 +784,7 @@ class ContactInfoRetriever(BaseRetriever):
         
         try:
             keywords = self._extract_search_keywords(query)
-            results = self._collection.find({}, limit=50)
+            results = self._collection.find({"metadata.category": "contact"}, limit=50)
             
             for result in results:
                 content = result.get("content", "").lower()
