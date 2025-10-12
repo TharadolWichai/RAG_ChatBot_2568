@@ -19,14 +19,14 @@ try:
     from main_allpeople import retriever as allpeople_retriever, manual_qa_chain as allpeople_qa
     ALLPEOPLE_AVAILABLE = True
 except Exception as e:
-    print(f"⚠️ AllPeople chatbot not available: {e}")
+    print(f"[WARNING] AllPeople chatbot not available: {e}")
     ALLPEOPLE_AVAILABLE = False
 
 try:
     from main_contact import retriever as contact_retriever, manual_qa_chain as contact_qa
     CONTACT_AVAILABLE = True
 except Exception as e:
-    print(f"⚠️ Contact chatbot not available: {e}")
+    print(f"[WARNING] Contact chatbot not available: {e}")
     CONTACT_AVAILABLE = False
 
 try:
@@ -81,7 +81,7 @@ except Exception as e:
 load_dotenv()
 
 # Debug: Show which agents are available
-print("\n🔍 Agent Availability Status:")
+print("\n[INFO] Agent Availability Status:")
 print(f"   AllPeople: {ALLPEOPLE_AVAILABLE}")
 print(f"   Contact: {CONTACT_AVAILABLE}")
 print(f"   Links: {LINKS_AVAILABLE}")

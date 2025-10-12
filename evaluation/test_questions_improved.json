@@ -1,0 +1,44 @@
+{
+  "test_questions": [
+    {
+      "id": 1,
+      "question": "อาจารย์พุธษดี",
+      "expected_intent": "allpeople",
+      "ground_truth": "ข้อมูลอาจารย์พุธษดี ประกอบด้วย ชื่อ ตำแหน่ง ภาควิชา อีเมล และเบอร์โทรศัพท์",
+      "category": "simple",
+      "difficulty": "easy"
+    },
+    {
+      "id": 2,
+      "question": "ติดต่อวิทยาลัย",
+      "expected_intent": "contact",
+      "ground_truth": "เบอร์โทรศัพท์: 043-202000 อีเมล: info@kku.ac.th ที่อยู่: วิทยาลัยการคอมพิวเตอร์ มหาวิทยาลัยขอนแก่น",
+      "category": "simple",
+      "difficulty": "easy"
+    },
+    {
+      "id": 3,
+      "question": "จองห้องประชุม",
+      "expected_intent": "links",
+      "ground_truth": "ระบบจองห้องประชุม: https://appcs.kku.ac.th/rroom ใช้สำหรับจองห้องประชุมของวิทยาลัย",
+      "category": "simple",
+      "difficulty": "easy"
+    },
+    {
+      "id": 4,
+      "question": "ทุนการศึกษา",
+      "expected_intent": "scholarship",
+      "ground_truth": "ทุนการศึกษาที่มี ได้แก่ ทุนส่งเสริมความเข้มแข็งด้านการวิจัย ทุนระดับบัณฑิตศึกษาหลักสูตรนานาชาติ ทุน ASEAN & GMS และทุนผู้มีผลการเรียนดีเยี่ยม",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 5,
+      "question": "ประธานสโมสร",
+      "expected_intent": "student_club",
+      "ground_truth": "ประธานสโมสรนักศึกษาวิทยาลัยการคอมพิวเตอร์ พร้อมคณะกรรมการสโมสร",
+      "category": "simple",
+      "difficulty": "medium"
+    }
+  ]
+}
