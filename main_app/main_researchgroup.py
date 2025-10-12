@@ -179,6 +179,36 @@ PROMPT = PromptTemplate.from_template('''
 qa_chain = LLMChain(llm=llm, prompt=PROMPT)
 
 # -------------------------------
+# Manual QA Chain Function (for Unified Chatbot)
+# -------------------------------
+def manual_qa_chain(question: str) -> str:
+    """
+    ฟังก์ชันสำหรับ Unified Chatbot
+    รับคำถาม -> ค้นหาข้อมูล -> สร้างคำตอบ
+    """
+    try:
+        # Retrieve relevant documents
+        docs = retriever.get_relevant_documents(question)
+        
+        if not docs:
+            return "ขอโทษ ไม่พบข้อมูลกลุ่มวิจัยที่ตรงกับคำถามของคุณ"
+        
+        # Build context from documents
+        merged_context = "\n\n".join([f"ข้อมูล {i+1}:\n{d.page_content}" for i, d in enumerate(docs)])
+        
+        # Check if LLM is available
+        if llm is None:
+            # Fallback: Return raw context if no LLM
+            return f"พบข้อมูลกลุ่มวิจัย:\n\n{docs[0].page_content[:500]}..."
+        
+        # Generate answer using LLM
+        response = qa_chain.run({"question": question, "context": merged_context})
+        return response
+        
+    except Exception as e:
+        return f"เกิดข้อผิดพลาดในการค้นหาข้อมูลกลุ่มวิจัย: {str(e)}"
+
+# -------------------------------
 # Interactive Chat Loop
 # -------------------------------
 if __name__ == "__main__":
