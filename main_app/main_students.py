@@ -4,12 +4,6 @@
 import sys
 import os
 
-# Fix encoding for Windows terminal
-if sys.platform == "win32":
-    import codecs
-    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.detach())
-    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.detach())
-
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.chat_models import ChatOpenAI
 from langchain_community.retrievers import BM25Retriever
@@ -1078,6 +1072,12 @@ def manual_qa_chain(question: str) -> str:
 
 # ✅ เริ่มถาม
 if __name__ == "__main__":
+    # Fix encoding for Windows terminal (only when running as main script)
+    if sys.platform == "win32":
+        import codecs
+        sys.stdout = codecs.getwriter('utf-8')(sys.stdout.detach())
+        sys.stderr = codecs.getwriter('utf-8')(sys.stderr.detach())
+    
     print("🎓 ระบบถาม-ตอบ ลิงก์บริการสำหรับนักศึกษา คณะคอมพิวเตอร์ มข. (Students Version with astrapy)")
     print("🌐 ใช้ AstraDB Cloud Vector Database - Services Collection")
     print(f"📚 Collection: services_embedding (category: students)")

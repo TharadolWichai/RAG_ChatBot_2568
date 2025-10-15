@@ -13,8 +13,9 @@ from pythainlp import word_tokenize
 load_dotenv()
 
 # -------------------------------
-# Embeddings & AstraDB Setup
+# 1. Embeddings & AstraDB Setup
 # -------------------------------
+print("🔎โหลด Embedding Model และเชื่อมต่อ AstraDB ...")
 embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 ASTRA_TOKEN = os.getenv("ASTRA_DB_APPLICATION_TOKEN")
@@ -31,8 +32,9 @@ collection = database.get_collection(COLLECTION_NAME)
 print(f"✅ Connected to AstraDB Collection: {COLLECTION_NAME}")
 
 # -------------------------------
-# LLM Setup (OpenRouter)
+# 2. LLM Setup (OpenRouter)
 # -------------------------------
+print("🔎โหลด LLM (OpenRouter) ...")
 openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
 if not openrouter_api_key:
     print("⚠️ Warning: OPENROUTER_API_KEY not found, LLM responses will not work")
@@ -47,7 +49,7 @@ else:
     print("✅ OpenRouter LLM initialized successfully")
 
 # -------------------------------
-# Custom Retriever with BM25 + Vector + Thai Tokenizer
+# 3. Custom Retriever (BM25 + Vector + Thai Tokenizer)
 # -------------------------------
 class ResearchGroupRetriever(BaseRetriever):
     def __init__(self, collection, embedding):
@@ -59,6 +61,7 @@ class ResearchGroupRetriever(BaseRetriever):
 
     def _ensure_bm25_initialized(self):
         if self._bm25_retriever is None:
+            print("🔎เตรียม BM25 Retriever ...")
             try:
                 results = self._collection.find({}, limit=300)
                 documents = [Document(page_content=r.get("content", ""), metadata=r.get("metadata", {})) for r in results]
@@ -75,10 +78,11 @@ class ResearchGroupRetriever(BaseRetriever):
     def _extract_keywords(self, query: str) -> List[str]:
         tokens = [w for w in word_tokenize(query, engine="newmm") if len(w.strip()) > 1]
         keywords = list(dict.fromkeys(tokens))
-        print(f"📝 คำสำคัญที่ใช้ค้นหา: {keywords}")
+        print(f"📝 Keywords: {keywords}")
         return keywords
 
     def _text_search(self, query: str) -> List[Document]:
+        print("🔎BM25 Search ...")
         self._ensure_bm25_initialized()
         if not self._bm25_retriever:
             return []
@@ -87,6 +91,7 @@ class ResearchGroupRetriever(BaseRetriever):
         return docs
 
     def _vector_search(self, query: str) -> List[Document]:
+        print("🔎Vector Search ...")
         docs = []
         try:
             query_vector = self._embedding.embed_query(query)
@@ -100,7 +105,7 @@ class ResearchGroupRetriever(BaseRetriever):
         return docs
 
     def get_relevant_documents(self, query: str, **kwargs) -> List[Document]:
-        print(f"🔍 กำลังค้นหาข้อมูลเกี่ยวกับ: '{query}'")
+        print(f"\n🔍เริ่มค้นหาข้อมูลสำหรับ: '{query}'")
         keywords = self._extract_keywords(query)
 
         text_docs = self._text_search(query)
@@ -121,8 +126,9 @@ class ResearchGroupRetriever(BaseRetriever):
 
         for i, d in enumerate(merged_docs[:5], 1):
             print(f"🏆 อันดับ {i}: {d.page_content[:100]}... (priority: {d.metadata['priority']})")
-                    # -------------------------------
-        # 🔍 Filter เฉพาะกรณี "ขอรายชื่อกลุ่มวิจัย"
+
+        # -------------------------------
+        # [ขั้นตอนที่ 3.6] Filter เฉพาะกรณี "ขอรายชื่อกลุ่มวิจัย"
         # -------------------------------
         if any(keyword in query for keyword in ["รายชื่อ", "กลุ่มวิจัยทั้งหมด", "ชื่อกลุ่มวิจัย"]):
             print("🎯 ตรวจพบว่าคำถามต้องการเฉพาะรายชื่อกลุ่มวิจัย — กำลังกรองข้อมูลเพิ่มเติม...")
@@ -141,8 +147,6 @@ class ResearchGroupRetriever(BaseRetriever):
 
 retriever = ResearchGroupRetriever(collection, embedding)
 
-# -------------------------------
-# Prompt Template (Manual QA Chain)
 # -------------------------------
 PROMPT = PromptTemplate.from_template('''
 บริบทต่อไปนี้คือข้อมูลของกลุ่มวิจัยจากคณะวิทยาลัยการคอมพิวเตอร์ มหาวิทยาลัยขอนแก่น
@@ -179,29 +183,32 @@ PROMPT = PromptTemplate.from_template('''
 qa_chain = LLMChain(llm=llm, prompt=PROMPT)
 
 # -------------------------------
-# Interactive Chat Loop
+# 5. Interactive Chat Loop
 # -------------------------------
 if __name__ == "__main__":
-    print("🧠 ระบบถามตอบข้อมูลกลุ่มวิจัย (ResearchGroup ChatBot)")
+    print("\n🧠 ระบบถามตอบข้อมูลกลุ่มวิจัย (ResearchGroup ChatBot)")
     print("พิมพ์ 'exit' เพื่อออก\n")
 
     while True:
+        print("\nรับคำถามจากผู้ใช้ ...")
         query = input("❓ คำถามของคุณ: ").strip()
         if query.lower() in ["exit", "quit", "ออก"]:
             print("👋 ปิดการทำงานแล้ว")
             break
 
+        print(" ค้นหาข้อมูลจาก Retriever ...")
         docs = retriever.get_relevant_documents(query)
         merged_context = "\n\n".join([f"ข้อมูล {i+1}:\n{d.page_content}" for i, d in enumerate(docs)])
 
-        print("\n🧩 CONTEXT (แสดงตัวอย่าง 3 ชิ้น):")
-        for i, d in enumerate(docs[:3], 1):
+        print("\n🧩 สร้าง Context สำหรับ LLM (แสดงตัวอย่าง 10 ชิ้น):")
+        for i, d in enumerate(docs[:10], 1):
             print(f"📄 Context {i}: {d.page_content[:200]}...\n")
 
         if llm is None:
             print("⚠️ ไม่มี API key ของ OpenRouter, ไม่สามารถสร้างคำตอบได้")
             continue
 
+        print("สร้าง Prompt และส่งเข้า LLM ...")
         try:
             response = qa_chain.run({"question": query, "context": merged_context})
             print("🤖 คำตอบ:", response)
