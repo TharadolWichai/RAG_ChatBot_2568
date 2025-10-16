@@ -7,6 +7,10 @@ from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from astrapy import DataAPIClient
 import uuid
+import urllib3
+
+# Disable SSL warnings (for development only)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 load_dotenv()
 
@@ -63,7 +67,7 @@ def main():
     print("🌐 Fetching faculty data from API...")
     try:
         url = "https://api.computing.kku.ac.th/api/v1/user/getUserByClassIds/?classId=[1,+2,+3]"
-        res = requests.get(url)
+        res = requests.get(url, verify=False)  # Disable SSL verification for development
         data = res.json()
         users_raw = data["data"]["items"]
         print(f"📊 Retrieved {len(users_raw)} faculty records")
