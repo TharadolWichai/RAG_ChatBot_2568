@@ -1,0 +1,27 @@
+# Requirements for RAGAS Evaluation
+# ติดตั้งด้วย: pip install -r evaluation/requirements_evaluation.txt
+
+# RAGAS Framework
+ragas>=0.1.0
+
+# Datasets
+datasets>=2.14.0
+
+# LangChain for RAGAS
+langchain-openai>=0.1.0
+langchain>=0.1.0
+
+# OpenAI (for LLM-based metrics)
+openai>=1.0.0
+
+# Pandas for data analysis (optional)
+pandas>=2.0.0
+
+# Matplotlib for visualization (optional)
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Jupyter for interactive analysis (optional)
+jupyter>=1.0.0
+notebook>=7.0.0
+

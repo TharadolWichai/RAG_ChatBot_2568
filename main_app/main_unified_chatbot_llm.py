@@ -66,6 +66,27 @@ except Exception as e:
     print(f"⚠️ Students chatbot not available: {e}")
     STUDENTS_AVAILABLE = False
 
+try:
+    from main_researchgroup import retriever as research_retriever, manual_qa_chain as research_qa
+    RESEARCH_AVAILABLE = True
+except Exception as e:
+    print(f"⚠️ Research Group chatbot not available: {e}")
+    RESEARCH_AVAILABLE = False
+
+try:
+    from main_bsc_entrance import retriever as bsc_retriever, manual_qa_chain as bsc_qa
+    BSC_AVAILABLE = True
+except Exception as e:
+    print(f"⚠️ BSC Entrance chatbot not available: {e}")
+    BSC_AVAILABLE = False
+
+try:
+    from main_digital_services import retriever as digital_retriever, manual_qa_chain as digital_qa
+    DIGITAL_AVAILABLE = True
+except Exception as e:
+    print(f"⚠️ Digital Services chatbot not available: {e}")
+    DIGITAL_AVAILABLE = False
+
 load_dotenv()
 
 # Debug: Show which agents are available
@@ -76,6 +97,9 @@ print(f"   Links: {LINKS_AVAILABLE}")
 print(f"   Scholarship: {SCHOLARSHIP_AVAILABLE}")
 print(f"   Student Club: {CLUB_AVAILABLE}")
 print(f"   Students: {STUDENTS_AVAILABLE}")
+print(f"   Research Group: {RESEARCH_AVAILABLE}")
+print(f"   BSC Entrance: {BSC_AVAILABLE}")
+print(f"   Digital Services: {DIGITAL_AVAILABLE}")
 print(f"   OpenAI: {OPENAI_AVAILABLE}")
 print()
 
@@ -134,6 +158,21 @@ class LLMIntentClassifier:
                 "name": "ลิงก์บริการนักศึกษา",
                 "description": "บริการสำหรับนักศึกษา, ลิงก์โครงงาน, ลิงก์วิทยานิพนธ์, ลิงก์ลงทะเบียน, ลิงก์ตารางสอน, ลิงก์ผลการเรียน, ลิงก์สหกิจศึกษา",
                 "examples": ["ลิงก์โครงงานนักศึกษา", "ลิงก์ลงทะเบียน", "ลิงก์ตารางสอน", "บริการนักศึกษา"]
+            },
+            "research": {
+                "name": "กลุ่มวิจัย",
+                "description": "ข้อมูลกลุ่มวิจัย, ห้องแล็บ, นักวิจัย, ผลงานวิจัย, AIDA Lab, AIII Lab, AGT Lab, ASC Lab, NLSP Lab, I-SERG, MLIS Lab",
+                "examples": ["กลุ่มวิจัย AIDA", "ห้องแล็บ AI", "นักวิจัย", "รายชื่อกลุ่มวิจัย"]
+            },
+            "bsc_entrance": {
+                "name": "การรับเข้าศึกษา",
+                "description": "การรับเข้าศึกษาระดับปริญญาตรี, รอบ Portfolio, รอบ TCAS, โควตา, เกณฑ์คะแนน, หลักสูตรปริญญาตรี, วิธีสมัคร",
+                "examples": ["รอบ Portfolio", "เกณฑ์รับเข้า", "สมัครปริญญาตรี", "TCAS รอบ 3"]
+            },
+            "digital_services": {
+                "name": "บริการดิจิตอล",
+                "description": "บริการดิจิตอลสำหรับนักศึกษาและบุคลากร, Web Hosting, Virtual Machine, Apple Store, Google Play, Grammarly, ChatGPT Plus, AI Server, Snapdrop, ส่วนที่ 1-4 ของแต่ละบริการ",
+                "examples": ["Web Hosting", "Virtual Machine", "Apple Store", "Grammarly", "ChatGPT Plus", "ส่วนที่ 1"]
             }
         }
     
@@ -293,6 +332,27 @@ class UnifiedChatbotLLM:
                 "icon": "📚"
             }
         
+        if RESEARCH_AVAILABLE:
+            self.chatbot_map["research"] = {
+                "name": "กลุ่มวิจัย",
+                "qa_function": research_qa,
+                "icon": "🔬"
+            }
+        
+        if BSC_AVAILABLE:
+            self.chatbot_map["bsc_entrance"] = {
+                "name": "การรับเข้าศึกษา",
+                "qa_function": bsc_qa,
+                "icon": "🎓"
+            }
+        
+        if DIGITAL_AVAILABLE:
+            self.chatbot_map["digital_services"] = {
+                "name": "บริการดิจิตอล",
+                "qa_function": digital_qa,
+                "icon": "💻"
+            }
+        
         print(f"✅ Unified Chatbot (LLM) initialized with {len(self.chatbot_map)} agents")
         for intent, config in self.chatbot_map.items():
             print(f"   {config['icon']} {config['name']}")
@@ -421,6 +481,9 @@ class UnifiedChatbotLLM:
         print("   - ทุนการศึกษา → LLM จะเลือก: ทุนการศึกษา")
         print("   - ประธานสโมสร → LLM จะเลือก: สโมสรนักศึกษา")
         print("   - ลิงก์โครงงาน → LLM จะเลือก: ลิงก์นักศึกษา")
+        print("   - กลุ่มวิจัย AIDA → LLM จะเลือก: กลุ่มวิจัย")
+        print("   - รอบ Portfolio → LLM จะเลือก: การรับเข้าศึกษา")
+        print("   - Web Hosting → LLM จะเลือก: บริการดิจิตอล")
         print()
         print("📝 คำสั่งพิเศษ:")
         print("   - 'help' หรือ 'ช่วยเหลือ' = แสดงคำแนะนำ")

@@ -1,0 +1,26 @@
+# Evaluation Results
+evaluation_results_*.json
+comparison_chart_*.png
+evaluation_report_*.md
+
+# Results directory
+results/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Jupyter notebooks (if created)
+*.ipynb_checkpoints/
+.ipynb_checkpoints/
+
+# Data files
+*.csv
+*.xlsx
+
+# Temporary files
+*.tmp
+*.temp
+

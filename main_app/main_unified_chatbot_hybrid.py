@@ -1,9 +1,10 @@
-# main_unified_chatbot.py - Unified Multi-Agent RAG Chatbot
-# รวมแชทบอททั้งหมดไว้ที่เดียว พร้อม Intent Classification
+# main_unified_chatbot_hybrid.py - Unified Multi-Agent RAG Chatbot with Hybrid Intent Classification
+# รวม Rule-Based + LLM-Based เข้าด้วยกัน (Best of Both Worlds!)
 
 import sys
 import os
 import re
+import json
 from typing import Dict, List, Tuple, Optional
 from dotenv import load_dotenv
 
@@ -14,19 +15,27 @@ try:
 except ImportError:
     PYTHAINLP_AVAILABLE = False
 
+# OpenAI for Intent Classification (fallback)
+try:
+    from openai import OpenAI
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+    print("⚠️ OpenAI library not available. LLM fallback will be disabled.")
+
 # Import all chatbot modules
 try:
     from main_allpeople import retriever as allpeople_retriever, manual_qa_chain as allpeople_qa
     ALLPEOPLE_AVAILABLE = True
 except Exception as e:
-    print(f"[WARNING] AllPeople chatbot not available: {e}")
+    print(f"⚠️ AllPeople chatbot not available: {e}")
     ALLPEOPLE_AVAILABLE = False
 
 try:
     from main_contact import retriever as contact_retriever, manual_qa_chain as contact_qa
     CONTACT_AVAILABLE = True
 except Exception as e:
-    print(f"[WARNING] Contact chatbot not available: {e}")
+    print(f"⚠️ Contact chatbot not available: {e}")
     CONTACT_AVAILABLE = False
 
 try:
@@ -81,7 +90,7 @@ except Exception as e:
 load_dotenv()
 
 # Debug: Show which agents are available
-print("\n[INFO] Agent Availability Status:")
+print("\n🔍 Agent Availability Status:")
 print(f"   AllPeople: {ALLPEOPLE_AVAILABLE}")
 print(f"   Contact: {CONTACT_AVAILABLE}")
 print(f"   Links: {LINKS_AVAILABLE}")
@@ -91,17 +100,23 @@ print(f"   Students: {STUDENTS_AVAILABLE}")
 print(f"   Research Group: {RESEARCH_AVAILABLE}")
 print(f"   BSC Entrance: {BSC_AVAILABLE}")
 print(f"   Digital Services: {DIGITAL_AVAILABLE}")
+print(f"   OpenAI (LLM): {OPENAI_AVAILABLE}")
 print()
 
 # ==========================================
-# Intent Classification System
+# Hybrid Intent Classification System
 # ==========================================
 
-class IntentClassifier:
-    """ระบบจำแนกประเภทคำถามแบบ Hybrid (Rule-based + LLM fallback)"""
+class HybridIntentClassifier:
+    """
+    ระบบจำแนกประเภทคำถามแบบ Hybrid
+    - ลอง Rule-Based ก่อน (เร็ว, ไม่เสียค่าใช้จ่าย)
+    - ถ้าความมั่นใจต่ำ → ใช้ LLM ช่วย (แม่นยำ แต่เสียค่าใช้จ่าย)
+    - Fallback → Multi-agent search
+    """
     
     def __init__(self):
-        # Define keyword patterns for each chatbot
+        # Rule-based patterns
         self.intent_patterns = {
             "allpeople": {
                 "keywords": [
@@ -131,8 +146,8 @@ class IntentClassifier:
                     r'.*อีเมล.*',
                     r'.*เบอร์.*',
                     r'.*ที่อยู่.*',
-                    r'\d{3}-\d+',  # Phone pattern
-                    r'.*@.*\..*'    # Email pattern
+                    r'\d{3}-\d+',
+                    r'.*@.*\..*'
                 ]
             },
             "links": {
@@ -241,12 +256,107 @@ class IntentClassifier:
                 ]
             }
         }
+        
+        # LLM descriptions (for fallback)
+        self.llm_intent_descriptions = {
+            "allpeople": {
+                "name": "อาจารย์และบุคลากร",
+                "description": "ข้อมูลเกี่ยวกับอาจารย์, ผู้ช่วยศาสตราจารย์, รองศาสตราจารย์, ศาสตราจารย์, บุคลากร, คณาจารย์, หัวหน้าภาควิชา",
+                "examples": ["อาจารย์สมชาย", "ผศ.ดร.สมหญิง", "หัวหน้าภาควิชา"]
+            },
+            "contact": {
+                "name": "ข้อมูลติดต่อ",
+                "description": "ข้อมูลติดต่อหน่วยงาน, เบอร์โทรศัพท์, อีเมล, ที่อยู่, แฟกซ์, Hot Line",
+                "examples": ["ติดต่อวิทยาลัย", "เบอร์โทรศัพท์", "อีเมล"]
+            },
+            "links": {
+                "name": "ลิงก์และระบบ",
+                "description": "ลิงก์ระบบต่างๆ, การจองห้องประชุม, จองห้องแล็บ, แบบฟอร์ม, ระบบจัดการเอกสาร",
+                "examples": ["ลิงก์จองห้องประชุม", "แบบฟอร์มลาพักผ่อน", "ดาวน์โหลดแบบฟอร์ม"]
+            },
+            "scholarship": {
+                "name": "ทุนการศึกษา",
+                "description": "ทุนการศึกษา, ทุนวิจัย, ทุนนานาชาติ, ทุน ASEAN, ทุน GMS, คุณสมบัติทุน",
+                "examples": ["ทุนการศึกษา", "ทุนวิจัย", "ทุนนานาชาติ"]
+            },
+            "student_club": {
+                "name": "สโมสรนักศึกษา",
+                "description": "สโมสรนักศึกษา, คณะกรรมการสโมสร, ประธานสโมสร, กิจกรรมสโมสร",
+                "examples": ["ประธานสโมสร", "คณะกรรมการสโมสร", "กิจกรรมสโมสร"]
+            },
+            "students": {
+                "name": "ลิงก์บริการนักศึกษา",
+                "description": "บริการสำหรับนักศึกษา, ลิงก์โครงงาน, วิทยานิพนธ์, ลงทะเบียน, ตารางสอน",
+                "examples": ["ลิงก์โครงงานนักศึกษา", "ลิงก์ลงทะเบียน", "ตารางสอน"]
+            },
+            "research": {
+                "name": "กลุ่มวิจัย",
+                "description": "ข้อมูลกลุ่มวิจัย, ห้องแล็บ, นักวิจัย, AIDA Lab, AIII Lab, AGT Lab",
+                "examples": ["กลุ่มวิจัย AIDA", "ห้องแล็บ AI", "รายชื่อกลุ่มวิจัย"]
+            },
+            "bsc_entrance": {
+                "name": "การรับเข้าศึกษา",
+                "description": "การรับเข้าศึกษาระดับปริญญาตรี, รอบ Portfolio, TCAS, โควตา, เกณฑ์คะแนน",
+                "examples": ["รอบ Portfolio", "เกณฑ์รับเข้า", "TCAS รอบ 3"]
+            },
+            "digital_services": {
+                "name": "บริการดิจิตอล",
+                "description": "บริการดิจิตอล, Web Hosting, Virtual Machine, Apple Store, Google Play, Grammarly, ChatGPT Plus",
+                "examples": ["Web Hosting", "Virtual Machine", "Apple Store", "Grammarly"]
+            }
+        }
+        
+        # Initialize LLM if available
+        self.llm_client = None
+        if OPENAI_AVAILABLE:
+            try:
+                api_key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENROUTER_API_KEY")
+                if api_key:
+                    base_url = os.getenv("OPENAI_BASE_URL", "https://openrouter.ai/api/v1")
+                    self.llm_client = OpenAI(api_key=api_key, base_url=base_url)
+                    self.llm_model = "openai/gpt-4o-mini-2024-07-18"
+                    print("✅ LLM fallback initialized successfully!")
+            except Exception as e:
+                print(f"⚠️ LLM fallback initialization failed: {e}")
     
-    def classify(self, query: str) -> Tuple[str, float]:
+    def classify(self, query: str) -> Tuple[str, float, str, str]:
         """
-        จำแนกประเภทคำถาม
-        Returns: (intent_name, confidence_score)
+        จำแนกประเภทคำถามแบบ Hybrid
+        Returns: (intent_name, confidence_score, method_used, reason)
         """
+        
+        # Step 1: Try Rule-Based first (fast & free!)
+        rule_intent, rule_confidence = self._rule_based_classify(query)
+        
+        # High confidence threshold for rule-based
+        HIGH_CONFIDENCE_THRESHOLD = 8.0  # ต้องมีคะแนนสูงมาก
+        
+        if rule_confidence >= HIGH_CONFIDENCE_THRESHOLD:
+            # Rule-based is confident enough!
+            print(f"   ✅ Rule-Based มั่นใจสูง (คะแนน: {rule_confidence:.2f})")
+            return rule_intent, rule_confidence, "rule_based", "High confidence from keyword/pattern matching"
+        
+        # Step 2: Low confidence - Use LLM fallback if available
+        if self.llm_client and rule_confidence < HIGH_CONFIDENCE_THRESHOLD:
+            print(f"   ⚠️ Rule-Based มั่นใจต่ำ (คะแนน: {rule_confidence:.2f}) → ใช้ LLM ช่วย")
+            llm_intent, llm_confidence, llm_reason = self._llm_classify(query)
+            
+            # Use LLM result if confidence is good
+            if llm_confidence >= 0.6:
+                print(f"   ✅ LLM ให้คำแนะนำ: {llm_intent} (มั่นใจ: {llm_confidence:.2f})")
+                return llm_intent, llm_confidence, "llm_fallback", llm_reason
+            else:
+                print(f"   ⚠️ LLM ก็ไม่แน่ใจ (มั่นใจ: {llm_confidence:.2f})")
+                return "unknown", 0.0, "hybrid_uncertain", "Both rule-based and LLM are uncertain"
+        
+        # Step 3: No LLM available or rule-based result is ok
+        if rule_intent != "unknown":
+            return rule_intent, rule_confidence, "rule_based", "LLM not available, using rule-based"
+        
+        return "unknown", 0.0, "rule_based", "No match found"
+    
+    def _rule_based_classify(self, query: str) -> Tuple[str, float]:
+        """Rule-based classification (same as main_unified_chatbot.py)"""
         query_lower = query.lower()
         
         # Tokenize with PyThaiNLP if available
@@ -262,29 +372,26 @@ class IntentClassifier:
             score = 0.0
             matched_keywords = 0
             
-            # 1. Keyword matching (with higher weight)
+            # 1. Keyword matching
             for keyword in config["keywords"]:
                 if keyword.lower() in query_lower:
                     matched_keywords += 1
-                    score += 3.0  # Increased from 1.0
-                # Also check in tokens
+                    score += 3.0
                 elif any(keyword.lower() in token.lower() for token in tokens):
                     matched_keywords += 1
-                    score += 2.0  # Increased from 0.5
+                    score += 2.0
             
             # 2. Pattern matching
             pattern_matches = 0
             for pattern in config["patterns"]:
                 if re.search(pattern, query_lower):
                     pattern_matches += 1
-                    score += 2.0  # Increased from 0.8
+                    score += 2.0
             
-            # Don't normalize if we have matches (to avoid dilution)
-            # Only use raw score when matches are found
             if matched_keywords > 0 or pattern_matches > 0:
                 # Bonus for multiple matches
                 if matched_keywords >= 2:
-                    score *= 1.5  # 50% bonus for 2+ keyword matches
+                    score *= 1.5
                 intent_scores[intent] = score
             else:
                 intent_scores[intent] = 0.0
@@ -295,23 +402,96 @@ class IntentClassifier:
         
         best_intent = max(intent_scores.items(), key=lambda x: x[1])
         
-        # Return unknown if confidence is too low
-        # New scoring: 3 points per keyword, 2 per pattern
-        # Threshold: Need at least 5 points (1-2 strong matches)
-        if best_intent[1] < 5.0:  # Adjusted for new scoring system
+        if best_intent[1] < 5.0:
             return "unknown", best_intent[1]
         
         return best_intent
+    
+    def _llm_classify(self, query: str) -> Tuple[str, float, str]:
+        """LLM-based classification (fallback)"""
+        if not self.llm_client:
+            return "unknown", 0.0, "LLM not available"
+        
+        try:
+            # Build prompt
+            prompt = self._build_llm_prompt(query)
+            
+            # Call LLM
+            response = self.llm_client.chat.completions.create(
+                model=self.llm_model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are an intent classifier. Respond ONLY with valid JSON."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                temperature=0.1,
+                max_tokens=150,
+                response_format={"type": "json_object"}
+            )
+            
+            # Parse response
+            result_text = response.choices[0].message.content.strip()
+            result = json.loads(result_text)
+            
+            intent = result.get("intent", "unknown")
+            confidence = float(result.get("confidence", 0.0))
+            reason = result.get("reason", "No reason provided")
+            
+            # Validate intent
+            if intent not in self.llm_intent_descriptions and intent != "unknown":
+                intent = "unknown"
+                confidence = 0.0
+            
+            return intent, confidence, reason
+            
+        except Exception as e:
+            print(f"   ❌ LLM Error: {e}")
+            return "unknown", 0.0, f"Error: {str(e)}"
+    
+    def _build_llm_prompt(self, query: str) -> str:
+        """Build prompt for LLM"""
+        intent_list = []
+        for intent_key, intent_info in self.llm_intent_descriptions.items():
+            intent_list.append(
+                f"- **{intent_key}** ({intent_info['name']}): {intent_info['description']}"
+            )
+        
+        intents_text = "\n".join(intent_list)
+        
+        prompt = f"""คุณเป็น Intent Classifier สำหรับระบบ Chatbot ของวิทยาลัยการคอมพิวเตอร์ มหาวิทยาลัยขอนแก่น
+
+มี 9 categories ดังนี้:
+
+{intents_text}
+
+คำถามจากผู้ใช้: "{query}"
+
+วิเคราะห์และตอบเป็น JSON:
+{{
+  "intent": "intent_key หรือ unknown",
+  "confidence": 0.0-1.0,
+  "reason": "เหตุผลสั้นๆ"
+}}
+
+**สำคัญ:** ตอบเป็น JSON เท่านั้น"""
+        
+        return prompt
 
 # ==========================================
-# Unified Chatbot Router
+# Unified Chatbot with Hybrid Classification
 # ==========================================
 
-class UnifiedChatbot:
-    """Unified Chatbot ที่รวมทุก Agent เข้าด้วยกัน"""
+class UnifiedChatbotHybrid:
+    """Unified Chatbot ที่ใช้ Hybrid Intent Classification"""
     
     def __init__(self):
-        self.classifier = IntentClassifier()
+        # Initialize hybrid classifier
+        self.classifier = HybridIntentClassifier()
         
         # Map intents to chatbot functions
         self.chatbot_map = {}
@@ -379,30 +559,32 @@ class UnifiedChatbot:
                 "icon": "💻"
             }
         
-        print(f"✅ Unified Chatbot initialized with {len(self.chatbot_map)} agents")
+        print(f"✅ Unified Chatbot (Hybrid) initialized with {len(self.chatbot_map)} agents")
         for intent, config in self.chatbot_map.items():
             print(f"   {config['icon']} {config['name']}")
     
     def answer(self, question: str) -> str:
-        """ตอบคำถามโดยเลือก Agent ที่เหมาะสม"""
+        """ตอบคำถามโดยใช้ Hybrid Classification"""
         
-        # Step 1: Classify intent
-        intent, confidence = self.classifier.classify(question)
+        # Step 1: Hybrid Intent Classification
+        print(f"\n🔀 กำลังวิเคราะห์คำถามด้วย Hybrid Classification...")
+        intent, confidence, method, reason = self.classifier.classify(question)
         
-        print(f"\n🎯 Intent Classification:")
+        print(f"\n🎯 Hybrid Intent Classification:")
         print(f"   ประเภท: {intent}")
-        print(f"   คะแนน: {confidence:.2f} (threshold: 5.0)")
+        print(f"   ความมั่นใจ: {confidence:.2f}")
+        print(f"   วิธีการ: {method}")
+        print(f"   เหตุผล: {reason}")
         
         # Step 2: Route to appropriate chatbot
         if intent == "unknown":
-            # Try all chatbots and return best answer
+            # Use multi-agent search
             print(f"❓ ไม่แน่ใจประเภทคำถาม - จะค้นหาจากทุก Agent")
             return self._multi_agent_search(question)
         
         if intent not in self.chatbot_map:
-            # Agent not available - try multi-agent search
+            # Agent not available
             print(f"⚠️ Agent '{intent}' ไม่พร้อมใช้งาน - จะค้นหาจากทุก Agent")
-            print(f"   Available agents: {list(self.chatbot_map.keys())}")
             return self._multi_agent_search(question)
         
         # Step 3: Use specific chatbot
@@ -435,17 +617,15 @@ class UnifiedChatbot:
                 print(f"\n   ✅ Got response from {config['name']}")
                 print(f"   📏 Answer length: {len(answer) if answer else 0} chars")
                 
-                # Enhanced check: ดูที่ส่วนท้ายของคำตอบ (บรรทัดสุดท้าย)
+                # Check if answer is meaningful
                 answer_lines = answer.strip().split('\n')
                 last_line = answer_lines[-1].lower() if answer_lines else ""
                 
-                # Check if answer is meaningful (not "ไม่พบข้อมูล")
                 is_not_found = any(phrase in last_line for phrase in [
                     "ไม่พบข้อมูล", "ไม่มีข้อมูล", "no data", "not found", 
                     "ขอโทษ", "sorry", "ไม่สามารถ"
                 ])
                 
-                # Also check if answer is too short (likely an error message)
                 is_meaningful = len(answer.strip()) > 50 and not is_not_found
                 
                 if answer and is_meaningful:
@@ -471,7 +651,6 @@ class UnifiedChatbot:
             return "ขอโทษ ไม่พบข้อมูลที่ตรงกับคำถามของคุณในระบบ"
         
         if len(results) == 1:
-            # Single result
             result = results[0]
             return f"{result['icon']} [{result['agent']}]\n\n{result['answer']}"
         
@@ -488,26 +667,26 @@ class UnifiedChatbot:
     def show_help(self):
         """แสดงคำแนะนำการใช้งาน"""
         print("\n" + "="*60)
-        print("📖 คำแนะนำการใช้งาน Unified Chatbot")
+        print("📖 คำแนะนำการใช้งาน Unified Chatbot (Hybrid Version)")
         print("="*60)
+        print("\n🔀 ระบบใช้ Hybrid Classification (Rule-Based + LLM)!")
+        print("   - ลอง Rule-Based ก่อน (เร็ว, ฟรี)")
+        print("   - ถ้าไม่มั่นใจ → ใช้ LLM ช่วย (แม่นยำ)")
         print("\nระบบสามารถตอบคำถามในหัวข้อต่อไปนี้:\n")
         
         for intent, config in self.chatbot_map.items():
             print(f"{config['icon']} {config['name']}")
-            keywords = self.classifier.intent_patterns[intent]["keywords"][:5]
-            print(f"   คำสำคัญ: {', '.join(keywords)}")
-            print()
         
         print("\n💡 ตัวอย่างคำถาม:")
-        print("   - อาจารย์สมชาย (จะเลือก Agent: อาจารย์และบุคลากร)")
-        print("   - ติดต่อวิทยาลัย (จะเลือก Agent: ข้อมูลติดต่อ)")
-        print("   - ลิงก์จองห้องประชุม (จะเลือก Agent: ลิงก์และระบบ)")
-        print("   - ทุนการศึกษา (จะเลือก Agent: ทุนการศึกษา)")
-        print("   - ประธานสโมสร (จะเลือก Agent: สโมสรนักศึกษา)")
-        print("   - ลิงก์โครงงาน (จะเลือก Agent: ลิงก์นักศึกษา)")
-        print("   - กลุ่มวิจัย AIDA (จะเลือก Agent: กลุ่มวิจัย)")
-        print("   - รอบ Portfolio (จะเลือก Agent: การรับเข้าศึกษา)")
-        print("   - Web Hosting (จะเลือก Agent: บริการดิจิตอล)")
+        print("   - อาจารย์สมชาย → อาจารย์และบุคลากร")
+        print("   - ติดต่อวิทยาลัย → ข้อมูลติดต่อ")
+        print("   - ลิงก์จองห้องประชุม → ลิงก์และระบบ")
+        print("   - ทุนการศึกษา → ทุนการศึกษา")
+        print("   - ประธานสโมสร → สโมสรนักศึกษา")
+        print("   - ลิงก์โครงงาน → ลิงก์นักศึกษา")
+        print("   - กลุ่มวิจัย AIDA → กลุ่มวิจัย")
+        print("   - รอบ Portfolio → การรับเข้าศึกษา")
+        print("   - Web Hosting → บริการดิจิตอล")
         print()
         print("📝 คำสั่งพิเศษ:")
         print("   - 'help' หรือ 'ช่วยเหลือ' = แสดงคำแนะนำ")
@@ -520,16 +699,29 @@ class UnifiedChatbot:
 # ==========================================
 
 def main():
-    """Main function สำหรับ Unified Chatbot"""
+    """Main function สำหรับ Unified Chatbot (Hybrid Version)"""
+    
+    # Fix encoding for Windows terminal (only when running as main script)
+    if sys.platform == "win32":
+        import codecs
+        try:
+            sys.stdout = codecs.getwriter('utf-8')(sys.stdout.detach())
+            sys.stderr = codecs.getwriter('utf-8')(sys.stderr.detach())
+        except:
+            pass  # Already detached
     
     print("\n" + "="*60)
-    print("🤖 Unified RAG Chatbot - วิทยาลัยการคอมพิวเตอร์ มข.")
+    print("🤖 Unified RAG Chatbot (Hybrid Version) - วิทยาลัยการคอมพิวเตอร์ มข.")
     print("="*60)
-    print("รวมแชทบอททั้งหมดไว้ในที่เดียว พร้อม Auto-Routing!")
+    print("🔀 ใช้ Hybrid Classification (Rule-Based + LLM)!")
     print()
     
     # Initialize unified chatbot
-    chatbot = UnifiedChatbot()
+    try:
+        chatbot = UnifiedChatbotHybrid()
+    except Exception as e:
+        print(f"\n❌ Error initializing chatbot: {e}")
+        return
     
     # Show initial help
     chatbot.show_help()
@@ -538,7 +730,7 @@ def main():
     while True:
         print("\n" + "-"*60)
         try:
-            question = input("\n❓ ถามมาเลย (หรือพิมพ์ 'help'): ").strip()
+            question = input("\n❓ ถามมาเลย Hybrid Version (หรือพิมพ์ 'help'): ").strip()
         except EOFError:
             print("\n👋 ออกจากโปรแกรม")
             break
@@ -563,7 +755,7 @@ def main():
         
         # Get answer
         try:
-            print()  # New line for better formatting
+            print()
             answer = chatbot.answer(question)
             print("\n" + "="*60)
             print("🤖 คำตอบ:")
