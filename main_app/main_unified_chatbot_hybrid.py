@@ -534,6 +534,7 @@ class UnifiedChatbotHybrid:
             self.chatbot_map["allpeople"] = {
                 "name": "อาจารย์และบุคลากร",
                 "qa_function": allpeople_qa,
+                "retriever": allpeople_retriever,
                 "icon": "👨‍🏫"
             }
         
@@ -541,6 +542,7 @@ class UnifiedChatbotHybrid:
             self.chatbot_map["contact"] = {
                 "name": "ข้อมูลติดต่อ",
                 "qa_function": contact_qa,
+                "retriever": contact_retriever,
                 "icon": "📞"
             }
         
@@ -548,6 +550,7 @@ class UnifiedChatbotHybrid:
             self.chatbot_map["links"] = {
                 "name": "ลิงก์และระบบ",
                 "qa_function": links_qa,
+                "retriever": links_retriever,
                 "icon": "🔗"
             }
         
@@ -555,6 +558,7 @@ class UnifiedChatbotHybrid:
             self.chatbot_map["scholarship"] = {
                 "name": "ทุนการศึกษา",
                 "qa_function": scholarship_qa,
+                "retriever": scholarship_retriever,
                 "icon": "🎓"
             }
         
@@ -562,6 +566,7 @@ class UnifiedChatbotHybrid:
             self.chatbot_map["student_club"] = {
                 "name": "สโมสรนักศึกษา",
                 "qa_function": club_qa,
+                "retriever": club_retriever,
                 "icon": "🎭"
             }
         
@@ -569,6 +574,7 @@ class UnifiedChatbotHybrid:
             self.chatbot_map["students"] = {
                 "name": "ลิงก์นักศึกษา",
                 "qa_function": students_qa,
+                "retriever": students_retriever,
                 "icon": "📚"
             }
         
@@ -576,6 +582,7 @@ class UnifiedChatbotHybrid:
             self.chatbot_map["research"] = {
                 "name": "กลุ่มวิจัย",
                 "qa_function": research_qa,
+                "retriever": research_retriever,
                 "icon": "🔬"
             }
         
@@ -583,6 +590,7 @@ class UnifiedChatbotHybrid:
             self.chatbot_map["bsc_entrance"] = {
                 "name": "การรับเข้าศึกษา",
                 "qa_function": bsc_qa,
+                "retriever": bsc_retriever,
                 "icon": "🎓"
             }
         
@@ -590,6 +598,7 @@ class UnifiedChatbotHybrid:
             self.chatbot_map["digital_services"] = {
                 "name": "บริการดิจิตอล",
                 "qa_function": digital_qa,
+                "retriever": digital_retriever,
                 "icon": "💻"
             }
         
@@ -597,6 +606,7 @@ class UnifiedChatbotHybrid:
             self.chatbot_map["graduate"] = {
                 "name": "หลักสูตรบัณฑิตศึกษา",
                 "qa_function": graduate_qa,
+                "retriever": graduate_retriever,
                 "icon": "🎓"
             }
         
@@ -639,6 +649,52 @@ class UnifiedChatbotHybrid:
         except Exception as e:
             print(f"❌ Error from {chatbot_config['name']}: {e}")
             return f"ขอโทษ เกิดข้อผิดพลาดจาก Agent {chatbot_config['name']}"
+    
+    def answer_with_contexts(self, question: str) -> tuple:
+        """
+        ตอบคำถามและ return contexts สำหรับ RAGAS evaluation
+        
+        Returns:
+            tuple: (answer: str, contexts: List[str])
+        """
+        # Step 1: Hybrid Intent Classification
+        intent, confidence, method, reason = self.classifier.classify(question)
+        
+        contexts = []
+        
+        # Step 2: Route to appropriate chatbot and get contexts
+        if intent == "unknown" or intent not in self.chatbot_map:
+            # Multi-agent search - collect contexts from all agents
+            for intent_key, config in self.chatbot_map.items():
+                try:
+                    if "retriever" in config and config["retriever"]:
+                        docs = config["retriever"].get_relevant_documents(question)
+                        contexts.extend([doc.page_content for doc in docs[:3]])
+                except:
+                    pass
+            
+            answer = self.answer(question)
+        else:
+            # Specific agent - get contexts from that agent
+            chatbot_config = self.chatbot_map[intent]
+            
+            try:
+                # Get contexts if retriever available
+                if "retriever" in chatbot_config and chatbot_config["retriever"]:
+                    docs = chatbot_config["retriever"].get_relevant_documents(question)
+                    contexts = [doc.page_content for doc in docs]
+                
+                # Get answer
+                answer = self.answer(question)
+            except Exception as e:
+                answer = f"Error: {str(e)}"
+                contexts = []
+        
+        # Ensure we have at least some context
+        if not contexts:
+            contexts = [f"No specific contexts retrieved for: {question}"]
+        
+        return answer, contexts
     
     def _multi_agent_search(self, question: str) -> str:
         """ค้นหาจากทุก Agent และรวมผลลัพธ์"""

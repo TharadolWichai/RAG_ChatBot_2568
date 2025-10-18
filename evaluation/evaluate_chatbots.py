@@ -182,18 +182,29 @@ class ChatbotWrapper:
 # Evaluation Functions
 # ==========================================
 
-def get_contexts_from_chatbot(question: str, chatbot_name: str) -> List[str]:
+def get_contexts_from_chatbot(chatbot: Any, question: str) -> List[str]:
     """
     ดึง contexts (retrieved documents) จาก chatbot
     สำหรับ RAGAS evaluation
+    
+    Args:
+        chatbot: Chatbot instance ที่มี method answer_with_contexts()
+        question: คำถาม
+        
+    Returns:
+        List[str]: รายการ contexts ที่ retrieve มาได้
     """
-    # TODO: ในการใช้งานจริง ควรแก้ไข chatbot ให้ return contexts ด้วย
-    # ตอนนี้ใช้ placeholder เพื่อให้ RAGAS ทำงานได้
-    return [
-        f"Context from {chatbot_name} retriever for question: {question}",
-        f"Retrieved document 1 for: {question}",
-        f"Retrieved document 2 for: {question}"
-    ]
+    try:
+        # ใช้ method answer_with_contexts() เพื่อดึง contexts จริงๆ
+        if hasattr(chatbot, 'answer_with_contexts'):
+            _, contexts = chatbot.answer_with_contexts(question)
+            return contexts if contexts else [f"No contexts found for: {question}"]
+        else:
+            # Fallback: chatbot ไม่มี method answer_with_contexts()
+            return [f"Chatbot does not support context retrieval for: {question}"]
+    except Exception as e:
+        print(f"   [WARNING] Failed to get contexts: {e}")
+        return [f"Error retrieving contexts: {str(e)}"]
 
 def run_evaluation(test_size: int = None) -> Dict[str, Any]:
     """
@@ -265,7 +276,7 @@ def run_evaluation(test_size: int = None) -> Dict[str, Any]:
                 })
             
             # Get contexts (for RAGAS)
-            contexts = get_contexts_from_chatbot(question, chatbot_name)
+            contexts = get_contexts_from_chatbot(chatbot, question)
             contexts_list.append(contexts)
             
             print(f"   ⏱️  Time: {result['time']:.2f}s")
