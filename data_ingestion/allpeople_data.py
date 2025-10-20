@@ -3,11 +3,15 @@ import os
 import uuid
 
 import requests
+import urllib3
 from astrapy import DataAPIClient
 from dotenv import load_dotenv
 from langchain.schema import Document
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
+
+# Disable SSL warnings (for development only)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 load_dotenv()
 
@@ -64,7 +68,7 @@ def main():
     print("🌐 Fetching faculty data from API...")
     try:
         url = "https://api.computing.kku.ac.th/api/v1/user/getUserByClassIds/?classId=[1,+2,+3]"
-        res = requests.get(url)
+        res = requests.get(url, verify=False)  # Disable SSL verification for development
         data = res.json()
         users_raw = data["data"]["items"]
         print(f"📊 Retrieved {len(users_raw)} faculty records")

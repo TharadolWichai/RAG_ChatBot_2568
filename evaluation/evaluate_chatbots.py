@@ -300,7 +300,7 @@ def run_evaluation(test_size: int = None) -> Dict[str, Any]:
                 raise ValueError("API key required for RAGAS evaluation")
         else:
             # OPENAI_API_KEY exists, check if it's OpenRouter format
-            if openai_api_key.startswith("sk-or-"):
+            if openai_api_key.startswith("sk-or-v1-"):
                 print("   [INFO] Detected OpenRouter API key format")
                 print("   [INFO] Configuring RAGAS to use OpenRouter...")
                 os.environ["OPENAI_API_BASE"] = "https://openrouter.ai/api/v1"

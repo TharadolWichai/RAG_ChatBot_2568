@@ -87,6 +87,13 @@ except Exception as e:
     print(f"⚠️ Digital Services chatbot not available: {e}")
     DIGITAL_AVAILABLE = False
 
+try:
+    from main_graduate import retriever as graduate_retriever, manual_qa_chain as graduate_qa
+    GRADUATE_AVAILABLE = True
+except Exception as e:
+    print(f"⚠️ Graduate Programs chatbot not available: {e}")
+    GRADUATE_AVAILABLE = False
+
 load_dotenv()
 
 # Debug: Show which agents are available
@@ -100,6 +107,7 @@ print(f"   Students: {STUDENTS_AVAILABLE}")
 print(f"   Research Group: {RESEARCH_AVAILABLE}")
 print(f"   BSC Entrance: {BSC_AVAILABLE}")
 print(f"   Digital Services: {DIGITAL_AVAILABLE}")
+print(f"   Graduate Programs: {GRADUATE_AVAILABLE}")
 print(f"   OpenAI (LLM): {OPENAI_AVAILABLE}")
 print()
 
@@ -254,6 +262,27 @@ class HybridIntentClassifier:
                     r'.*snapdrop.*',
                     r'.*ส่วนที่.*\d+.*'
                 ]
+            },
+            "graduate": {
+                "keywords": [
+                    "บัณฑิตศึกษา", "graduate", "ปริญญาโท", "master", "มหาบัณฑิต", "ป.โท",
+                    "ปริญญาเอก", "phd", "ph.d", "ดุษฎีบัณฑิต", "ป.เอก", "doctoral",
+                    "หลักสูตรโท", "หลักสูตรเอก", "สมัครโท", "สมัครเอก", "คุณสมบัติโท",
+                    "คุณสมบัติเอก", "ค่าเทอมโท", "ค่าเทอมเอก", "อาจารย์ที่ปรึกษา"
+                ],
+                "patterns": [
+                    r'.*บัณฑิตศึกษา.*',
+                    r'.*ปริญญาโท.*',
+                    r'.*ป\.โท.*',
+                    r'.*master.*',
+                    r'.*ปริญญาเอก.*',
+                    r'.*ป\.เอก.*',
+                    r'.*phd.*',
+                    r'.*ph\.d.*',
+                    r'.*doctoral.*',
+                    r'.*หลักสูตร.*โท.*',
+                    r'.*หลักสูตร.*เอก.*'
+                ]
             }
         }
         
@@ -303,6 +332,11 @@ class HybridIntentClassifier:
                 "name": "บริการดิจิตอล",
                 "description": "บริการดิจิตอล, Web Hosting, Virtual Machine, Apple Store, Google Play, Grammarly, ChatGPT Plus",
                 "examples": ["Web Hosting", "Virtual Machine", "Apple Store", "Grammarly"]
+            },
+            "graduate": {
+                "name": "หลักสูตรบัณฑิตศึกษา",
+                "description": "ข้อมูลหลักสูตรบัณฑิตศึกษา, ปริญญาโท (Master), ปริญญาเอก (Ph.D.), คุณสมบัติผู้สมัคร, ค่าใช้จ่าย, อาจารย์ที่ปรึกษา",
+                "examples": ["ปริญญาโท", "ปริญญาเอก", "หลักสูตรโท"]
             }
         }
         
@@ -559,6 +593,13 @@ class UnifiedChatbotHybrid:
                 "icon": "💻"
             }
         
+        if GRADUATE_AVAILABLE:
+            self.chatbot_map["graduate"] = {
+                "name": "หลักสูตรบัณฑิตศึกษา",
+                "qa_function": graduate_qa,
+                "icon": "🎓"
+            }
+        
         print(f"✅ Unified Chatbot (Hybrid) initialized with {len(self.chatbot_map)} agents")
         for intent, config in self.chatbot_map.items():
             print(f"   {config['icon']} {config['name']}")
@@ -687,6 +728,7 @@ class UnifiedChatbotHybrid:
         print("   - กลุ่มวิจัย AIDA → กลุ่มวิจัย")
         print("   - รอบ Portfolio → การรับเข้าศึกษา")
         print("   - Web Hosting → บริการดิจิตอล")
+        print("   - ปริญญาโท → หลักสูตรบัณฑิตศึกษา")
         print()
         print("📝 คำสั่งพิเศษ:")
         print("   - 'help' หรือ 'ช่วยเหลือ' = แสดงคำแนะนำ")

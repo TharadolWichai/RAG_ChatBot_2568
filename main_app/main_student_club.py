@@ -672,7 +672,7 @@ class StudentClubRetriever(BaseRetriever):
             return self._exact_thai_keyword_search(query)
     
     def _calculate_thai_match_score(self, meaningful_tokens: List[str], all_tokens: List[str], 
-                                   content: str, doc_type: str, category: str) -> float:
+        content: str, doc_type: str, category: str) -> float:
         """คำนวณคะแนนการ match แบบขั้นสูงสำหรับภาษาไทย"""
         score = 0.0
         
