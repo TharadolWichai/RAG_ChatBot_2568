@@ -1,0 +1,430 @@
+{
+  "test_questions": [
+    {
+      "id": 1,
+      "question": "วิทยาลัยการคอมพิวเตอร์ มข. มีรอบการรับเข้าศึกษาระดับปริญญาตรีรอบไหนบ้าง",
+      "expected_intent": "bsc_entrance",
+      "ground_truth": "รอบที่ 1 Portfolio, รอบที่ 2 โควตาภาคตะวันออกเฉียงเหนือ, และรอบที่ 3 Admission",
+      "category": "general",
+      "difficulty": "medium"
+    },
+    {
+      "id": 2,
+      "question": "โครงการที่เปิดรับในรอบ Portfolio มีอะไรบ้าง",
+      "expected_intent": "bsc_entrance",
+      "ground_truth": "โครงการทุนช้างเผือก, โครงการทุนผู้มีความสามารถดีเด่นด้านคอมพิวเตอร์และเทคโนโลยีสารสนเทศ, โครงการผู้มีศักยภาพด้านคอมพิวเตอร์",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 3,
+      "question": "รอบโควตาภาคตะวันออกเฉียงเหนือ ใช้คะแนนสอบอะไรในการคัดเลือก",
+      "expected_intent": "bsc_entrance",
+      "ground_truth": "ใช้คะแนน NETSAT",
+      "category": "general",
+      "difficulty": "medium"
+    },
+    {
+      "id": 4,
+      "question": "หลักสูตรวิทยาการคอมพิวเตอร์ มีค่าน้ำหนักคะแนน TGAT และ A-Level ยังไง",
+      "expected_intent": "bsc_entrance",
+      "ground_truth": "TGAT2 20, TGAT3 5, คณิตศาสตร์ 35, ฟิสิกส์ 15, อังกฤษ 25 รวม 100%",
+      "category": "general",
+      "difficulty": "medium"
+    },
+    {
+      "id": 5,
+      "question": "ค่าธรรมเนียมการศึกษาของหลักสูตรวิทยาการคอมพิวเตอร์เท่าไร",
+      "expected_intent": "bsc_entrance",
+      "ground_truth": "ภาคปกติ 15,000 บาท, โครงการพิเศษ 30,000 บาทต่อภาคการศึกษา",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 6,
+      "question": "ความเชี่ยวชาญของอาจารย์ดร.พงษ์ศธร จันทร์ยอย คืออะไรบ้าง",
+      "expected_intent": "allpeople",
+      "ground_truth": "Speech Synthesis, Natural Language Processing, Deep Learning",
+      "category": "general",
+      "difficulty": "medium"
+    },
+    {
+      "id": 7,
+      "question": "ขอข้อมูลติดต่ออาจารย์พงษ์ศธร จันทร์ยอย",
+      "expected_intent": "allpeople",
+      "ground_truth": "pongsathon@kku.ac.th",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 8,
+      "question": "มีทุนการศึกษาทั้งหมดกี่ทุน และอะไรบ้าง",
+      "expected_intent": "scholarship",
+      "ground_truth": "มีทั้งหมด 4 ทุน ได้แก่ ทุนส่งเสริมความเข้มแข็งด้านการววิจัยของอาจารย์\nผ่านการสนับสนุนนักศึกษาระดับบัณฑิตศึกษา ,ทุนระดับบัณฑิตศึกษาสำหรับนักศึกษาระดับบัณฑิต\nศึกษาหลักสูตรนานาชาติ , ทุนสนับสนุนการศึกษาสำหรับบุคลากรจากประเทศ, \nในภูมิภาคอาเซียนและอนุภาคลุ่มแม่น้ำโขง \nทุน ASEAN and GMS, ทุนผู้มีผลการเรียนดีเยี่ยมระดับบัณฑิตศึกษา",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 9,
+      "question": "เงื่อนไขสำหรับผู้รับทุนทุนส่งเสริมความเข้มแข็งด้านการววิจัยของอาจารย์\nผ่านการสนับสนุนนักศึกษาระดับบัณฑิตศึกษา",
+      "expected_intent": "scholarship",
+      "ground_truth": "1.ผู้สมัครทุนต้องพยายามสำเร็จการศึกษาตามกำหนด และอาจารย์ที่ปรึกษาติดตามความก้าวหน้าได้\n2.ผู้สมัครต้องส่งรายงานความก้าวหน้าและ/หรือบทความวิชาการทุกภาคการศึกษา ผ่านอาจารย์ที่ปรึกษาและคณะกรรมการพัฒนานักศึกษาทุน\n3.ผลงานวิจัยของผู้สมัครต้องตีพิมพ์ในวารสาร โดยระบุนักศึกษาเป็นชื่อแรกและอาจารย์ที่ปรึกษาเป็นผู้รับผิดชอบ",
+      "category": "complex",
+      "difficulty": "medium"
+    },
+    {
+      "id": 10,
+      "question": "ภาระงานสอนของอาจารย์พงษ์ศธร จันทร์ยอย",
+      "expected_intent": "allpeople",
+      "ground_truth": "ภาระงานสอนระดับปริญญาตรี\nCP353109\nการประมวลผลภาษาธรรมชาติ\nSC313107\nปฏิบัติการระบบฐานข้อมูลและการออกแบบ\nSC312004\nการวิเคราะห์ข้อมูลขนาดใหญ่\nCP001001\nเอ บี ซี ดี สำหรับทุกวิชาชีพ",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 11,
+      "question": "หลักสูตรปัญญาประดิษฐ์มีทั้งหมดกี่หน่วยกิต",
+      "expected_intent": "unknown",
+      "ground_truth": "126 หน่วยกิต",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 12,
+      "question": "นักศึกษาที่จบจากหลักสูตรปัญญาประดิษฐ์สามารถประกอบอาชีพอะไรได้บ้าง",
+      "expected_intent": "unknown",
+      "ground_truth": "นักวิทยาการข้อมูล (Data Scientist)\nนักวิเคราะห์ข้อมูล (Data Analyst)\nวิศวกรข้อมูล (Data Engineer)\nวิศวกรปัญญาประดิษฐ์ (Artificial Intelligence Engineer)\nวิศวกรการเรียนรู้ของเครื่อง (Machine Learning Engineer)\nวิศวกรการเรียนรู้เชิงลึก (Deep Learning Engineer)\nวิศวกรคอมพิวเตอร์วิทัศน์ (Computer Vision Engineer)\nนักวางแผนการประยุกต์ใช้ปัญญาประดิษฐ์และข้อมูลดิจิทัล\nผู้ประกอบการอิสระด้านการประยุกต์ใช้ปัญญาประดิษฐ์และข้อมูลดิจิทัล",
+      "category": "general",
+      "difficulty": "medium"
+    },
+    {
+      "id": 13,
+      "question": "บริการดิจิตอลมีอะไรบ้าง",
+      "expected_intent": "digital_services",
+      "ground_truth": "Web Hosting, Virtual Machine, Apple Store, Google Play , grammarly ,ChatGPT Plus , Server ประมวลผลด้านปัญญาประดิษฐ์ , KKU Snapdrop",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 14,
+      "question": "ขอลิงค์ระบบจัดการโครงงานนักศึกษา",
+      "expected_intent": "students",
+      "ground_truth": "https://eproject.computing.kku.ac.th/",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 15,
+      "question": "หลักสูตรปริญญาเอกทั้งหมด",
+      "expected_intent": "unknown",
+      "ground_truth": "หลักสูตรปรับปรุงล่าสุด\n- ปร.ด. วิทยาการคอมพิวเตอร์และเทคโนโลยีสารสนเทศ หลักสูตรนานาชาติ (ปีล่าสุด : 2568) \n- ภูมิสารสนเทศศาสตร์ : Ph.D. (Geo-Informatics) \n\nหลักสูตรเก่า \n- วิทยาการคอมพิวเตอร์และเทคโนโลยีสารสนเทศ หลักสูตรนานาชาติ (ปี : 2563)",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 16,
+      "question": "หากจบหลักสูตรวิทยาการคอมพิวเตอร์ ปริญญาตรี สามารถประกอบอาชีพใดได้บ้าง",
+      "expected_intent": "bsc_entrance",
+      "ground_truth": "1)  นักวิชาการคอมพิวเตอร์ \n2)  นักวิเคราะห์และออกแบบระบบงาน (System Analyst and Designer)\n3)  นักเขียนโปรแกรมหรือผู้พัฒนาซอฟต์แวร์ (Programmer or Software Developer)\n4)  ผู้ดูแลระบบเครือข่ายและเครื่องแม่ข่าย (Network Administrator)\n5)  ผู้ดูแลระบบฐานข้อมูล (Database Administrator)\n6)  นักเทคโนโลยีเว็บ (Full Stack Web)\n7)  นักวิทยาการข้อมูลและนักวิศวกรข้อมูล (Data Scientist and Data Engineer)\n8)  นักออกแบบประสบการณ์ (UX/UI Designer)\n9)  นักพัฒนาโปรแกรมเกม สื่อผสม และโลกเสมือนจริง (Game, Multimedia, and Virtual Reality Designer/Developer)\n10)  นักทดสอบซอฟต์แวร์ (Software Tester)\n11)  นักพัฒนาซอฟต์แวร์สำหรับอินเทอร์เน็ตของสรรพสิ่ง (IoT Software Developer)\n12)  นักนวัตกรดิจิทัล (Digital Innovator)\n13)  ผู้บริหารโครงการ (Project Manager) และ Agile Coach\n14)  ที่ปรึกษาที่มีความเชี่ยวชาญทางการพัฒนาและใช้งานเทคโนโลยีความฉลาด\n15)  ที่ปรึกษาที่มีความเชี่ยวชาญทางการพัฒนาและใช้งานเทคโนโลยีดิจิทัล\n16)  ผู้ประกอบการด้านคอมพิวเตอร์หรือเทคโนโลยีดิจิทัล",
+      "category": "general",
+      "difficulty": "medium"
+    },
+    {
+      "id": 17,
+      "question": "กลุ่มวิจัย Advanced Intelligent Interdisciplinary Integration (AIII) วิจัยเกี่ยวกับอะไร",
+      "expected_intent": "research",
+      "ground_truth": "มุ่งเน้นที่การพัฒนาการคำนวณอัจฉริยะและประยุกต์ใช้ในศาสตร์ด้านต่างๆ\nหัวข้อวิจัยที่เป็นจุดเน้นของกลุ่ม\n    Applied Machine Learning in X\n    Applied AI in X\n    Applied Optimization in X\n    Intelligent Cybersecurity Applications\n    Intelligent Supply Chain\n    Smart (Smart X) Digital Token, Decentralized Applications",
+      "category": "simple",
+      "difficulty": "easy"
+    },
+    {
+      "id": 18,
+      "question": "สมาชิกกลุ่มวิจัย Advanced Smart Computing มีใครบ้าง",
+      "expected_intent": "research",
+      "ground_truth": "สมาชิกของกลุ่มวิจัย\nผศ. ดร.คำรณ สุนัติ (หัวหน้ากลุ่มวิจัย)\nรศ. ดร.สิรภัทร เชี่ยวชาญวัฒนา\nรศ. ดร.ปัญญาพล หอระตะ\nอ.ธนพล ตั้งชูพงศ์\nอ. ดร.ไพรสันต์ ผดุงเวียง\nอ. ดร.ภัคราช มุสิกะวัน\nอ. ดร.ญานิกา คงโสรส",
+      "category": "general",
+      "difficulty": "medium"
+    },
+    {
+      "id": 19,
+      "question": "สามารถติดต่อคณะได้ทางไหนได้บ้าง",
+      "expected_intent": "unknown",
+      "ground_truth": "123 อาคารวิทยวิภาส ถ.มิตรภาพ ต.ในเมือง อ.เมืองขอนแก่น จ.ขอนแก่น 40002\nโทรศัพท์ 043-009700 ต่อ 50528\nHot Line. 089-7102651, 089-7102645\nEmail : computing.kku@kku.ac.th\n\nคุณไพรวัลย์ คุณาสถิตย์ชัย ตำแหน่ง ผู้อำนวยการกองบริหารงานวิทยาลัย\nหน้าที่ วางแผน ควบคุม กำกับดูแล ประสานงานและงานตามภารกิจและนโยบายวิทยาลัย\nโทร. 043-009700 ต่อ  50528",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 20,
+      "question": "ห้องปฏิบัติการการเรียนการสอน ดูแลบำรุงรักษาเครื่องคอมพิวเตอร์ สามารถติดต่อที่ใคร",
+      "expected_intent": "unknown",
+      "ground_truth": "นายขวัญชัย มูลเค้า พนักงานเครื่องคอมพิวเตอร์",
+      "category": "complex",
+      "difficulty": "medium"
+    },
+    {
+      "id": 21,
+      "question": "ระบบ Network ห้องปฏิบัติการ ติดต่อที่ใคร",
+      "expected_intent": "unknown",
+      "ground_truth": "นายนันทสิทธิ์ บางใบ  \tนักวิชาการคอมพิวเตอร์",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 22,
+      "question": "ขอลิงค์ขั้นตอนการบันทึกการลา",
+      "expected_intent": "unknown",
+      "ground_truth": "https://drive.google.com/file/d/1QdYr8fF-02TvHUjL4qKwzQcPpbwWt6\nBk/view",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 23,
+      "question": "ขอลิงค์ระบบแจ้งซ่อมออนไลน์",
+      "expected_intent": "news",
+      "ground_truth": "https://sites.google.com/kku.ac.th/cprp?fbclid=IwZXh0bgNhZW0CMTAAYnJpZBExT\nUNRSHBKQ3FFWkExR3JGWQEeTeukAFQnB4fdVXZIG7OnDmdCdWIV89PCdN62dk4Eo1ETnX_s5GMyAixDCTg_aem_-eavI9h28uTaVu2HemCF2A",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 24,
+      "question": "ขอรายละเอียดการถอนวิชา",
+      "expected_intent": "unknown",
+      "ground_truth": "CP-การขอถอนรายวิชาโดยได้สัญลักษณ์ W\nลิงค์ https://drive.google.com/file/d/1it1BCE3mYSEOXNI1POAI0vK0vwtUNHuN/view",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 25,
+      "question": "ขอเลื่อนสอบได้ยังไงบ้าง",
+      "expected_intent": "unknown",
+      "ground_truth": "คำร้องขอเลื่อนสอบ ลิงค์ https://drive.google.com/file/d/1D0E8lZsbobW0Ks1jMRRW0f-ygKo_qQ-2/view",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 26,
+      "question": "แบบฟอร์มตรวจสอบการขอสำเร็จการศึกษา ระดับปริญญาตรี",
+      "expected_intent": "unknown",
+      "ground_truth": "- CP-CG00155 B.Sc. CS 2555 ตรวจสอบการสำเร็จการศึกษา (รหัส 55 เป็นต้นไป)\nLink https://drive.google.com/file/d/1bKuM9Y8tNnBIlSDjqVq2G3szIV3NZSCl/view\n- CP-CG00160 B.Sc. CS 2560 ตรวจสอบการสำเร็จการศึกษา (รหัส 60 เป็นต้นไป)\nLink https://drive.google.com/file/d/1sxakHd-HN38h4wjn8qj1yIzNGqTsZ2T2/view\n- CP-CG00254 B.Sc. ICT 2554 ตรวจสอบการสำเร็จการศึกษา (รหัส 54 เป็นต้นไป)\nLink https://drive.google.com/file/d/1PSr1VpUQU3vmZ1ZAKToSzy2_XJ3ngBJo/view\n- CP-CG00259 B.Sc. IT 2559 ตรวจสอบการสำเร็จการศึกษา (รหัส 59 เป็นต้นไป)\n- CP-CG00264 B.Sc. IT 2564 ตรวจสอบการสำเร็จการศึกษา (รหัส 64 เป็นต้นไป)\n- CP-CG00355 B.Sc. GIS 2555 ตรวจสอบการสำเร็จการศึกษา (รหัส 55 เป็นต้นไป)\n- CP-CG00360 B.Sc. GIS 2560 ตรวจสอบการสำเร็จการศึกษา (รหัส 60 เป็นต้นไป)",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 27,
+      "question": "รายละเอียดเกี่ยวกับ สหกิจศึกษา",
+      "expected_intent": "unknown",
+      "ground_truth": "- คู่มือสหกิจศึกษา ลิงค์ https://docs.google.com/document/d/1zffD4H7ssXpMRImTay9FbD53TADwetWl/edit?rtpof=true&sd=true&tab=t.0\n- ปฏิทินสหกิจศึกษา-ปีการศึกษา 2568\n- ปฏิทินการดำเนินงานสหกิจศึกษาและการบูรณาการ-นานาชาติ-68\n- ใบคำร้องขอเข้าร่วมโครงการสหกิจศึกษา(update)\n- แบบตอบรับนักศึกษาในประเทศ\n- KKUCP-T000_ใบสมัครงานสหกิจศึกษา\n- KKUCP-T001_ใบยินยอมจากผู้ปกครอง\n- KKUCP-T002_แบบแจ้งรายละเอียดงานและรายละเอียดที่พัก\n- KKUCP-T003_แบบแผนและโครงร่างรายงานการปฏิบัติงานสหกิจศึกษา-Proposal\n- KKUCP-T004_แบบบันทึกการนิเทศงานนักศึกษาสหกิจศึกษา\n- KKUCP-T005_แบบประเมินผลการปฏิบัติงานของนักศึกษาสหกิจศึกษา\n- KKUCP-T006_แบบประเมินผลรายงานสหกิจศึกษา\n- KKUCP-T006_(GIS) แบบประเมินผลรายงานสหกิจศึกษา\n- KKUCP-T007_แบบฟอร์มรายงานการปฏิบัติสหกิจศึกษา",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 28,
+      "question": "หากอยากเข้าความมั่นคงปลอดภัยไซเบอร์ รอบที่ 2 ควรได้คะแนนเท่าไหร่",
+      "expected_intent": "unknown",
+      "ground_truth": "ใช้คะแนน NETSAT\nSAT 1 ความรู้ทั่วไป\n- ภาษาไทย 15\n- อังกฤษ 10 \n- คณิตศาสตร์ 20\n- วิทยาศาสตร์และเทคโนโลยี 40\nSAT 2\n- เคมี 0\n- ชีววิทยา 0\n- ฟิสิกส์ 15 \nรวม 100%",
+      "category": "general",
+      "difficulty": "medium"
+    },
+    {
+      "id": 29,
+      "question": "ทุนระดับบัณฑิตศึกษาสำหรับนักศึกษาระดับบัณฑิต\nศึกษาหลักสูตรนานาชาติ เต็มจำนวน มีเงื่อนไขอะไรบ้าง",
+      "expected_intent": "scholarship",
+      "ground_truth": "ประเภททุนแบบเต็มจำนวน\nระดับปริญญาโท\nเกณฑ์ผลงานวิจัย จะต้องตีพิมพ์ผลงานวิจัยในวารสารวิชาการระดับนานาชาติที่อยู่ในฐานข้อมูล ISI-WOS หรือ Scopus ที่อยู่ในควอไทล์ Q1 หรือ Q2 หรือ Q3 จำนวนอย่างน้อย 1 บทความ\nระดับปริญญาเอก\nเกณฑ์ผลงานวิจัย จะต้องตีพิมพ์ผลงานวิจัยในวารสารระดับนานาชาติ ที่อยู่ในฐานข้อมูล ISI-WOS ที่มี Impact Factor จำนวนอย่างน้อย 2 บทความ ที่อยู่ในควอไทล์ Q1 หรือ Q2",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 30,
+      "question": "บริการดิจิตอลสำหรับนักศึกษามีอะไรบ้าง",
+      "expected_intent": "digital_services",
+      "ground_truth": "Web Hosting https://computing.kku.ac.th/digitalsv-webhosting\nVirtual Machine https://computing.kku.ac.th/virtual-machine\nApple Store https://computing.kku.ac.th/apple-store\nGoogle Play https://computing.kku.ac.th/google-play",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 31,
+      "question": "ขอรายละเอียด Web Hosting",
+      "expected_intent": "digital_services",
+      "ground_truth": "ส่วนที่ 1 ข้อตกลงในการใช้บริการ, ส่วนที่ 2 เทคโนโลยีที่ Web Hosting รองรับ, ส่วนที่ 3 คำชี้แจง",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 32,
+      "question": "ขอรายชื่อสโมสรนักศึกษา",
+      "expected_intent": "student_club",
+      "ground_truth": "รายชื่อชื่อ ชั้นปี สาขาวิชา ตำแหน่ง ของสโมสรนักศึกษาทั้งหมด ตัวอย่าง\n\nนางสาวชฎาพร ศีรษะ \nนักศึกษา ชั้นปีที่ 3 \nสาขาวิชาภูมิศาสตร์และสารสนเทศ\nตำแหน่ง นายกสโมสรนักศึกษา",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 33,
+      "question": "เงื่อนไขการรับทุนผู้มีผลการเรียนดีเยี่ยม ระดับบัณฑิตศึกษา",
+      "expected_intent": "scholarship",
+      "ground_truth": "1. นักศึกษามีผลการเรียนสูงสุด และเกรดเฉลี่ยสะสมไม่ต่ำกว่า 3.75\n2. นักศึกษามีผลการเรียนสูงสุด และเกรดเฉลี่ยสะสมไม่ต่ำกว่า 3.50",
+      "category": "complex",
+      "difficulty": "medium"
+    },
+    {
+      "id": 34,
+      "question": "ขอลิงค์ทุนการส่งเสริมความเข้มแข็งด้านการวิจัยของอาจารย์ผ่านการสนับสนุนนักศึกษาระดับบัณฑิตศึกษา",
+      "expected_intent": "scholarship",
+      "ground_truth": "https://computing.kku.ac.th/content/scholarship-detail/9",
+      "category": "complex",
+      "difficulty": "medium"
+    },
+    {
+      "id": 35,
+      "question": "ขอรายข้อมูล รอบ Portfolio โครงการผู้มีศักยภาพด้านคอมพิวเตอร์",
+      "expected_intent": "bsc_entrance",
+      "ground_truth": "ปีการศึกษา 2568 โครงการผู้มีศักยภาพด้านคอมพิวเตอร์ https://api.computing.kku.ac.th//storage/documents/2025-7-4-1752656868-undefined.pdf\n\nปีการศึกษา 2569 (ใหม่) https://api.computing.kku.ac.th//storage/documents/2025-9-6-1758251361-undefined.pdf",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 36,
+      "question": "ขอคะแนนรอบที่ 3 สาขาภูมิสารสนเทศศาสตร์",
+      "expected_intent": "unknown",
+      "ground_truth": "TGAT\n- TGAT2 20\n- TGAT3 5\nA-Level\n- 61 คณิตฯ 1 25\n- 64 ฟิสิกส์ 15\n- 65 เคมี 10\n- 66 ชีววิทยา 10\n- 82 อังกฤษ 15",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 37,
+      "question": "ค่าเทอม หลักสูตรภูมิสารสนเทศศาสตร์ (GIS) กี่บาท",
+      "expected_intent": "unknown",
+      "ground_truth": "ภาคปกติ 15,000\nภาคพิเศษ ไม่เปิดรับ",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 38,
+      "question": "หากนักศึกษาต้องการขอเปลี่ยนสาขาวิชาหรือโอนรายวิชา ควรใช้แบบฟอร์มใด",
+      "expected_intent": "unknown",
+      "ground_truth": "CP-คำร้องขอเปลี่ยนสาขาวิชา_โอนรายวิชา พร้อมแนบลิงค์",
+      "category": "general",
+      "difficulty": "medium"
+    },
+    {
+      "id": 39,
+      "question": "นักศึกษาที่ต้องการลาพักการศึกษา ควรใช้แบบฟอร์มใด",
+      "expected_intent": "unknown",
+      "ground_truth": "CP-คำร้องขอลาพักการศึกษา",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 40,
+      "question": "แบบฟอร์มสำหรับขอเลื่อนสอบ",
+      "expected_intent": "unknown",
+      "ground_truth": "CP-คำร้องขอเลื่อนสอบ พร้อมแนบลิงค์",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 41,
+      "question": "หัวข้อวิจัยหลักของกลุ่ม I-SERG มีอะไรบ้าง",
+      "expected_intent": "unknown",
+      "ground_truth": "หัวข้อหลักคือ AI4SE, SE4AI, Computational Intelligence for Software Engineering, Formal verification, Software Analytics, Software Quality, Secure Software Engineering และ Software development practices",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 42,
+      "question": "สมาชิกของกลุ่มวิจัย I-SERG มีใครบ้าง",
+      "expected_intent": "research",
+      "ground_truth": "ผศ.ดร. ชิตสุธา สุ่มเล็ก\nผศ.ดร. ชานนท์ เดชสุภา\nรศ.ดร. ปัญญาพล หอระตะ",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 43,
+      "question": "อีเมลสำหรับติดต่อกลุ่มวิจัย I-SERG คืออะไร",
+      "expected_intent": "research",
+      "ground_truth": "chitsutha@kku.ac.th",
+      "category": "simple",
+      "difficulty": "easy"
+    },
+    {
+      "id": 44,
+      "question": "งานวิจัยของอาจารย์ ศรัณย์ อภิชนตระกูล",
+      "expected_intent": "allpeople",
+      "ground_truth": "งานวิจัยทั้งหมดที่มีในเว็ยของอาจารย์ ศรัณย์ อภิชนตระกูล",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 45,
+      "question": "คะแนน รอบที่ 2 โควตาภาคตะวันออกเฉียงเหนือ",
+      "expected_intent": "bsc_entrance",
+      "ground_truth": "เกณฑ์คะแนนทั้งหมดของทุกสาขาวิชา",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 46,
+      "question": "รายวิชาที่เปิดสอนหลักสูตรภูมิสารสนเทศศาสตร์ : Ph.D. (Geo-Informatics)",
+      "expected_intent": "unknown",
+      "ground_truth": "ตัวอย่าง \n3.1 หมวดวิชาบังคับ\n3.1.1 รายวิชาสำหรับหลักสูตรแบบ 1.1\n**SC337 991 สัมมนาดุษฎีนิพนธ์ 1 (Dissertation Seminar I) 1(1-0-2)\n\n3.1.2 รายวิชาสำหรับหลักสูตรแบบ 1.2\n**SC337 992 สัมมนาดุษฎีนิพนธ์ 2 (Dissertation Seminar II) 1(1-0-2)",
+      "category": "general",
+      "difficulty": "medium"
+    },
+    {
+      "id": 47,
+      "question": "ข่าวล่าสุดของวิทยาลัยการคอมพิวเตอร์",
+      "expected_intent": "news",
+      "ground_truth": "ข่าวล่าสุด ชื่อ คำอธิบายสั้นๆ พร้อมลิงค์",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 48,
+      "question": "ขอแบบฟอร์มขอเปลี่ยนแปลงการคุมสอบ",
+      "expected_intent": "unknown",
+      "ground_truth": "แบบฟอร์มเปลี่ยนแปลงการคุมสอบ https://docs.google.com/document/d/1cVq2vCizT8zUtAVsVRd9u_EFuGev5q6p/edit",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 49,
+      "question": "ระยะเวลาในการศึกษาหลักสูตร วิทยาการข้อมูลและปัญญาประดิษฐ์ หลักสูตรนานาชาติ : M.Sc. (Data Science and Artificial Intelligence) International Program นานเท่าไหร่",
+      "expected_intent": "unknown",
+      "ground_truth": "2 ปีการศึกษา",
+      "category": "complex",
+      "difficulty": "hard"
+    },
+    {
+      "id": 50,
+      "question": "รายละเอียดบริการดิจิทัล ChatGPT Plus",
+      "expected_intent": "unknown",
+      "ground_truth": "ตอบข้อมูลรายละเอียดสองส่วนได้แก่ ส่วนที่ \n1 คำชี้แจง  ส่วนที่ \n2 ขั้นตอนการให้บริการ",
+      "category": "simple",
+      "difficulty": "medium"
+    }
+  ],
+  "metadata": {
+    "total_questions": 50,
+    "categories": {
+      "general": 10,
+      "simple": 35,
+      "complex": 5
+    },
+    "difficulty": {
+      "medium": 47,
+      "easy": 2,
+      "hard": 1
+    },
+    "intents_coverage": {
+      "bsc_entrance": 8,
+      "allpeople": 4,
+      "scholarship": 5,
+      "unknown": 22,
+      "digital_services": 3,
+      "students": 1,
+      "research": 4,
+      "news": 2,
+      "student_club": 1
+    },
+    "source": "eva 50 excel.xlsx",
+    "converted_from": "Excel"
+  }
+}

@@ -69,7 +69,7 @@ if not openrouter_api_key:
     llm = None
 else:
     llm = ChatOpenAI(
-        model="openai/gpt-4o-2024-11-20",  # Use more capable model
+        model="openai/gpt-4o-mini",  # Use more capable model
         temperature=0.1,  # Lower temperature for more consistent responses
         openai_api_key=openrouter_api_key,
         openai_api_base="https://openrouter.ai/api/v1"

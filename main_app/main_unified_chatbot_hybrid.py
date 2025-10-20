@@ -348,22 +348,22 @@ class HybridIntentClassifier:
                 if api_key:
                     base_url = os.getenv("OPENAI_BASE_URL", "https://openrouter.ai/api/v1")
                     self.llm_client = OpenAI(api_key=api_key, base_url=base_url)
-                    self.llm_model = "openai/gpt-4o-mini-2024-07-18"
+                    self.llm_model = "openai/gpt-4o-mini"
                     print("✅ LLM fallback initialized successfully!")
             except Exception as e:
                 print(f"⚠️ LLM fallback initialization failed: {e}")
     
     def classify(self, query: str) -> Tuple[str, float, str, str]:
         """
-        จำแนกประเภทคำถามแบบ Hybrid
+        จำแนกประเภทคำถามแบบ Hybrid (Improved version)
         Returns: (intent_name, confidence_score, method_used, reason)
         """
         
         # Step 1: Try Rule-Based first (fast & free!)
         rule_intent, rule_confidence = self._rule_based_classify(query)
         
-        # High confidence threshold for rule-based
-        HIGH_CONFIDENCE_THRESHOLD = 8.0  # ต้องมีคะแนนสูงมาก
+        # Adjusted thresholds for better performance
+        HIGH_CONFIDENCE_THRESHOLD = 7.0  # ลดลงจาก 8.0 → ใช้ rule-based ได้ง่ายขึ้น
         
         if rule_confidence >= HIGH_CONFIDENCE_THRESHOLD:
             # Rule-based is confident enough!
@@ -375,13 +375,18 @@ class HybridIntentClassifier:
             print(f"   ⚠️ Rule-Based มั่นใจต่ำ (คะแนน: {rule_confidence:.2f}) → ใช้ LLM ช่วย")
             llm_intent, llm_confidence, llm_reason = self._llm_classify(query)
             
-            # Use LLM result if confidence is good
-            if llm_confidence >= 0.6:
+            # Use LLM result if it gives a valid intent (even with lower confidence)
+            if llm_intent != "unknown" and llm_confidence >= 0.4:  # ลดจาก 0.6 → 0.4
                 print(f"   ✅ LLM ให้คำแนะนำ: {llm_intent} (มั่นใจ: {llm_confidence:.2f})")
                 return llm_intent, llm_confidence, "llm_fallback", llm_reason
+            elif llm_intent != "unknown":
+                # LLM ให้ intent แต่ confidence ต่ำ - ยังดีกว่า unknown
+                print(f"   🔄 LLM มั่นใจต่ำแต่ยังใช้ได้: {llm_intent} (มั่นใจ: {llm_confidence:.2f})")
+                return llm_intent, max(llm_confidence, 0.3), "llm_low_conf", llm_reason
             else:
-                print(f"   ⚠️ LLM ก็ไม่แน่ใจ (มั่นใจ: {llm_confidence:.2f})")
-                return "unknown", 0.0, "hybrid_uncertain", "Both rule-based and LLM are uncertain"
+                # LLM ไม่แน่ใจ - ใช้ rule-based แทน (ดีกว่า unknown)
+                print(f"   🔄 LLM ไม่แน่ใจ → ใช้ Rule-Based แทน: {rule_intent} (คะแนน: {rule_confidence:.2f})")
+                return rule_intent, rule_confidence, "rule_fallback", "LLM uncertain, using rule-based result"
         
         # Step 3: No LLM available or rule-based result is ok
         if rule_intent != "unknown":

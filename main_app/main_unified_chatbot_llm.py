@@ -132,7 +132,7 @@ class LLMIntentClassifier:
         self.client = OpenAI(api_key=api_key, base_url=base_url)
         
         # Model configuration
-        self.model = "openai/gpt-4o-mini-2024-07-18"  # Fast and cheap model
+        self.model = "openai/gpt-4o-mini"  # Fast and cheap model
         self.temperature = 0.1  # Low temperature for consistent results
         
         # Intent descriptions for the prompt

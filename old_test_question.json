@@ -1,0 +1,149 @@
+{
+  "test_questions": [
+    {
+      "id": 1,
+      "question": "อาจารย์พุธษดี",
+      "expected_intent": "allpeople",
+      "ground_truth": "ควรตอบข้อมูลเกี่ยวกับอาจารย์ที่มีชื่อว่าพุธษดี รวมถึงตำแหน่ง คณะ และข้อมูลติดต่อ",
+      "category": "simple",
+      "difficulty": "easy"
+    },
+    {
+      "id": 2,
+      "question": "ติดต่อวิทยาลัย",
+      "expected_intent": "contact",
+      "ground_truth": "ควรตอบเบอร์โทรศัพท์ อีเมล ที่อยู่ของวิทยาลัยการคอมพิวเตอร์ มหาวิทยาลัยขอนแก่น",
+      "category": "simple",
+      "difficulty": "easy"
+    },
+    {
+      "id": 3,
+      "question": "จองห้องประชุม",
+      "expected_intent": "links",
+      "ground_truth": "ควรให้ลิงก์สำหรับจองห้องประชุมของวิทยาลัยการคอมพิวเตอร์",
+      "category": "simple",
+      "difficulty": "easy"
+    },
+    {
+      "id": 4,
+      "question": "ทุนการศึกษามีอะไรบ้าง",
+      "expected_intent": "scholarship",
+      "ground_truth": "ควรแสดงรายการทุนการศึกษาทั้งหมด เช่น ทุนวิจัย ทุนนานาชาติ ทุน ASEAN & GMS ทุนผู้มีผลการเรียนดีเยี่ยม",
+      "category": "simple",
+      "difficulty": "easy"
+    },
+    {
+      "id": 5,
+      "question": "ประธานสโมสรนักศึกษา",
+      "expected_intent": "student_club",
+      "ground_truth": "ควรตอบชื่อและข้อมูลของประธานสโมสรนักศึกษาปัจจุบัน",
+      "category": "simple",
+      "difficulty": "easy"
+    },
+    {
+      "id": 6,
+      "question": "กลุ่มวิจัย AIDA",
+      "expected_intent": "research",
+      "ground_truth": "ควรตอบข้อมูลเกี่ยวกับกลุ่มวิจัย AIDA (Applied Intelligence and Data Analytics) รวมถึงหัวหน้ากลุ่ม สมาชิก และลิงก์เว็บไซต์",
+      "category": "simple",
+      "difficulty": "easy"
+    },
+    {
+      "id": 7,
+      "question": "รอบ Portfolio คืออะไร",
+      "expected_intent": "bsc_entrance",
+      "ground_truth": "ควรอธิบายรอบ Portfolio ของการรับเข้าศึกษาระดับปริญญาตรี รวมถึงเกณฑ์และวิธีสมัคร",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 8,
+      "question": "Web Hosting มีบริการอะไรบ้าง",
+      "expected_intent": "digital_services",
+      "ground_truth": "ควรอธิบายบริการ Web Hosting ของวิทยาลัยการคอมพิวเตอร์ รวมถึงเทคโนโลยีที่รองรับ ข้อตกลง และวิธีการใช้งาน",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 9,
+      "question": "ขอข้อมูลเกี่ยวกับการสมัคร",
+      "expected_intent": "bsc_entrance",
+      "ground_truth": "ควรให้ข้อมูลเกี่ยวกับการสมัครเข้าศึกษา รวมถึงรอบต่างๆ และเกณฑ์การรับเข้า",
+      "category": "ambiguous",
+      "difficulty": "medium"
+    },
+    {
+      "id": 10,
+      "question": "มีบริการดิจิตอลอะไรบ้าง",
+      "expected_intent": "unknown",
+      "ground_truth": "ควรแสดงรายการบริการต่างๆ ของวิทยาลัย เช่น ลิงก์ระบบ บริการดิจิตอล หรือบริการนักศึกษา",
+      "category": "ambiguous",
+      "difficulty": "hard"
+    },
+    {
+      "id": 11,
+      "question": "Virtual Machine คืออะไร และใช้ยังไง",
+      "expected_intent": "digital_services",
+      "ground_truth": "ควรอธิบายบริการ Virtual Machine พร้อมวิธีการใช้งานและขั้นตอนการขอใช้บริการ",
+      "category": "complex",
+      "difficulty": "medium"
+    },
+    {
+      "id": 12,
+      "question": "ทุน ASEAN & GMS มีคุณสมบัติอะไรบ้าง",
+      "expected_intent": "scholarship",
+      "ground_truth": "ควรระบุคุณสมบัติของผู้สมัครทุน ASEAN & GMS รวมถึงเงื่อนไขและผลประโยชน์ที่ได้รับ",
+      "category": "complex",
+      "difficulty": "medium"
+    },
+    {
+      "id": 13,
+      "question": "Apple Store ส่วนที่ 1 คืออะไร",
+      "expected_intent": "digital_services",
+      "ground_truth": "ควรอธิบายส่วนที่ 1 (ข้อตกลงในการใช้บริการ) ของบริการ Apple Store for Education",
+      "category": "complex",
+      "difficulty": "hard"
+    },
+    {
+      "id": 14,
+      "question": "ลิงก์โครงงานนักศึกษา",
+      "expected_intent": "students",
+      "ground_truth": "ควรให้ลิงก์สำหรับระบบจัดการโครงงานนักศึกษา",
+      "category": "simple",
+      "difficulty": "easy"
+    },
+    {
+      "id": 15,
+      "question": "กลุ่มวิจัยมีกี่กลุ่ม มีอะไรบ้าง",
+      "expected_intent": "research",
+      "ground_truth": "ควรแสดงรายชื่อกลุ่มวิจัยทั้งหมดในวิทยาลัยการคอมพิวเตอร์ พร้อมลิงก์และรายละเอียดสั้นๆ",
+      "category": "complex",
+      "difficulty": "medium"
+    }
+  ],
+  "metadata": {
+    "total_questions": 15,
+    "categories": {
+      "simple": 8,
+      "ambiguous": 2,
+      "complex": 5
+    },
+    "difficulty": {
+      "easy": 6,
+      "medium": 7,
+      "hard": 2
+    },
+    "intents_coverage": {
+      "allpeople": 1,
+      "contact": 1,
+      "links": 1,
+      "scholarship": 2,
+      "student_club": 1,
+      "students": 1,
+      "research": 2,
+      "bsc_entrance": 2,
+      "digital_services": 3,
+      "unknown": 1
+    }
+  }
+}

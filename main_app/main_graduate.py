@@ -673,10 +673,11 @@ class GraduateRetriever(BaseRetriever):
             return [(doc, 0.0) for doc in documents]
     
     def _calculate_hybrid_score(self, doc: Document, bm25_score: float, vector_score: float, query: str) -> float:
-        """คำนวณคะแนนรวมจาก BM25 และ Vector similarity"""
+        """คำนวณคะแนนรวมจาก BM25 และ Vector similarity (Improved v2 - Better context ranking)"""
         try:
-            bm25_weight = 0.4
-            vector_weight = 0.4
+            # ✅ ปรับ weights ให้ vector search มีน้ำหนักมากขึ้น
+            bm25_weight = 0.3      # ลดลงจาก 0.4
+            vector_weight = 0.5    # เพิ่มขึ้นจาก 0.4
             bonus_weight = 0.2
             
             if bm25_score > 15:
@@ -689,36 +690,94 @@ class GraduateRetriever(BaseRetriever):
             query_lower = query.lower()
             content_lower = doc.page_content.lower()
             
+            # ✅ STRONG Penalty สำหรับ generic/irrelevant content (เพิ่มความเข้มงวด!)
+            generic_patterns = [
+                ("ติดต่อเรา", 0.7),           # Penalty สูงมาก!
+                ("เกี่ยวกับเรา", 0.7),         # Penalty สูงมาก!
+                ("ประวัติความเป็นมา", 0.6),
+                ("โครงสร้างองค์กร", 0.6),
+                ("วิสัยทัศน์", 0.5),
+                ("พันธกิจ", 0.5),
+                ("ผู้บริหาร", 0.5),
+                ("บุคลากร", 0.5)
+            ]
+            
+            penalty = 0.0
+            for pattern, penalty_value in generic_patterns:
+                if pattern in content_lower:
+                    # ถ้าเป็น content สั้นๆ ให้ penalty สูงกว่า
+                    if len(content_lower) < 300:
+                        penalty += penalty_value
+                    else:
+                        penalty += penalty_value * 0.5  # ลด penalty ถ้า content ยาว
+            
+            # ✅ STRONG Bonus สำหรับ specific program information (เพิ่มโบนัส!)
+            specific_indicators = [
+                ("แผนการศึกษา", 0.3),      # เพิ่มจาก 0.15
+                ("รหัสสาขาวิชา", 0.3),     # เพิ่มจาก 0.15
+                ("จำนวนรับ", 0.25),         # เพิ่มจาก 0.15
+                ("ระบบการศึกษา", 0.25),    # เพิ่มจาก 0.15
+                ("แผน ก", 0.2),
+                ("แผน ข", 0.2),
+                ("แบบ 1.", 0.2),
+                ("แบบ 2.", 0.2),
+                ("ภาคต้น", 0.15),
+                ("ภาคปลาย", 0.15),
+                ("โครงการพิเศษ", 0.2),
+                ("นานาชาติ", 0.2)
+            ]
+            
+            specificity_bonus = 0.0
+            for indicator, bonus_value in specific_indicators:
+                if indicator in content_lower:
+                    specificity_bonus += bonus_value
+            
+            specificity_bonus = min(specificity_bonus, 0.8)  # เพิ่ม cap จาก 0.6 เป็น 0.8
+            
+            # Query word matching bonus (ลดโบนัสลงเล็กน้อย)
             query_words = [word for word in query_lower.split() if len(word) >= 2]
             for word in query_words:
                 if word in content_lower:
                     if any(indicator in content_lower for indicator in ["หลักสูตร", "program", "บัณฑิต"]):
-                        bonus_score += 0.5
+                        bonus_score += 0.3  # ลดจาก 0.5
                     elif any(indicator in content_lower for indicator in ["โท", "เอก", "master", "phd"]):
-                        bonus_score += 0.3
+                        bonus_score += 0.2  # ลดจาก 0.3
                     else:
-                        bonus_score += 0.2
+                        bonus_score += 0.1  # ลดจาก 0.2
             
+            # Program-specific bonuses
             program_bonuses = {
-                "หลักสูตร": 0.3 if "หลักสูตร" in content_lower else 0,
-                "บัณฑิต": 0.2 if "บัณฑิต" in content_lower else 0,
-                "โท": 0.2 if "โท" in content_lower else 0,
-                "เอก": 0.2 if "เอก" in content_lower else 0,
-                "master": 0.2 if "master" in content_lower else 0,
-                "phd": 0.2 if "phd" in content_lower else 0,
+                "หลักสูตร": 0.2 if "หลักสูตร" in content_lower else 0,  # ลดจาก 0.3
+                "บัณฑิต": 0.15 if "บัณฑิต" in content_lower else 0,     # ลดจาก 0.2
+                "โท": 0.15 if "โท" in content_lower else 0,
+                "เอก": 0.15 if "เอก" in content_lower else 0,
+                "master": 0.15 if "master" in content_lower else 0,
+                "phd": 0.15 if "phd" in content_lower else 0,
             }
             
             for term, bonus in program_bonuses.items():
                 if term in query_lower:
                     bonus_score += bonus
             
+            # Add specificity bonus (ส่วนสำคัญที่สุด!)
+            bonus_score += specificity_bonus
+            
+            # ✅ เพิ่ม Debug logging เพื่อดูว่า penalty/bonus ทำงานถูกต้องหรือไม่
+            # if penalty > 0 or specificity_bonus > 0:
+            #     program_name = doc.metadata.get('program_name', 'Unknown')[:30]
+            #     print(f"   📊 {program_name}... | Penalty: -{penalty:.2f} | Bonus: +{specificity_bonus:.2f}")
+            
             normalized_bonus = min(bonus_score, 1.0)
             
+            # Calculate combined score
             combined_score = (
                 bm25_weight * normalized_bm25 +
                 vector_weight * normalized_vector +
                 bonus_weight * normalized_bonus
             )
+            
+            # ✅ Apply penalty AGGRESSIVELY (คูณด้วย 1.5 เพื่อให้มีผลมากขึ้น!)
+            combined_score = max(0.0, combined_score - (penalty * 1.5))
             
             return combined_score
             
@@ -868,7 +927,7 @@ if not openrouter_api_key:
 else:
     try:
         llm = ChatOpenAI(
-            model="openai/gpt-4o-2024-11-20",
+            model="openai/gpt-4o-mini",
             temperature=0,
             openai_api_key=openrouter_api_key,
             openai_api_base="https://openrouter.ai/api/v1",
