@@ -9,6 +9,7 @@ from astrapy import DataAPIClient
 import uuid
 import time
 from datetime import datetime
+from incremental_utils import enable_incremental_mode
 
 load_dotenv()
 
@@ -288,41 +289,28 @@ def main():
 
     print(f"📝 Processed {len(docs)} news articles")
 
-    # Split documents - ใช้ขนาดเล็กลงเพื่อไม่เกิน AstraDB limit
-    splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-    chunks = splitter.split_documents(docs)
-    print(f"📄 Created {len(chunks)} chunks")
-
     # Initialize embeddings
     print("🧠 Initializing embeddings model...")
     embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
-    # Generate embeddings and insert to AstraDB
-    print("💾 Inserting news data into AstraDB...")
-    
-    documents_to_insert = []
-    for i, chunk in enumerate(chunks):
-        # Generate embedding
-        vector = embedding.embed_query(chunk.page_content)
-        
-        # Prepare document for insertion
-        doc = {
-            "_id": str(uuid.uuid4()),
-            "content": chunk.page_content,
-            "$vector": vector,
-            "metadata": chunk.metadata
-        }
-        documents_to_insert.append(doc)
-        
-        if i % 5 == 0:
-            print(f"📊 Processed {i+1}/{len(chunks)} chunks...")
-    
-    # Insert all documents
+    # Use incremental indexing
+    print("\n🚀 Starting incremental indexing...")
     try:
-        result = collection.insert_many(documents_to_insert)
-        print(f"✅ Successfully inserted {len(result.inserted_ids)} news documents into AstraDB!")
+        stats = enable_incremental_mode(
+            collection=collection,
+            embedding_model=embedding,
+            new_documents=docs,
+            metadata_filter={"type": "news"},  # Filter สำหรับดึงเอกสารข่าว
+            hash_keys=["article_id", "slug", "published_at"],  # Keys สำหรับสร้าง unique hash
+            delete_missing=False  # ไม่ลบเอกสารเก่า
+        )
+        
+        print(f"\n✅ Incremental indexing completed!")
+        print(f"   - New documents inserted: {stats['inserted']}")
+        print(f"   - Existing documents skipped: {stats['skipped']}")
+        
     except Exception as e:
-        print(f"❌ Failed to insert documents: {e}")
+        print(f"❌ Failed to process incremental indexing: {e}")
         return False
     
     # Verify insertion

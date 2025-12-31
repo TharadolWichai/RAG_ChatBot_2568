@@ -6,7 +6,8 @@
         "expected_intent": "allpeople",
         "ground_truth": "ควรตอบข้อมูลของอาจารย์พุธษดีทั้งหมด เช่น ชื่อ ตำแหน่ง ภาควิชา อีเมล และเบอร์โทรศัพท์ ความเชี่ยวชาญ หรือผลงานวิจัย ",
         "category": "general",
-        "difficulty": "hard"
+        "difficulty": "hard",
+        "modified": false
       },
       {
         "id": 2,
@@ -14,7 +15,8 @@
         "expected_intent": "allpeople",
         "ground_truth": "ควรตอบข้อมูลผลงานทางวิชาการของอาจารย์พุธษดี เช่น ตำรา หนังสือ งานวิจัย หรือบทความทางวิชาการ",
         "category": "specific",
-        "difficulty": "medium"
+        "difficulty": "medium",
+        "modified": false
       },
       {
         "id": 3,
@@ -22,15 +24,20 @@
         "expected_intent": "allpeople",
         "ground_truth": "ควรตอบข้อมูลความเชี่ยวชาญของอาจารย์พุธษดี เช่น Natural Language and Speech Processing, Machine Learning and intelligence System",
         "category": "specific",
-        "difficulty": "easy"
+        "difficulty": "easy",
+        "modified": false
       },
       {
         "id": 4,
-        "question": "อีเมลของอาจารย์ธนพล",
+        "question": "ช่องทางอิเล็กทรอนิกส์ติดต่อคุณธนพล",
+        "original_question": "อีเมลของอาจารย์ธนพล",
         "expected_intent": "allpeople",
         "ground_truth": "ควรตอบข้อมูลอีเมลของอาจารย์ธนพล เช่น thanapol.kku.ac.th",
         "category": "simple",
-        "difficulty": "easy"
+        "difficulty": "easy",
+        "modified": true,
+        "removed_keywords": ["อีเมล", "อาจารย์"],
+        "notes": "ลบคีย์เวิร์ด 'อีเมล' และ 'อาจารย์' เพื่อทดสอบ Rule-Based"
       },
       {
         "id": 5,
@@ -38,15 +45,20 @@
         "expected_intent": "allpeople",
         "ground_truth": "ควรตอบข้อมูลหลักสูตรที่อาจารย์พงษ์ศธรสอน เช่น ความมั่นคงปลอดภัยไซเบอร์",
         "category": "specific",
-        "difficulty": "medium"
+        "difficulty": "medium",
+        "modified": false
       },
       {
         "id": 6,
-        "question": "ช่องทางติดต่อมหาวิทยาลัย",
+        "question": "วิธีการเข้าถึงหน่วยงานมหาวิทยาลัย",
+        "original_question": "ช่องทางติดต่อมหาวิทยาลัย",
         "expected_intent": "contact",
         "ground_truth": "ควรตอบช่องทางติดต่อมหาวิทยาลัยทั้งหมด เช่น เบอร์โทรศัพท์ อีเมล หรือที่อยู่",
         "category": "general",
-        "difficulty": "easy"
+        "difficulty": "easy",
+        "modified": true,
+        "removed_keywords": ["ติดต่อ", "ช่องทาง"],
+        "notes": "ลบคีย์เวิร์ด 'ติดต่อ' และ 'ช่องทาง' เพื่อทดสอบ Rule-Based"
       },
       {
         "id": 7,
@@ -54,7 +66,8 @@
         "expected_intent": "contact",
         "ground_truth": "ควรตอบข้อมูลเจ้าหน้าที่ด้านบริหารธุรการ เช่น ชื่อ ตำแหน่ง อีเมล หรือเบอร์โทรศัพท์",
         "category": "specific",
-        "difficulty": "medium"
+        "difficulty": "medium",
+        "modified": false
       },
       {
         "id": 8,
@@ -62,15 +75,20 @@
         "expected_intent": "contact",
         "ground_truth": "ควรตอบข้อมูลที่อยู่ของมหาวิทยาลัย เช่น ชื่อหน่วยงาน หรือที่อยู่ครบถ้วน",
         "category": "simple",
-        "difficulty": "easy"
+        "difficulty": "easy",
+        "modified": false
       },
       {
         "id": 9,
-        "question": "จองห้องประชุม",
+        "question": "ขอใช้ห้องประชุม",
+        "original_question": "จองห้องประชุม",
         "expected_intent": "links",
         "ground_truth": "ควรตอบเป็นลิงก์ของระบบจองห้องประชุม",
         "category": "simple",
-        "difficulty": "easy"
+        "difficulty": "easy",
+        "modified": true,
+        "removed_keywords": ["จอง"],
+        "notes": "ลบคีย์เวิร์ด 'จอง' เพื่อทดสอบ Rule-Based"
       },
       {
         "id": 10,
@@ -78,7 +96,8 @@
         "expected_intent": "links",
         "ground_truth": "ควรตอบเป็นลิงก์ของระบบจองห้องปฏิบัติการทางคอมพิวเตอร์",
         "category": "simple",
-        "difficulty": "easy"
+        "difficulty": "easy",
+        "modified": false
       },
       {
         "id": 11,
@@ -86,15 +105,20 @@
         "expected_intent": "links",
         "ground_truth": "ควรตอบเป็นลิงก์ของระบบห้องสมุด",
         "category": "simple",
-        "difficulty": "easy"
+        "difficulty": "easy",
+        "modified": false
       },
       {
         "id": 12,
-        "question": "แบบฟอร์มขอเปลี่ยนแปลงเกรด",
+        "question": "เอกสารร้องขอแก้ไขคะแนน",
+        "original_question": "แบบฟอร์มขอเปลี่ยนแปลงเกรด",
         "expected_intent": "links",
         "ground_truth": "ควรตอบเป็นลิงก์ของแบบฟอร์มขอเปลี่ยนแปลงเกรด",
         "category": "simple",
-        "difficulty": "easy"
+        "difficulty": "easy",
+        "modified": true,
+        "removed_keywords": ["แบบฟอร์ม", "ฟอร์ม"],
+        "notes": "ลบคีย์เวิร์ด 'แบบฟอร์ม' เพื่อทดสอบ Rule-Based"
       },
       {
         "id": 13,
@@ -102,15 +126,20 @@
         "expected_intent": "links",
         "ground_truth": "ควรตอบเป็นลิงก์ของระบบวิทยานิพนธ์",
         "category": "simple",
-        "difficulty": "easy"
+        "difficulty": "easy",
+        "modified": false
       },
       {
         "id": 14,
-        "question": "รายละเอียดของทุนการศึกษาทั้งหมด",
+        "question": "ข้อมูลการสนับสนุนทางการเงินทั้งหมด",
+        "original_question": "รายละเอียดของทุนการศึกษาทั้งหมด",
         "expected_intent": "scholarship",
         "ground_truth": "ควรตอบรายละเอียดของทุนการศึกษาทั้งหมด เช่น ชื่อของทุน รายละเอียดของทุน เงื่อนไขการรับทุน หรือคุณสมบัติผู้สมัคร",
         "category": "general",
-        "difficulty": "hard"
+        "difficulty": "hard",
+        "modified": true,
+        "removed_keywords": ["ทุน", "ทุนการศึกษา"],
+        "notes": "ลบคีย์เวิร์ด 'ทุน' และ 'ทุนการศึกษา' เพื่อทดสอบ Rule-Based"
       },
       {
         "id": 15,
@@ -118,7 +147,8 @@
         "expected_intent": "scholarship",
         "ground_truth": "ควรตอบประเภทของทุนทั้งหมด เช่น ทุนแบบเต็มจำนวน หรือทุนแบบบางส่วน",
         "category": "general",
-        "difficulty": "medium"
+        "difficulty": "medium",
+        "modified": false
       },
       {
         "id": 16,
@@ -126,7 +156,8 @@
         "expected_intent": "scholarship",
         "ground_truth": "ควรตอบรายละเอียดของทุนแต่ละประเภท เช่น ชื่อของทุน สำหรับระดับปริญญาโท หรือสำหรับระดับปริญญาเอก",
         "category": "general",
-        "difficulty": "hard"
+        "difficulty": "hard",
+        "modified": false
       },
       {
         "id": 17,
@@ -134,7 +165,8 @@
         "expected_intent": "scholarship",
         "ground_truth": "ควรตอบรายละเอียดของทุน ASEAN & GMS เช่น ชื่อของทุน รายละเอียดของทุน เงื่อนไขการรับทุน หรือคุณสมบัติผู้สมัคร",
         "category": "specific",
-        "difficulty": "medium"
+        "difficulty": "medium",
+        "modified": false
       },
       {
         "id": 18,
@@ -142,7 +174,8 @@
         "expected_intent": "scholarship",
         "ground_truth": "ควรตอบเงื่อนไขการรับทุน ASEAN & GMS เช่น ผู้สมัครต้องเป็นสัญชาติของประเทศใน ASEAN และ GMS ต้องมีอายุไม่เกิน 40 ปี หรือต้องมีความสามารถในการใช้ภาษาอังกฤษ",
         "category": "specific",
-        "difficulty": "medium"
+        "difficulty": "medium",
+        "modified": false
       },
       {
         "id": 19,
@@ -150,7 +183,8 @@
         "expected_intent": "student_club",
         "ground_truth": "ควรตอบสมาชิกทั้งหมดของสโมสรนักศึกษา เช่น ชื่อ ตำแหน่ง หรือหน้าที่",
         "category": "general",
-        "difficulty": "medium"
+        "difficulty": "medium",
+        "modified": false
       },
       {
         "id": 20,
@@ -158,23 +192,32 @@
         "expected_intent": "student_club",
         "ground_truth": "ควรตอบรายละเอียดของสโมสรนักศึกษา เช่น ชื่อสโมสร วัตถุประสงค์ โครงสร้างองค์กร ช่องทางติดต่อ หรือความเป็นมาของสโมสร",
         "category": "general",
-        "difficulty": "hard"
+        "difficulty": "hard",
+        "modified": false
       },
       {
         "id": 21,
-        "question": "ใครเป็นประธานของสโมสรนักศึกษา",
+        "question": "หัวหน้าองค์กรนิสิตคือใคร",
+        "original_question": "ใครเป็นประธานของสโมสรนักศึกษา",
         "expected_intent": "student_club",
         "ground_truth": "ควรตอบรายละเอียดของประธานของสโมสรนักศึกษา เช่น ชื่อ ตำแหน่ง หรือหน้าที่",
         "category": "specific",
-        "difficulty": "easy"
+        "difficulty": "easy",
+        "modified": true,
+        "removed_keywords": ["ประธาน", "สโมสร"],
+        "notes": "ลบคีย์เวิร์ด 'ประธาน' และ 'สโมสร' เพื่อทดสอบ Rule-Based"
       },
       {
         "id": 22,
-        "question": "คู่มือสหกิจศึกษา",
+        "question": "หนังสือแนะนำการทำงานร่วมกับบริษัท",
+        "original_question": "คู่มือสหกิจศึกษา",
         "expected_intent": "students",
         "ground_truth": "ควรตอบเป็นชื่อบริการ ลิงก์ของคู่มือสหกิจศึกษา หรือคำอธิบายของบริการ",
         "category": "simple",
-        "difficulty": "easy"
+        "difficulty": "easy",
+        "modified": true,
+        "removed_keywords": ["สหกิจ", "คู่มือ"],
+        "notes": "ลบคีย์เวิร์ด 'สหกิจ' และ 'คู่มือ' เพื่อทดสอบ Rule-Based"
       },
       {
         "id": 23,
@@ -182,7 +225,8 @@
         "expected_intent": "students",
         "ground_truth": "ควรตอบเป็นลิงค์ของปฏิทินสหกิจศึกษา เช่น ชื่อบริการ หรือลิงค์",
         "category": "simple",
-        "difficulty": "easy"
+        "difficulty": "easy",
+        "modified": false
       },
       {
         "id": 24,
@@ -190,7 +234,8 @@
         "expected_intent": "students",
         "ground_truth": "ควรตอบเป็นลิงค์ของหนังสือยินยอมผู้ปกครอง เช่น ชื่อบริการ หรือลิงค์",
         "category": "simple",
-        "difficulty": "easy"
+        "difficulty": "easy",
+        "modified": false
       },
       {
         "id": 25,
@@ -198,7 +243,8 @@
         "expected_intent": "researchgroup",
         "ground_truth": "ควรตอบรายชื่อของกลุ่มวิจัยทั้งหมด เช่น ชื่อกลุ่ม หรือลิงก์ของกลุ่มวิจัย",
         "category": "general",
-        "difficulty": "medium"
+        "difficulty": "medium",
+        "modified": false
       },
       {
         "id": 26,
@@ -206,7 +252,8 @@
         "expected_intent": "researchgroup",
         "ground_truth": "ควรตอบรายละเอียดของกลุ่มวิจัย AIDA เช่น ชื่อกลุ่ม หัวข้อการวิจัยหลัก หัวหน้ากลุ่ม สมาชิกกลุ่ม หรือรายละเอียด",
         "category": "specific",
-        "difficulty": "medium"
+        "difficulty": "medium",
+        "modified": false
       },
       {
         "id": 27,
@@ -214,7 +261,8 @@
         "expected_intent": "researchgroup",
         "ground_truth": "ควรตอบรายละเอียดของกลุ่มวิจัย Advanced GIS Technology เช่น ชื่อกลุ่ม หัวข้อการวิจัยหลัก หัวหน้ากลุ่ม สมาชิกกลุ่ม หรือรายละเอียด",
         "category": "specific",
-        "difficulty": "medium"
+        "difficulty": "medium",
+        "modified": false
       },
       {
         "id": 28,
@@ -222,15 +270,20 @@
         "expected_intent": "researchgroup",
         "ground_truth": "ควรตอบสมาชิกทั้งหมดของกลุ่มวิจัย Advanced GIS Technology เช่น ชื่อ",
         "category": "specific",
-        "difficulty": "easy"
+        "difficulty": "easy",
+        "modified": false
       },
       {
         "id": 29,
-        "question": "การรับเข้าปริญญาตรี",
+        "question": "เข้าศึกษาต่อระดับปริญญาตรีได้อย่างไร",
+        "original_question": "การรับเข้าปริญญาตรี",
         "expected_intent": "bsc_entrance",
         "ground_truth": "ควรตอบการรับเข้าปริญญาตรีทั้งหมด เช่น รอบPortfolio รอบโควตาภาคตะวันออกเฉียงเหนือ รอบAdmission หรือค่าธรรมเนียมการศึกษา",
         "category": "general",
-        "difficulty": "hard"
+        "difficulty": "hard",
+        "modified": true,
+        "removed_keywords": ["รับเข้า", "การรับเข้า"],
+        "notes": "ลบคีย์เวิร์ด 'รับเข้า' เพื่อทดสอบ Rule-Based"
       },
       {
         "id": 30,
@@ -238,7 +291,8 @@
         "expected_intent": "bsc_entrance",
         "ground_truth": "ควรตอบคะแนนที่ใช้สำหรับรอบที่ 2 ของความมั่นคงปลอดภัยไซเบอร์ เช่น เกณฑ์การคัดเลือก คะแนนที่ใช้สอบ หรือน้ำหนักคะแนนแต่ละวิชา",
         "category": "specific",
-        "difficulty": "hard"
+        "difficulty": "hard",
+        "modified": false
       },
       {
         "id": 31,
@@ -246,7 +300,8 @@
         "expected_intent": "bsc_entrance",
         "ground_truth": "ควรตอบโครงการที่เปิดรับในรอบ Portfolio เช่น โครงการทุนช้างเผือก หรือลิงค์ของโครงการ",
         "category": "general",
-        "difficulty": "medium"
+        "difficulty": "medium",
+        "modified": false
       },
       {
         "id": 32,
@@ -254,7 +309,8 @@
         "expected_intent": "bsc_entrance",
         "ground_truth": "ควรตอบรอบการรับเข้าศึกษาระดับปริญญาตรีทั้งหมด เช่น รอบPortfolio รอบโควตาภาคตะวันออกเฉียงเหนือ หรือรอบAdmission",
         "category": "general",
-        "difficulty": "medium"
+        "difficulty": "medium",
+        "modified": false
       },
       {
         "id": 33,
@@ -262,7 +318,8 @@
         "expected_intent": "digital_services",
         "ground_truth": "ควรตอบบริการดิจิทัลทั้งหมด เช่น ชื่อบริการ ลิงก์ของบริการ หรือรายละเอียดของบริการ",
         "category": "general",
-        "difficulty": "hard"
+        "difficulty": "hard",
+        "modified": false
       },
       {
         "id": 34,
@@ -270,7 +327,8 @@
         "expected_intent": "digital_services",
         "ground_truth": "ควรตอบบริการดิจิทัลสำหรับนักศึกษาทั้งหมด เช่น ชื่อบริการ หรือรายละเอียดของบริการ",
         "category": "general",
-        "difficulty": "medium"
+        "difficulty": "medium",
+        "modified": false
       },
       {
         "id": 35,
@@ -278,15 +336,20 @@
         "expected_intent": "digital_services",
         "ground_truth": "ควรตอบรายละเอียดของ Web Hosting เช่น ชื่อบริการ ลิงค์ของบริการ หรือรายละเอียดของบริการ",
         "category": "specific",
-        "difficulty": "medium"
+        "difficulty": "medium",
+        "modified": false
       },
       {
         "id": 36,
-        "question": "สาขาวิชาของปริญญาเอก",
+        "question": "สาขาที่เปิดสอนระดับดุษฎีบัณฑิต",
+        "original_question": "สาขาวิชาของปริญญาเอก",
         "expected_intent": "graduate",
         "ground_truth": "ควรตอบสาขาวิชา จำนวนที่รับ หรือระบบการศึกษา",
         "category": "general",
-        "difficulty": "medium"
+        "difficulty": "medium",
+        "modified": true,
+        "removed_keywords": ["ปริญญาเอก", "ป.เอก"],
+        "notes": "ลบคีย์เวิร์ด 'ปริญญาเอก' เพื่อทดสอบ Rule-Based"
       },
       {
         "id": 37,
@@ -294,7 +357,8 @@
         "expected_intent": "graduate",
         "ground_truth": "ควรตอบหลักสูตรปริญญาเอกทั้งหมด เช่น ชื่อหลักสูตร",
         "category": "general",
-        "difficulty": "medium"
+        "difficulty": "medium",
+        "modified": false
       },
       {
         "id": 38,
@@ -302,11 +366,14 @@
         "expected_intent": "graduate",
         "ground_truth": "ควรตอบสาขาวิชา จำนวนที่รับ หรือระบบการศึกษา",
         "category": "general",
-        "difficulty": "medium"
+        "difficulty": "medium",
+        "modified": false
       }
     ],
     "metadata": {
       "total_questions": 38,
+      "modified_questions": 8,
+      "modification_percentage": 21.05,
       "categories": {
         "simple": 10,
         "general": 16,
@@ -329,16 +396,25 @@
         "digital_services": 3,
         "graduate": 3
       },
-      "source": "eva 50 excel.xlsx",
-      "converted_from": "Excel",
-      "optimized_for": "Comprehensive_retriever_testing",
-      "purpose": "Testing retriever performance with multiple questions per intent (38 questions total, 10 intents)",
+      "modified_intents": {
+        "allpeople": 1,
+        "contact": 1,
+        "links": 2,
+        "scholarship": 1,
+        "student_club": 1,
+        "students": 1,
+        "bsc_entrance": 1,
+        "graduate": 1
+      },
+      "source": "test_forRetriver.json",
+      "optimized_for": "Rule-Based_Strict_Mode_Testing",
+      "purpose": "Testing Rule-Based chatbot with NO keyword matching (Strict Mode) - 8 questions (21%) modified to remove keywords from main_unified_chatbot.py",
       "ground_truth_format": "descriptive (ควรตอบ...) format for clear expectations",
       "contexts_limit": "unlimited (sending all retrieved contexts)",
       "llm_model": "openai/gpt-4o-mini",
       "disabled_metrics": ["answer_relevancy"],
       "last_updated": "2025-01-20",
-      "notes": "Expanded from 10 to 38 questions | Adjusted id (1-38), category (simple/general/specific), and difficulty (easy/medium/hard) | Each intent has 3-5 questions | Category: simple (10), general (16), specific (12) | Difficulty: easy (14), medium (17), hard (7)"
+      "notes": "Modified 8 questions (21%) by removing keywords from Rule-Based classifier | Kept same intent/ground_truth for comparison | Added 'modified' flag, 'original_question', 'removed_keywords', and 'notes' fields | Purpose: Test Rule-Based Strict Mode vs LLM/Hybrid performance when keywords are absent"
     }
   }
   

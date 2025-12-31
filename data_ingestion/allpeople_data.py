@@ -20,7 +20,7 @@ def main():
     # Check environment variables
     token = os.getenv("ASTRA_DB_APPLICATION_TOKEN")
     api_endpoint = os.getenv("ASTRA_DB_API_ENDPOINT")
-    keyspace = os.getenv("ASTRA_DB_KEYSPACE", "default_keyspace")
+    keyspace = os.getenv("ASTRA_DB_KEYSPACE")  # ให้เป็น None ถ้าไม่ระบุ
     
     if not token or not api_endpoint:
         print("❌ Error: Missing AstraDB credentials in .env file")
@@ -30,7 +30,10 @@ def main():
         return False
     
     print(f"🔑 Using endpoint: {api_endpoint}")
-    print(f"🏠 Using keyspace: {keyspace}")
+    if keyspace:
+        print(f"🏠 Using keyspace: {keyspace}")
+    else:
+        print(f"🏠 Using default keyspace")
     
     # Initialize AstraDB client
     try:
@@ -44,8 +47,28 @@ def main():
     # Get existing collection (should be created via AstraDB UI with vector support)
     collection_name = "allpeople_embedding"
     try:
-        # List existing collections first
-        existing_collections = list(database.list_collection_names())
+        # Try to connect with keyspace first, if fails try without
+        try:
+            if keyspace:
+                database = database.with_options(keyspace=keyspace)
+                print(f"🔄 Trying with keyspace: {keyspace}")
+                existing_collections = list(database.list_collection_names())
+                print(f"✅ Successfully connected with keyspace: {keyspace}")
+            else:
+                print(f"🔄 Connecting without keyspace...")
+                existing_collections = list(database.list_collection_names())
+        except Exception as e:
+            if "does not exist" in str(e).lower() and keyspace:
+                print(f"⚠️  Keyspace '{keyspace}' not found, trying without keyspace...")
+                # Reset database to original (without keyspace)
+                client = DataAPIClient(token=token)
+                database = client.get_database_by_api_endpoint(api_endpoint)
+                existing_collections = list(database.list_collection_names())
+                print(f"✅ Successfully connected without keyspace")
+            else:
+                raise
+        
+        # List existing collections
         print(f"📂 Existing collections: {existing_collections}")
         
         if collection_name in existing_collections:
@@ -150,8 +173,10 @@ def main():
                 "lastname_th": lastname_th,
                 "firstname_en": firstname_en,
                 "lastname_en": lastname_en,
+                "name": f"{firstname_th} {lastname_th}",  # เพิ่ม name field
+                "position": position,  # เพิ่ม position field
                 "email": email,
-                "type": "basic_faculty"
+                "type": "allpeople"  # เปลี่ยนจาก basic_faculty เป็น allpeople
             }
             
             docs.append(Document(page_content=content, metadata=metadata))
@@ -166,41 +191,30 @@ def main():
 
     print(f"📝 Processed {len(docs)} documents")
 
-    # Split documents
-    splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-    chunks = splitter.split_documents(docs)
-    print(f"📄 Created {len(chunks)} chunks")
-
     # Initialize embeddings
     print("🧠 Initializing embeddings model...")
     embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
-    # Generate embeddings and insert to AstraDB
-    print("💾 Inserting data into AstraDB...")
-    
-    documents_to_insert = []
-    for i, chunk in enumerate(chunks):
-        # Generate embedding
-        vector = embedding.embed_query(chunk.page_content)
-        
-        # Prepare document for insertion
-        doc = {
-            "_id": str(uuid.uuid4()),
-            "content": chunk.page_content,
-            "$vector": vector,
-            "metadata": chunk.metadata
-        }
-        documents_to_insert.append(doc)
-        
-        if i % 10 == 0:
-            print(f"📊 Processed {i+1}/{len(chunks)} chunks...")
-    
-    # Insert all documents
+    # Use incremental indexing
+    print("\n🚀 Starting incremental indexing...")
     try:
-        result = collection.insert_many(documents_to_insert)
-        print(f"✅ Successfully inserted {len(result.inserted_ids)} documents into AstraDB!")
+        from incremental_utils import enable_incremental_mode
+        
+        stats = enable_incremental_mode(
+            collection=collection,
+            embedding_model=embedding,
+            new_documents=docs,
+            metadata_filter={"type": "allpeople"},  # Filter สำหรับดึงเอกสารบุคลากร
+            hash_keys=["name", "position"],  # Keys สำหรับสร้าง unique hash
+            delete_missing=False  # ไม่ลบเอกสารเก่า
+        )
+        
+        print(f"\n✅ Incremental indexing completed!")
+        print(f"   - New documents inserted: {stats['inserted']}")
+        print(f"   - Existing documents skipped: {stats['skipped']}")
+        
     except Exception as e:
-        print(f"❌ Failed to insert documents: {e}")
+        print(f"❌ Failed to process incremental indexing: {e}")
         return False
     
     # Verify insertion

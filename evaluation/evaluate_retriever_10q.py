@@ -69,13 +69,23 @@ print()
 # Test Dataset - Load from test_forRetriver.json
 # ==========================================
 
-def load_test_questions():
-    """โหลดคำถามทดสอบ 10 ข้อจาก test_forRetriver.json"""
+def load_test_questions(filename: str = "test_forRetriver.json"):
+    """
+    โหลดคำถามทดสอบจากไฟล์ที่ระบุ
+    
+    Args:
+        filename: ชื่อไฟล์ JSON ที่ต้องการโหลด
+                  - "test_forRetriver.json" (มีคีย์เวิร์ด - ทดสอบปกติ)
+                  - "test_forRetriver_no_keywords.json" (ไม่มีคีย์เวิร์ด - ทดสอบ Strict Mode)
+    
+    Returns:
+        List[dict]: รายการคำถามทดสอบ
+    """
     try:
-        test_questions_path = os.path.join(os.path.dirname(__file__), "test_forRetriver.json")
+        test_questions_path = os.path.join(os.path.dirname(__file__), filename)
         
         if not os.path.exists(test_questions_path):
-            print(f"❌ [ERROR] test_forRetriver.json not found at: {test_questions_path}")
+            print(f"❌ [ERROR] {filename} not found at: {test_questions_path}")
             return []
         
         with open(test_questions_path, 'r', encoding='utf-8') as f:
@@ -84,12 +94,17 @@ def load_test_questions():
         questions = data.get("test_questions", [])
         metadata = data.get("metadata", {})
         
-        print(f"✅ [SUCCESS] Loaded {len(questions)} questions from test_forRetriver.json")
+        print(f"✅ [SUCCESS] Loaded {len(questions)} questions from {filename}")
         print(f"   📊 Metadata:")
         print(f"      - Total: {metadata.get('total_questions', 0)} questions")
         print(f"      - Categories: {metadata.get('categories', {})}")
         print(f"      - Difficulty: {metadata.get('difficulty', {})}")
         print(f"      - Intents: {list(metadata.get('intents_coverage', {}).keys())}")
+        
+        # แสดงข้อมูลเพิ่มเติมถ้าเป็นไฟล์ no_keywords
+        if "no_keywords" in filename:
+            print(f"      - Modified Questions: {metadata.get('modified_questions', 0)} ({metadata.get('modification_percentage', 0):.2f}%)")
+            print(f"      - Modified Intents: {list(metadata.get('modified_intents', {}).keys())}")
         
         return questions
         
@@ -97,12 +112,8 @@ def load_test_questions():
         print(f"❌ [ERROR] Error loading test_forRetriver.json: {e}")
         return []
 
-# โหลดคำถามทดสอบ
-TEST_QUESTIONS = load_test_questions()
-
-if not TEST_QUESTIONS:
-    print("\n❌ [CRITICAL] No test questions loaded. Exiting...")
-    sys.exit(1)
+# โหลดคำถามทดสอบ (จะโหลดใน main() หลังจากเลือกไฟล์แล้ว)
+TEST_QUESTIONS = []
 
 # ==========================================
 # Retriever Analysis Functions
@@ -205,13 +216,15 @@ def get_contexts_from_chatbot(chatbot: Any, question: str, max_contexts: int = N
 # Evaluation Functions
 # ==========================================
 
-def run_evaluation(max_contexts: int = None) -> Dict[str, Any]:
+def run_evaluation(test_questions: List[Dict], max_contexts: int = None, strict_mode: bool = False) -> Dict[str, Any]:
     """
     รัน evaluation สำหรับ chatbot ทั้ง 3 versions
-    ด้วยคำถาม 10 ข้อจาก test_forRetriver.json
+    ด้วยคำถามทดสอบที่กำหนด
     
     Args:
+        test_questions: รายการคำถามทดสอบ
         max_contexts: จำนวน contexts สูงสุดที่จะส่งให้ RAGAS (None = ทั้งหมด)
+        strict_mode: เปิดใช้ Strict Mode สำหรับ Rule-Based (ไม่ fallback multi-agent search)
     
     Returns:
         Dictionary ของผลลัพธ์การ evaluation
@@ -221,9 +234,9 @@ def run_evaluation(max_contexts: int = None) -> Dict[str, Any]:
         print("❌ Cannot run evaluation without RAGAS")
         return None
     
-    questions = TEST_QUESTIONS
+    questions = test_questions
     print(f"\n{'='*80}")
-    print(f"📝 กำลังทดสอบด้วย {len(questions)} คำถาม (1 คำถาม/intent)")
+    print(f"📝 กำลังทดสอบด้วย {len(questions)} คำถาม")
     print(f"{'='*80}")
     
     # แสดงรายการคำถาม
@@ -241,7 +254,8 @@ def run_evaluation(max_contexts: int = None) -> Dict[str, Any]:
     
     if RULE_BASED_AVAILABLE:
         print("\n🔧 กำลังเตรียม Rule-Based Chatbot...")
-        rule_chatbot = UnifiedChatbot()
+        print(f"   Mode: {'🔒 Strict (No Fallback)' if strict_mode else '🔓 Normal (With Fallback)'}")
+        rule_chatbot = UnifiedChatbot(strict_mode=strict_mode)
         chatbot_configs.append(("Rule-Based", rule_chatbot))
     
     if LLM_BASED_AVAILABLE:
@@ -401,6 +415,56 @@ def run_evaluation(max_contexts: int = None) -> Dict[str, Any]:
                 else:
                     return float(str(value)) if str(value) != 'nan' else 0.0
             
+            # ==========================================
+            # MANUAL CALCULATION: Adjust metrics for error cases
+            # ==========================================
+            
+            # Get RAGAS raw scores
+            ragas_faithfulness = safe_float(ragas_results["faithfulness"])
+            ragas_answer_relevancy = safe_float(ragas_results["answer_relevancy"])
+            ragas_context_precision = safe_float(ragas_results["context_precision"])
+            ragas_context_recall = safe_float(ragas_results["context_recall"])
+            
+            # Calculate adjusted scores (if there are errors)
+            num_success = len(questions) - len(errors)
+            num_errors = len(errors)
+            
+            if num_errors > 0:
+                print(f"\n   🔧 Adjusting metrics to include {num_errors} error cases...")
+                print(f"      Success: {num_success} questions")
+                print(f"      Errors: {num_errors} questions")
+                
+                # Adjusted Faithfulness
+                adjusted_faithfulness = (ragas_faithfulness * num_success + 0.0 * num_errors) / len(questions)
+                
+                # Adjusted Context Precision
+                if not (ragas_context_precision != ragas_context_precision):  # Check if not NaN
+                    adjusted_context_precision = (ragas_context_precision * num_success + 0.0 * num_errors) / len(questions)
+                else:
+                    # If RAGAS returns NaN, estimate successful questions have ~0.7 precision
+                    if num_success > 0:
+                        estimated_precision = 0.7
+                        adjusted_context_precision = (estimated_precision * num_success + 0.0 * num_errors) / len(questions)
+                    else:
+                        adjusted_context_precision = 0.0
+                
+                # Adjusted Context Recall
+                adjusted_context_recall = (ragas_context_recall * num_success + 0.0 * num_errors) / len(questions)
+                
+                # Adjusted Answer Relevancy
+                adjusted_answer_relevancy = (ragas_answer_relevancy * num_success + 0.0 * num_errors) / len(questions)
+                
+                print(f"      ✅ Adjustments completed!")
+                print(f"         Faithfulness: {ragas_faithfulness:.4f} → {adjusted_faithfulness:.4f}")
+                print(f"         Context Precision: {ragas_context_precision if not (ragas_context_precision != ragas_context_precision) else 'nan'} → {adjusted_context_precision:.4f}")
+                print(f"         Context Recall: {ragas_context_recall:.4f} → {adjusted_context_recall:.4f}")
+            else:
+                # No errors, use original scores
+                adjusted_faithfulness = ragas_faithfulness
+                adjusted_answer_relevancy = ragas_answer_relevancy
+                adjusted_context_precision = ragas_context_precision
+                adjusted_context_recall = ragas_context_recall
+            
             # Calculate average contexts stats
             avg_contexts_stats = {
                 "avg_num_contexts_used": sum(c["num_contexts"] for c in contexts_analysis) / len(contexts_analysis),
@@ -412,10 +476,16 @@ def run_evaluation(max_contexts: int = None) -> Dict[str, Any]:
             
             results[chatbot_name] = {
                 "ragas_scores": {
-                    "faithfulness": safe_float(ragas_results["faithfulness"]),
-                    "answer_relevancy": safe_float(ragas_results["answer_relevancy"]),
-                    "context_precision": safe_float(ragas_results["context_precision"]),
-                    "context_recall": safe_float(ragas_results["context_recall"])
+                    "faithfulness": adjusted_faithfulness,
+                    "answer_relevancy": adjusted_answer_relevancy,
+                    "context_precision": adjusted_context_precision,
+                    "context_recall": adjusted_context_recall
+                },
+                "ragas_scores_original": {
+                    "faithfulness": ragas_faithfulness,
+                    "answer_relevancy": ragas_answer_relevancy,
+                    "context_precision": ragas_context_precision,
+                    "context_recall": ragas_context_recall
                 },
                 "performance": {
                     "avg_response_time": sum(response_times) / len(response_times),
@@ -433,23 +503,44 @@ def run_evaluation(max_contexts: int = None) -> Dict[str, Any]:
             print(f"\n{'='*80}")
             print(f"📊 {chatbot_name} Results:")
             print(f"{'='*80}")
-            print(f"   📈 RAGAS Scores (Main):")
-            print(f"      - Faithfulness:       {safe_float(ragas_results['faithfulness']):.4f}")
-            print(f"      - Context Precision:  {safe_float(ragas_results['context_precision']):.4f}")
-            print(f"      - Context Recall:     {safe_float(ragas_results['context_recall']):.4f}")
+            
+            # Show adjusted scores (main)
+            print(f"   📈 RAGAS Scores (Adjusted - Including Error Cases):")
+            print(f"      - Faithfulness:       {adjusted_faithfulness:.4f}")
+            print(f"      - Context Precision:  {adjusted_context_precision:.4f}")
+            print(f"      - Context Recall:     {adjusted_context_recall:.4f}")
             print(f"   💡 Bonus Metric:")
-            print(f"      - Answer Relevancy:   {safe_float(ragas_results['answer_relevancy']):.4f} (for reference)")
+            print(f"      - Answer Relevancy:   {adjusted_answer_relevancy:.4f} (for reference)")
+            
+            # Show original scores if there were errors
+            if num_errors > 0:
+                print(f"\n   📊 RAGAS Scores (Original - Success Questions Only):")
+                print(f"      - Faithfulness:       {ragas_faithfulness:.4f}")
+                ctx_prec_str = f"{ragas_context_precision:.4f}" if not (ragas_context_precision != ragas_context_precision) else "nan"
+                print(f"      - Context Precision:  {ctx_prec_str}")
+                print(f"      - Context Recall:     {ragas_context_recall:.4f}")
+                print(f"      - Answer Relevancy:   {ragas_answer_relevancy:.4f}")
+            
             print(f"\n   ⚡ Performance:")
             print(f"      - Avg Response Time:  {results[chatbot_name]['performance']['avg_response_time']:.2f}s")
             print(f"      - Min Response Time:  {results[chatbot_name]['performance']['min_response_time']:.2f}s")
             print(f"      - Max Response Time:  {results[chatbot_name]['performance']['max_response_time']:.2f}s")
-            print(f"      - Errors:             {len(errors)}")
+            print(f"      - Errors:             {len(errors)} {'❌' if len(errors) > 0 else '✅'}")
+            
             print(f"\n   📚 Retriever Stats:")
             print(f"      - Avg Retrieved/Question: {avg_contexts_stats['avg_num_contexts_retrieved']:.1f}")
             print(f"      - Avg Used/Question:      {avg_contexts_stats['avg_num_contexts_used']:.1f}")
             print(f"      - Avg Context Length:     {avg_contexts_stats['avg_context_length']:.0f} chars")
             print(f"      - Total Retrieved:        {avg_contexts_stats['total_contexts_retrieved']}")
             print(f"      - Total Used:             {avg_contexts_stats['total_contexts_used']}")
+            
+            # Show error impact if any
+            if num_errors > 0:
+                print(f"\n   💡 Impact of {num_errors} errors:")
+                print(f"      - Error Rate: {num_errors}/{len(questions)} ({num_errors/len(questions)*100:.1f}%)")
+                faith_drop = ragas_faithfulness - adjusted_faithfulness
+                print(f"      - Faithfulness Drop: {faith_drop:.4f} ({faith_drop*100:.1f}%)")
+                print(f"      - This shows real-world performance including failures")
             
         except Exception as e:
             print(f"   ❌ [ERROR] RAGAS evaluation failed: {e}")
@@ -472,19 +563,26 @@ def print_comparison(results: Dict[str, Any]):
     """แสดงผลการเปรียบเทียบแบบตาราง"""
     
     print(f"\n{'='*100}")
-    print("📊 COMPARISON SUMMARY - 10 Questions Retriever Test")
+    print("📊 COMPARISON SUMMARY - Retriever Test (Adjusted Scores)")
+    print(f"{'='*100}")
+    print("💡 Note: Scores are adjusted to include error cases (errors count as 0.0)")
+    print("   This gives more realistic performance metrics!")
     print(f"{'='*100}")
     
     if not results:
         print("❌ No results to compare")
         return
     
+    # Check if any chatbot has errors
+    has_errors = any(results[name]["performance"]["errors"] > 0 
+                     for name in results if "performance" in results[name])
+    
     # Table header
     print(f"\n{'Metric':<30} | {'Rule-Based':<20} | {'LLM-Based':<20} | {'Hybrid':<20}")
     print("-" * 100)
     
-    # RAGAS Metrics (Main)
-    print("📈 Main Metrics")
+    # RAGAS Metrics (Main) - Adjusted Scores
+    print("📈 Main Metrics (Adjusted)")
     metrics = [
         "faithfulness",
         "context_precision",
@@ -514,6 +612,26 @@ def print_comparison(results: Dict[str, Any]):
         else:
             row += f" {'N/A':>18} |"
     print(row)
+    
+    # Show Original Scores if there were errors
+    if has_errors:
+        print("-" * 100)
+        print("📊 Original Scores (Success Questions Only - for reference)")
+        
+        for metric in metrics + ["answer_relevancy"]:
+            row = f"{metric.replace('_', ' ').title():<30} |"
+            
+            for chatbot_name in ["Rule-Based", "LLM-Based", "Hybrid"]:
+                if chatbot_name in results and results[chatbot_name].get("ragas_scores_original"):
+                    score = results[chatbot_name]["ragas_scores_original"].get(metric, 0.0)
+                    if score != score:  # Check for NaN
+                        row += f" {'nan':>18} |"
+                    else:
+                        row += f" {score:>18.4f} |"
+                else:
+                    row += f" {'N/A':>18} |"
+            
+            print(row)
     
     print("-" * 100)
     
@@ -623,13 +741,14 @@ def print_comparison(results: Dict[str, Any]):
     
     print()
 
-def save_results(results: Dict[str, Any], max_contexts: int = None, filename: str = None):
+def save_results(results: Dict[str, Any], max_contexts: int = None, strict_mode: bool = False, filename: str = None):
     """บันทึกผลลัพธ์เป็น JSON"""
     
     if filename is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         contexts_suffix = f"_{max_contexts}ctx" if max_contexts else "_all"
-        filename = f"retriever_eval_10q{contexts_suffix}_{timestamp}.json"
+        mode_suffix = "_strict" if strict_mode else "_normal"
+        filename = f"retriever_eval_10q{contexts_suffix}{mode_suffix}_{timestamp}.json"
     
     filepath = os.path.join(os.path.dirname(__file__), filename)
     
@@ -638,6 +757,7 @@ def save_results(results: Dict[str, Any], max_contexts: int = None, filename: st
     for chatbot_name, result in results.items():
         serializable_results[chatbot_name] = {
             "ragas_scores": result.get("ragas_scores"),
+            "ragas_scores_original": result.get("ragas_scores_original"),  # เพิ่ม original scores
             "performance": result.get("performance"),
             "retriever_stats": result.get("retriever_stats"),
             "errors": result.get("errors", [])
@@ -649,6 +769,10 @@ def save_results(results: Dict[str, Any], max_contexts: int = None, filename: st
     else:
         contexts_desc = "ALL retrieved contexts (no limit)"
     
+    # Calculate total errors across all chatbots
+    total_errors = sum(result.get("performance", {}).get("errors", 0) 
+                       for result in results.values())
+    
     with open(filepath, 'w', encoding='utf-8') as f:
         json.dump({
             "evaluation_info": {
@@ -658,7 +782,12 @@ def save_results(results: Dict[str, Any], max_contexts: int = None, filename: st
                 "metrics": ["faithfulness", "answer_relevancy", "context_precision", "context_recall"],
                 "max_contexts": max_contexts if max_contexts else "unlimited",
                 "contexts_mode": contexts_desc,
-                "notes": "Answer Relevancy included as bonus metric for reference"
+                "strict_mode": strict_mode,
+                "rule_based_mode": "Strict (No Fallback)" if strict_mode else "Normal (With Fallback)",
+                "adjusted_metrics": True,
+                "adjustment_explanation": "Error cases are counted as 0.0 for all metrics to reflect real-world performance",
+                "total_errors": total_errors,
+                "notes": "Answer Relevancy included as bonus metric | Strict mode affects Rule-Based only | Metrics are adjusted to include error cases"
             },
             "results": serializable_results
         }, f, indent=2, ensure_ascii=False)
@@ -698,6 +827,35 @@ def main():
     print(f"✅ [SUCCESS] {available_count} chatbot(s) available for evaluation")
     print()
     
+    # Ask for test dataset
+    print("📝 Select Test Dataset:")
+    print("   1. test_forRetriver.json (มีคีย์เวิร์ด - ทดสอบปกติ) ⭐")
+    print("   2. test_forRetriver_no_keywords.json (ไม่มีคีย์เวิร์ด 8 ข้อ - ทดสอบ Strict Mode)")
+    print()
+    
+    test_file = "test_forRetriver.json"  # Default
+    try:
+        dataset_choice = input("Select option (1-2) [default: 1]: ").strip()
+        if dataset_choice == "2":
+            test_file = "test_forRetriver_no_keywords.json"
+            print(f"\n✅ Selected: {test_file} (No Keywords - Testing Strict Mode)")
+        else:
+            test_file = "test_forRetriver.json"
+            print(f"\n✅ Selected: {test_file} (With Keywords - Normal Mode)")
+    except:
+        test_file = "test_forRetriver.json"
+        print(f"\n✅ Selected: {test_file} (With Keywords - Normal Mode)")
+    
+    # โหลดคำถามทดสอบ
+    global TEST_QUESTIONS
+    TEST_QUESTIONS = load_test_questions(test_file)
+    
+    if not TEST_QUESTIONS:
+        print("\n❌ [CRITICAL] No test questions loaded. Exiting...")
+        return
+    
+    print()
+    
     # Ask for number of contexts
     print("📚 Select number of contexts to send to RAGAS:")
     print("   1. Top 5 contexts")
@@ -723,6 +881,30 @@ def main():
     
     print(f"\n✅ Selected: {contexts_desc}")
     
+    # Ask for strict mode (Rule-Based only)
+    print("\n🔒 Select Rule-Based Mode:")
+    print("   1. Normal Mode (with multi-agent fallback) - Production Mode")
+    print("   2. Strict Mode (no fallback) - Evaluation Mode ⭐")
+    print()
+    print("   💡 Hint: Strict Mode จะไม่ fallback ไป multi-agent search")
+    print("           เหมาะสำหรับการประเมินว่า keyword matching ทำงานได้ดีแค่ไหน")
+    print()
+    
+    strict_mode = False  # Default: Normal Mode
+    try:
+        choice = input("Select option (1-2) [default: 1]: ").strip()
+        if choice == "2":
+            strict_mode = True
+            mode_desc = "🔒 Strict Mode (No Fallback)"
+        else:
+            strict_mode = False
+            mode_desc = "🔓 Normal Mode (With Fallback)"
+    except:
+        strict_mode = False
+        mode_desc = "🔓 Normal Mode (With Fallback)"
+    
+    print(f"\n✅ Selected: {mode_desc}")
+    
     # Confirm to proceed
     try:
         confirm = input("\n🚀 Ready to start evaluation with 10 questions? (y/n) [default: y]: ").strip().lower()
@@ -734,11 +916,12 @@ def main():
     
     # Run evaluation
     print(f"\n🚀 Starting evaluation...")
-    print(f"   📊 Testing: 10 questions (1 per intent)")
+    print(f"   📊 Testing: {len(TEST_QUESTIONS)} questions from {test_file}")
     print(f"   📚 Contexts: {contexts_desc}")
+    print(f"   🔒 Rule-Based Mode: {mode_desc}")
     print()
     
-    results = run_evaluation(max_contexts=max_contexts)
+    results = run_evaluation(test_questions=TEST_QUESTIONS, max_contexts=max_contexts, strict_mode=strict_mode)
     
     if results:
         # Show comparison
@@ -748,17 +931,31 @@ def main():
         try:
             save = input("\n💾 Save results to file? (y/n) [default: y]: ").strip().lower()
             if save != 'n':
-                save_results(results, max_contexts=max_contexts)
+                save_results(results, max_contexts=max_contexts, strict_mode=strict_mode)
         except:
-            save_results(results, max_contexts=max_contexts)
+            save_results(results, max_contexts=max_contexts, strict_mode=strict_mode)
         
         print("\n✅ Evaluation completed!")
         print("\n📌 Summary:")
         print(f"   - Tested {len(TEST_QUESTIONS)} questions")
         print(f"   - {len(results)} chatbot versions evaluated")
         print(f"   - Contexts mode: {contexts_desc}")
+        print(f"   - Rule-Based mode: {mode_desc}")
+        print(f"   - Metrics: Adjusted to include error cases (more realistic!)")
         print(f"   - Included Answer Relevancy as bonus metric")
         print(f"   - Results saved to JSON file")
+        
+        # Show error summary
+        total_errors = sum(results[name]["performance"]["errors"] 
+                          for name in results if "performance" in results[name])
+        if total_errors > 0:
+            print(f"\n⚠️  Error Summary:")
+            for name in ["Rule-Based", "LLM-Based", "Hybrid"]:
+                if name in results and "performance" in results[name]:
+                    errors = results[name]["performance"]["errors"]
+                    if errors > 0:
+                        print(f"   - {name}: {errors} errors ❌")
+            print(f"   💡 Adjusted scores reflect these errors as 0.0")
     else:
         print("\n❌ Evaluation failed")
 

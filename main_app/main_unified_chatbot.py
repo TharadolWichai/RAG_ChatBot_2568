@@ -339,7 +339,16 @@ class IntentClassifier:
 class UnifiedChatbot:
     """Unified Chatbot ที่รวมทุก Agent เข้าด้วยกัน"""
     
-    def __init__(self):
+    def __init__(self, strict_mode=False):
+        """
+        Initialize Unified Chatbot
+        
+        Args:
+            strict_mode (bool): 
+                - False (default): ใช้ multi-agent search เมื่อไม่เจอ keyword (Production Mode)
+                - True: ไม่ fallback, ตอบไม่ได้เมื่อไม่เจอ keyword (Evaluation/Strict Mode)
+        """
+        self.strict_mode = strict_mode
         self.classifier = IntentClassifier()
         
         # Map intents to chatbot functions
@@ -426,6 +435,7 @@ class UnifiedChatbot:
             }
         
         print(f"✅ Unified Chatbot initialized with {len(self.chatbot_map)} agents")
+        print(f"   Mode: {'🔒 Strict (No Fallback)' if self.strict_mode else '🔓 Normal (With Fallback)'}")
         for intent, config in self.chatbot_map.items():
             print(f"   {config['icon']} {config['name']}")
     
@@ -438,18 +448,29 @@ class UnifiedChatbot:
         print(f"\n🎯 Intent Classification:")
         print(f"   ประเภท: {intent}")
         print(f"   คะแนน: {confidence:.2f} (threshold: 5.0)")
+        print(f"   โหมด: {'🔒 Strict Mode (No Fallback)' if self.strict_mode else '🔓 Normal Mode (With Fallback)'}")
         
         # Step 2: Route to appropriate chatbot
         if intent == "unknown":
-            # Try all chatbots and return best answer
-            print(f"❓ ไม่แน่ใจประเภทคำถาม - จะค้นหาจากทุก Agent")
-            return self._multi_agent_search(question)
+            if self.strict_mode:
+                # Strict Mode: ไม่ fallback, ตอบไม่ได้
+                print(f"❌ [STRICT MODE] Cannot classify intent: No keyword match found")
+                return "❌ [Error] Cannot answer: No matching keyword found in question. Unable to classify intent."
+            else:
+                # Normal Mode: Try all chatbots and return best answer
+                print(f"❓ ไม่แน่ใจประเภทคำถาม - จะค้นหาจากทุก Agent")
+                return self._multi_agent_search(question)
         
         if intent not in self.chatbot_map:
-            # Agent not available - try multi-agent search
-            print(f"⚠️ Agent '{intent}' ไม่พร้อมใช้งาน - จะค้นหาจากทุก Agent")
-            print(f"   Available agents: {list(self.chatbot_map.keys())}")
-            return self._multi_agent_search(question)
+            if self.strict_mode:
+                # Strict Mode: ไม่ fallback
+                print(f"❌ [STRICT MODE] Agent '{intent}' ไม่พร้อมใช้งาน")
+                return f"❌ [Error] Agent '{intent}' is not available"
+            else:
+                # Normal Mode: Agent not available - try multi-agent search
+                print(f"⚠️ Agent '{intent}' ไม่พร้อมใช้งาน - จะค้นหาจากทุก Agent")
+                print(f"   Available agents: {list(self.chatbot_map.keys())}")
+                return self._multi_agent_search(question)
         
         # Step 3: Use specific chatbot
         chatbot_config = self.chatbot_map[intent]

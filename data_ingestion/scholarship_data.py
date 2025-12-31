@@ -8,6 +8,7 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from astrapy import DataAPIClient
 import uuid
 import re
+from incremental_utils import enable_incremental_mode
 
 load_dotenv()
 
@@ -252,13 +253,7 @@ def main():
         if collection_name in existing_collections:
             collection = database.get_collection(collection_name)
             print(f"📂 Using existing collection: {collection_name}")
-            
-            # Clear existing data
-            try:
-                delete_result = collection.delete_many({})
-                print(f"🗑️ Cleared existing data: {delete_result.deleted_count} documents")
-            except Exception as e:
-                print(f"⚠️ Could not clear existing data: {e}")
+            print("🔄 Using incremental indexing mode (no full delete)")
         else:
             print(f"❌ Collection {collection_name} not found!")
             print("Please create the collection via AstraDB UI with vector support:")
@@ -308,57 +303,28 @@ def main():
     
     print(f"\n📝 Processed {len(all_documents)} scholarship documents")
     
-    # Split documents if they're too long (reduce size for AstraDB limit)
-    splitter = CharacterTextSplitter(
-        chunk_size=400,  # Smaller chunks to avoid AstraDB 8000 byte limit
-        chunk_overlap=50,
-        separator="\n"
-    )
-    chunks = splitter.split_documents(all_documents)
-    print(f"📄 Created {len(chunks)} chunks from {len(all_documents)} documents")
-    
     # Initialize embeddings
     print("🧠 Initializing embeddings model...")
     embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
     
-    # Generate embeddings and insert to AstraDB
-    print("💾 Inserting scholarship data into AstraDB...")
-    
-    documents_to_insert = []
-    skipped_count = 0
-    
-    for i, chunk in enumerate(chunks):
-        # Check content size (AstraDB has 8000 byte limit)
-        content_size = len(chunk.page_content.encode('utf-8'))
-        if content_size > 7500:  # Leave some margin
-            print(f"Skipping chunk {i+1} - too large ({content_size} bytes)")
-            skipped_count += 1
-            continue
-            
-        # Generate embedding
-        vector = embedding.embed_query(chunk.page_content)
-        
-        # Prepare document for insertion
-        doc = {
-            "_id": str(uuid.uuid4()),
-            "content": chunk.page_content,
-            "$vector": vector,
-            "metadata": chunk.metadata
-        }
-        documents_to_insert.append(doc)
-        
-        if i % 5 == 0:
-            print(f"📊 Processed {i+1}/{len(chunks)} chunks...")
-    
-    if skipped_count > 0:
-        print(f"⚠️ Skipped {skipped_count} chunks due to size limitations")
-    
-    # Insert all documents
+    # Use incremental indexing
+    print("\n🚀 Starting incremental indexing...")
     try:
-        result = collection.insert_many(documents_to_insert)
-        print(f"✅ Successfully inserted {len(result.inserted_ids)} scholarship documents into AstraDB!")
+        stats = enable_incremental_mode(
+            collection=collection,
+            embedding_model=embedding,
+            new_documents=all_documents,
+            metadata_filter={"type": "scholarship_main"},  # Filter สำหรับดึงเอกสารทุนการศึกษา
+            hash_keys=["scholarship_id", "scholarship_type", "section"],  # Keys สำหรับสร้าง unique hash
+            delete_missing=False  # ไม่ลบเอกสารเก่า (ปรับเป็น True ถ้าต้องการลบข้อมูลที่หายไป)
+        )
+        
+        print(f"\n✅ Incremental indexing completed!")
+        print(f"   - New documents inserted: {stats['inserted']}")
+        print(f"   - Existing documents skipped: {stats['skipped']}")
+        
     except Exception as e:
-        print(f"❌ Failed to insert documents: {e}")
+        print(f"❌ Failed to process incremental indexing: {e}")
         return False
     
     # Verify insertion

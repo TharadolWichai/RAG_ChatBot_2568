@@ -12,6 +12,7 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+from incremental_utils import enable_incremental_mode
 
 load_dotenv()
 
@@ -33,9 +34,27 @@ chrome_options = Options()
 chrome_options.add_argument("--headless")
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
-# ใช้ relative path ในโปรเจค
-driver_path = os.path.join(os.path.dirname(__file__), "..", "drivers", "chromedriver.exe")
-service = Service(driver_path)
+chrome_options.add_argument("--disable-gpu")
+chrome_options.add_argument("--remote-debugging-port=9222")
+
+# ลองใช้ webdriver-manager เพื่อดาวน์โหลด ChromeDriver อัตโนมัติ
+try:
+    from selenium.webdriver.chrome.service import Service as ChromeService
+    from webdriver_manager.chrome import ChromeDriverManager
+    service = ChromeService(ChromeDriverManager().install())
+    print("✅ ใช้ webdriver-manager สำหรับ ChromeDriver")
+except ImportError:
+    # Fallback: ใช้ chromedriver จากโฟลเดอร์ drivers
+    driver_path = os.path.join(os.path.dirname(__file__), "..", "drivers", "chromedriver.exe")
+    if os.path.exists(driver_path):
+        service = Service(driver_path)
+        print(f"⚠️  ใช้ ChromeDriver จากโฟลเดอร์ drivers (อาจเวอร์ชันไม่ตรง)")
+    else:
+        raise FileNotFoundError(
+            f"ChromeDriver not found at {driver_path}. "
+            "Please install webdriver-manager: pip install webdriver-manager"
+        )
+
 driver = webdriver.Chrome(service=service, options=chrome_options)
 
 # URL ของหน้าติดต่อ (ต้องแก้ไข URL ให้ถูกต้อง)
@@ -205,17 +224,9 @@ for i, doc in enumerate(docs[:3]):
     print(doc.page_content[:200] + "..." if len(doc.page_content) > 200 else doc.page_content)
 
 # -------------------------------
-# Split documents into chunks
+# Process with Incremental Indexing
 # -------------------------------
 if docs:
-    splitter = CharacterTextSplitter(
-        chunk_size=300,
-        chunk_overlap=50,
-        separator="\n"
-    )
-    chunks = splitter.split_documents(docs)
-    print(f"📄 Created {len(chunks)} chunks")
-
     # -------------------------------
     # Embeddings
     # -------------------------------
@@ -229,30 +240,24 @@ if docs:
     collection = db.get_collection(COLLECTION_NAME)
     print(f"✅ Connected to AstraDB collection: {COLLECTION_NAME}")
 
-    # -------------------------------
-    # Insert chunks in batch
-    # -------------------------------
-    batch_size = 50
-    documents_to_insert = []
-
-    for i, chunk in enumerate(chunks):
-        vector = embedding_model.embed_query(chunk.page_content)
-        doc = {
-            "_id": str(uuid.uuid4()),
-            "content": chunk.page_content,
-            "$vector": vector,
-            "metadata": chunk.metadata
-        }
-        documents_to_insert.append(doc)
+    # Use incremental indexing
+    print("\n🚀 Starting incremental indexing...")
+    try:
+        stats = enable_incremental_mode(
+            collection=collection,
+            embedding_model=embedding_model,
+            new_documents=docs,
+            metadata_filter={"type": "contact_info"},  # Filter สำหรับดึงเอกสารติดต่อ
+            hash_keys=["source", "type"],  # Keys สำหรับสร้าง unique hash
+            delete_missing=False  # ไม่ลบเอกสารเก่า
+        )
         
-        if len(documents_to_insert) >= batch_size or i == len(chunks) - 1:
-            try:
-                result = collection.insert_many(documents_to_insert)
-                print(f"📊 Inserted {len(result.inserted_ids)} documents (chunk {i+1}/{len(chunks)})")
-                documents_to_insert = []
-            except Exception as e:
-                print(f"❌ Failed to insert batch: {e}")
-
-    print("🎉 Contact info AstraDB ingestion completed successfully!")
+        print(f"\n✅ Incremental indexing completed!")
+        print(f"   - New documents inserted: {stats['inserted']}")
+        print(f"   - Existing documents skipped: {stats['skipped']}")
+        print("🎉 Contact info AstraDB ingestion completed successfully!")
+        
+    except Exception as e:
+        print(f"❌ Failed to process incremental indexing: {e}")
 else:
     print("❌ No contact documents to process")
