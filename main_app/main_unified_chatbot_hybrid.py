@@ -348,22 +348,22 @@ class HybridIntentClassifier:
                 if api_key:
                     base_url = os.getenv("OPENAI_BASE_URL", "https://openrouter.ai/api/v1")
                     self.llm_client = OpenAI(api_key=api_key, base_url=base_url)
-                    self.llm_model = "openai/gpt-4o-mini-2024-07-18"
+                    self.llm_model = "openai/gpt-4o-mini"
                     print("✅ LLM fallback initialized successfully!")
             except Exception as e:
                 print(f"⚠️ LLM fallback initialization failed: {e}")
     
     def classify(self, query: str) -> Tuple[str, float, str, str]:
         """
-        จำแนกประเภทคำถามแบบ Hybrid
+        จำแนกประเภทคำถามแบบ Hybrid (Improved version)
         Returns: (intent_name, confidence_score, method_used, reason)
         """
         
         # Step 1: Try Rule-Based first (fast & free!)
         rule_intent, rule_confidence = self._rule_based_classify(query)
         
-        # High confidence threshold for rule-based
-        HIGH_CONFIDENCE_THRESHOLD = 8.0  # ต้องมีคะแนนสูงมาก
+        # Adjusted thresholds for better performance
+        HIGH_CONFIDENCE_THRESHOLD = 7.0  # ลดลงจาก 8.0 → ใช้ rule-based ได้ง่ายขึ้น
         
         if rule_confidence >= HIGH_CONFIDENCE_THRESHOLD:
             # Rule-based is confident enough!
@@ -375,13 +375,18 @@ class HybridIntentClassifier:
             print(f"   ⚠️ Rule-Based มั่นใจต่ำ (คะแนน: {rule_confidence:.2f}) → ใช้ LLM ช่วย")
             llm_intent, llm_confidence, llm_reason = self._llm_classify(query)
             
-            # Use LLM result if confidence is good
-            if llm_confidence >= 0.6:
+            # Use LLM result if it gives a valid intent (even with lower confidence)
+            if llm_intent != "unknown" and llm_confidence >= 0.4:  # ลดจาก 0.6 → 0.4
                 print(f"   ✅ LLM ให้คำแนะนำ: {llm_intent} (มั่นใจ: {llm_confidence:.2f})")
                 return llm_intent, llm_confidence, "llm_fallback", llm_reason
+            elif llm_intent != "unknown":
+                # LLM ให้ intent แต่ confidence ต่ำ - ยังดีกว่า unknown
+                print(f"   🔄 LLM มั่นใจต่ำแต่ยังใช้ได้: {llm_intent} (มั่นใจ: {llm_confidence:.2f})")
+                return llm_intent, max(llm_confidence, 0.3), "llm_low_conf", llm_reason
             else:
-                print(f"   ⚠️ LLM ก็ไม่แน่ใจ (มั่นใจ: {llm_confidence:.2f})")
-                return "unknown", 0.0, "hybrid_uncertain", "Both rule-based and LLM are uncertain"
+                # LLM ไม่แน่ใจ - ใช้ rule-based แทน (ดีกว่า unknown)
+                print(f"   🔄 LLM ไม่แน่ใจ → ใช้ Rule-Based แทน: {rule_intent} (คะแนน: {rule_confidence:.2f})")
+                return rule_intent, rule_confidence, "rule_fallback", "LLM uncertain, using rule-based result"
         
         # Step 3: No LLM available or rule-based result is ok
         if rule_intent != "unknown":
@@ -534,6 +539,7 @@ class UnifiedChatbotHybrid:
             self.chatbot_map["allpeople"] = {
                 "name": "อาจารย์และบุคลากร",
                 "qa_function": allpeople_qa,
+                "retriever": allpeople_retriever,
                 "icon": "👨‍🏫"
             }
         
@@ -541,6 +547,7 @@ class UnifiedChatbotHybrid:
             self.chatbot_map["contact"] = {
                 "name": "ข้อมูลติดต่อ",
                 "qa_function": contact_qa,
+                "retriever": contact_retriever,
                 "icon": "📞"
             }
         
@@ -548,6 +555,7 @@ class UnifiedChatbotHybrid:
             self.chatbot_map["links"] = {
                 "name": "ลิงก์และระบบ",
                 "qa_function": links_qa,
+                "retriever": links_retriever,
                 "icon": "🔗"
             }
         
@@ -555,6 +563,7 @@ class UnifiedChatbotHybrid:
             self.chatbot_map["scholarship"] = {
                 "name": "ทุนการศึกษา",
                 "qa_function": scholarship_qa,
+                "retriever": scholarship_retriever,
                 "icon": "🎓"
             }
         
@@ -562,6 +571,7 @@ class UnifiedChatbotHybrid:
             self.chatbot_map["student_club"] = {
                 "name": "สโมสรนักศึกษา",
                 "qa_function": club_qa,
+                "retriever": club_retriever,
                 "icon": "🎭"
             }
         
@@ -569,6 +579,7 @@ class UnifiedChatbotHybrid:
             self.chatbot_map["students"] = {
                 "name": "ลิงก์นักศึกษา",
                 "qa_function": students_qa,
+                "retriever": students_retriever,
                 "icon": "📚"
             }
         
@@ -576,6 +587,7 @@ class UnifiedChatbotHybrid:
             self.chatbot_map["research"] = {
                 "name": "กลุ่มวิจัย",
                 "qa_function": research_qa,
+                "retriever": research_retriever,
                 "icon": "🔬"
             }
         
@@ -583,6 +595,7 @@ class UnifiedChatbotHybrid:
             self.chatbot_map["bsc_entrance"] = {
                 "name": "การรับเข้าศึกษา",
                 "qa_function": bsc_qa,
+                "retriever": bsc_retriever,
                 "icon": "🎓"
             }
         
@@ -590,6 +603,7 @@ class UnifiedChatbotHybrid:
             self.chatbot_map["digital_services"] = {
                 "name": "บริการดิจิตอล",
                 "qa_function": digital_qa,
+                "retriever": digital_retriever,
                 "icon": "💻"
             }
         
@@ -597,6 +611,7 @@ class UnifiedChatbotHybrid:
             self.chatbot_map["graduate"] = {
                 "name": "หลักสูตรบัณฑิตศึกษา",
                 "qa_function": graduate_qa,
+                "retriever": graduate_retriever,
                 "icon": "🎓"
             }
         
@@ -639,6 +654,52 @@ class UnifiedChatbotHybrid:
         except Exception as e:
             print(f"❌ Error from {chatbot_config['name']}: {e}")
             return f"ขอโทษ เกิดข้อผิดพลาดจาก Agent {chatbot_config['name']}"
+    
+    def answer_with_contexts(self, question: str) -> tuple:
+        """
+        ตอบคำถามและ return contexts สำหรับ RAGAS evaluation
+        
+        Returns:
+            tuple: (answer: str, contexts: List[str])
+        """
+        # Step 1: Hybrid Intent Classification
+        intent, confidence, method, reason = self.classifier.classify(question)
+        
+        contexts = []
+        
+        # Step 2: Route to appropriate chatbot and get contexts
+        if intent == "unknown" or intent not in self.chatbot_map:
+            # Multi-agent search - collect contexts from all agents
+            for intent_key, config in self.chatbot_map.items():
+                try:
+                    if "retriever" in config and config["retriever"]:
+                        docs = config["retriever"].get_relevant_documents(question)
+                        contexts.extend([doc.page_content for doc in docs[:3]])
+                except:
+                    pass
+            
+            answer = self.answer(question)
+        else:
+            # Specific agent - get contexts from that agent
+            chatbot_config = self.chatbot_map[intent]
+            
+            try:
+                # Get contexts if retriever available
+                if "retriever" in chatbot_config and chatbot_config["retriever"]:
+                    docs = chatbot_config["retriever"].get_relevant_documents(question)
+                    contexts = [doc.page_content for doc in docs]
+                
+                # Get answer
+                answer = self.answer(question)
+            except Exception as e:
+                answer = f"Error: {str(e)}"
+                contexts = []
+        
+        # Ensure we have at least some context
+        if not contexts:
+            contexts = [f"No specific contexts retrieved for: {question}"]
+        
+        return answer, contexts
     
     def _multi_agent_search(self, question: str) -> str:
         """ค้นหาจากทุก Agent และรวมผลลัพธ์"""

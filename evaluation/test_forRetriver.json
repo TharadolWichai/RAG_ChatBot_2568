@@ -1,0 +1,119 @@
+{
+    "test_questions": [
+      {
+        "id": 1,
+        "question": "ข้อมูลทั้งหมดของอาจารย์พุธษดี",
+        "expected_intent": "allpeople",
+        "ground_truth": "ควรตอบข้อมูลของอาจารย์พุธษดีทั้งหมด เช่น ชื่อ ตำแหน่ง ภาควิชา อีเมล และเบอร์โทรศัพท์ ความเชี่ยวชาญ หรือผลงานวิจัย ",
+        "category": "general",
+        "difficulty": "medium"
+      },
+      {
+        "id": 2,
+        "question": "ช่องทางติดต่อมหาวิทยาลัย",
+        "expected_intent": "contact",
+        "ground_truth": "ควรตอบช่องทางติดต่อมหาวิทยาลัยทั้งหมด เช่น เบอร์โทรศัพท์ อีเมล หรือที่อยู่",
+        "category": "simple",
+        "difficulty": "easy"
+      },
+      {
+        "id": 3,
+        "question": "จองห้องประชุม",
+        "expected_intent": "links",
+        "ground_truth": "ควรตอบเป็นลิงก์ของระบบจองห้องประชุม",
+        "category": "simple",
+        "difficulty": "easy"
+      },
+      {
+        "id": 4,
+        "question": "รายละเอียดของทุนการศึกษาทั้งหมด",
+        "expected_intent": "scholarship",
+        "ground_truth": "ควรตอบรายละเอียดของทุนการศึกษาทั้งหมด เช่น ชื่อของทุน รายละเอียดของทุน เงื่อนไขการรับทุน หรือคุณสมบัติผู้สมัคร",
+        "category": "general",
+        "difficulty": "hard"
+      },
+      {
+        "id": 5,
+        "question": "สมาชิกของสโมสรนักศึกษา",
+        "expected_intent": "student_club",
+        "ground_truth": "ควรตอบสมาชิกทั้งหมดของสโมสรนักศึกษา เช่น ชื่อ ตำแหน่ง หรือหน้าที่",
+        "category": "general",
+        "difficulty": "medium"
+      },
+      {
+        "id": 6,
+        "question": "คู่มือสหกิจศึกษา",
+        "expected_intent": "students",
+        "ground_truth": "ควรตอบเป็นชื่อบริการ ลิงก์ของคู่มือสหกิจศึกษา หรือคำอธิบายของบริการ",
+        "category": "simple",
+        "difficulty": "easy"
+      },
+      {
+        "id": 7,
+        "question": "กลุ่มวิจัยทั้งหมด",
+        "expected_intent": "researchgroup",
+        "ground_truth": "ควรตอบรายชื่อของกลุ่มวิจัยทั้งหมด เช่น ชื่อกลุ่ม หรือลิงก์ของกลุ่มวิจัย",
+        "category": "general",
+        "difficulty": "medium"
+      },
+      {
+        "id": 8,
+        "question": "การรับเข้าปริญญาตรี",
+        "expected_intent": "bsc_entrance",
+        "ground_truth": "ควรตอบการรับเข้าปริญญาตรีทั้งหมด เช่น รอบPortfolio รอบโควตาภาคตะวันออกเฉียงเหนือ รอบAdmission หรือค่าธรรมเนียมการศึกษา",
+        "category": "general",
+        "difficulty": "hard"
+      },
+      {
+        "id": 9,
+        "question": "บริการดิจิทัลทั้งหมด",
+        "expected_intent": "digital_services",
+        "ground_truth": "ควรตอบบริการดิจิทัลทั้งหมด เช่น ชื่อบริการ ลิงก์ของบริการ หรือรายละเอียดของบริการ",
+        "category": "general",
+        "difficulty": "hard"
+      },
+      {
+        "id": 10,
+        "question": "สาขาวิชาของปริญญาเอก",
+        "expected_intent": "graduate",
+        "ground_truth": "ควรตอบสาขาวิชา จำนวนที่รับ หรือระบบการศึกษา",
+        "category": "simple",
+        "difficulty": "medium"
+      }
+    ],
+    "metadata": {
+      "total_questions": 10,
+      "categories": {
+        "simple": 4,
+        "general": 6
+      },
+      "difficulty": {
+        "easy": 3,
+        "medium": 4,
+        "hard": 3
+      },
+      "intents_coverage": {
+        "allpeople": 1,
+        "contact": 1,
+        "links": 1,
+        "scholarship": 1,
+        "student_club": 1,
+        "students": 1,
+        "researchgroup": 1,
+        "bsc_entrance": 1,
+        "digital_services": 1,
+        "graduate": 1
+      },
+      "source": "eva 50 excel.xlsx",
+      "converted_from": "Excel",
+      "optimized_for": "Retriever_testing",
+      "purpose": "Testing retriever performance with 1 question per intent (10 intents)",
+      "ground_truth_format": "descriptive (ควรตอบ...) format for clear expectations",
+      "contexts_limit": "unlimited (sending all retrieved contexts)",
+      "llm_model": "openai/gpt-4o-mini",
+      "disabled_metrics": ["answer_relevancy"],
+      "last_updated": "2025-01-20",
+      "notes": "Adjusted category & difficulty for retriever testing | Each intent has 1 question | Category: simple (4), general (6) | Difficulty: easy (3), medium (4), hard (3)"
+    }
+  }
+  

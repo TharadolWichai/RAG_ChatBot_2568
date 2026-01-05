@@ -2,149 +2,273 @@
   "test_questions": [
     {
       "id": 1,
-      "question": "อาจารย์พุธษดี",
-      "expected_intent": "allpeople",
-      "ground_truth": "ควรตอบข้อมูลเกี่ยวกับอาจารย์ที่มีชื่อว่าพุธษดี รวมถึงตำแหน่ง คณะ และข้อมูลติดต่อ",
-      "category": "simple",
-      "difficulty": "easy"
+      "question": "วิทยาลัยการคอมพิวเตอร์ มข. มีรอบการรับเข้าศึกษาระดับปริญญาตรีรอบไหนบ้าง",
+      "expected_intent": "bsc_entrance",
+      "ground_truth": "ควรตอบรอบการรับเข้าศึกษาระดับปริญญาตรีทั้งหมด รวมถึงรอบ Portfolio โควตาภาคตะวันออกเฉียงเหนือ และ Admission",
+      "category": "general",
+      "difficulty": "medium"
     },
     {
       "id": 2,
-      "question": "ติดต่อวิทยาลัย",
-      "expected_intent": "contact",
-      "ground_truth": "ควรตอบเบอร์โทรศัพท์ อีเมล ที่อยู่ของวิทยาลัยการคอมพิวเตอร์ มหาวิทยาลัยขอนแก่น",
+      "question": "โครงการที่เปิดรับในรอบ Portfolio มีอะไรบ้าง",
+      "expected_intent": "bsc_entrance",
+      "ground_truth": "ควรแสดงรายการโครงการทั้งหมดในรอบ Portfolio เช่น โครงการทุนช้างเผือก โครงการผู้มีความสามารถดีเด่น และโครงการผู้มีศักยภาพ",
       "category": "simple",
-      "difficulty": "easy"
+      "difficulty": "medium"
     },
     {
       "id": 3,
-      "question": "จองห้องประชุม",
-      "expected_intent": "links",
-      "ground_truth": "ควรให้ลิงก์สำหรับจองห้องประชุมของวิทยาลัยการคอมพิวเตอร์",
-      "category": "simple",
-      "difficulty": "easy"
+      "question": "รอบโควตาภาคตะวันออกเฉียงเหนือ ใช้คะแนนสอบอะไรในการคัดเลือก",
+      "expected_intent": "bsc_entrance",
+      "ground_truth": "ควรระบุว่าใช้คะแนนสอบ NETSAT ในการคัดเลือก",
+      "category": "general",
+      "difficulty": "medium"
     },
     {
       "id": 4,
-      "question": "ทุนการศึกษามีอะไรบ้าง",
-      "expected_intent": "scholarship",
-      "ground_truth": "ควรแสดงรายการทุนการศึกษาทั้งหมด เช่น ทุนวิจัย ทุนนานาชาติ ทุน ASEAN & GMS ทุนผู้มีผลการเรียนดีเยี่ยม",
-      "category": "simple",
-      "difficulty": "easy"
+      "question": "หลักสูตรวิทยาการคอมพิวเตอร์ มีค่าน้ำหนักคะแนน TGAT และ A-Level ยังไง",
+      "expected_intent": "bsc_entrance",
+      "ground_truth": "ควรแสดงค่าน้ำหนักคะแนนแต่ละวิชา รวมถึง TGAT คณิตศาสตร์ ฟิสิกส์ และอังกฤษ",
+      "category": "general",
+      "difficulty": "medium"
     },
     {
       "id": 5,
-      "question": "ประธานสโมสรนักศึกษา",
-      "expected_intent": "student_club",
-      "ground_truth": "ควรตอบชื่อและข้อมูลของประธานสโมสรนักศึกษาปัจจุบัน",
+      "question": "ค่าธรรมเนียมการศึกษาของหลักสูตรวิทยาการคอมพิวเตอร์เท่าไร",
+      "expected_intent": "bsc_entrance",
+      "ground_truth": "ควรระบุค่าธรรมเนียมการศึกษาทั้งภาคปกติและโครงการพิเศษต่อภาคการศึกษา",
       "category": "simple",
-      "difficulty": "easy"
+      "difficulty": "medium"
     },
     {
       "id": 6,
-      "question": "กลุ่มวิจัย AIDA",
-      "expected_intent": "research",
-      "ground_truth": "ควรตอบข้อมูลเกี่ยวกับกลุ่มวิจัย AIDA (Applied Intelligence and Data Analytics) รวมถึงหัวหน้ากลุ่ม สมาชิก และลิงก์เว็บไซต์",
-      "category": "simple",
-      "difficulty": "easy"
+      "question": "ความเชี่ยวชาญของอาจารย์ดร.พงษ์ศธร จันทร์ยอย คืออะไรบ้าง",
+      "expected_intent": "allpeople",
+      "ground_truth": "ควรระบุความเชี่ยวชาญของอาจารย์ เช่น Speech Synthesis Natural Language Processing และ Deep Learning",
+      "category": "general",
+      "difficulty": "medium"
     },
     {
       "id": 7,
-      "question": "รอบ Portfolio คืออะไร",
-      "expected_intent": "bsc_entrance",
-      "ground_truth": "ควรอธิบายรอบ Portfolio ของการรับเข้าศึกษาระดับปริญญาตรี รวมถึงเกณฑ์และวิธีสมัคร",
+      "question": "ขอข้อมูลติดต่ออาจารย์พงษ์ศธร จันทร์ยอย",
+      "expected_intent": "allpeople",
+      "ground_truth": "ควรให้ข้อมูลติดต่อของอาจารย์ รวมถึงอีเมลหรือเบอร์โทรศัพท์",
       "category": "simple",
       "difficulty": "medium"
     },
     {
       "id": 8,
-      "question": "Web Hosting มีบริการอะไรบ้าง",
-      "expected_intent": "digital_services",
-      "ground_truth": "ควรอธิบายบริการ Web Hosting ของวิทยาลัยการคอมพิวเตอร์ รวมถึงเทคโนโลยีที่รองรับ ข้อตกลง และวิธีการใช้งาน",
+      "question": "มีทุนการศึกษาทั้งหมดกี่ทุน และอะไรบ้าง",
+      "expected_intent": "scholarship",
+      "ground_truth": "ควรแสดงรายการทุนการศึกษาทั้งหมด เช่น ทุนวิจัย ทุนบัณฑิตศึกษา ทุน ASEAN & GMS และทุนผู้มีผลการเรียนดี",
       "category": "simple",
       "difficulty": "medium"
     },
     {
       "id": 9,
-      "question": "ขอข้อมูลเกี่ยวกับการสมัคร",
-      "expected_intent": "bsc_entrance",
-      "ground_truth": "ควรให้ข้อมูลเกี่ยวกับการสมัครเข้าศึกษา รวมถึงรอบต่างๆ และเกณฑ์การรับเข้า",
-      "category": "ambiguous",
+      "question": "เงื่อนไขสำหรับผู้รับทุนทุนส่งเสริมความเข้มแข็งด้านการวิจัยของอาจารย์ผ่านการสนับสนุนนักศึกษาระดับบัณฑิตศึกษา",
+      "expected_intent": "scholarship",
+      "ground_truth": "ควรระบุเงื่อนไขการรับทุน เช่น ต้องสำเร็จการศึกษาตามกำหนด ส่งรายงานความก้าวหน้า และตีพิมพ์ผลงานวิจัย",
+      "category": "complex",
       "difficulty": "medium"
     },
     {
       "id": 10,
-      "question": "มีบริการดิจิตอลอะไรบ้าง",
-      "expected_intent": "unknown",
-      "ground_truth": "ควรแสดงรายการบริการต่างๆ ของวิทยาลัย เช่น ลิงก์ระบบ บริการดิจิตอล หรือบริการนักศึกษา",
-      "category": "ambiguous",
-      "difficulty": "hard"
+      "question": "ภาระงานสอนของอาจารย์พงษ์ศธร จันทร์ยอย",
+      "expected_intent": "allpeople",
+      "ground_truth": "ควรระบุวิชาที่อาจารย์สอน เช่น การประมวลผลภาษาธรรมชาติ ระบบฐานข้อมูล และการวิเคราะห์ข้อมูล",
+      "category": "simple",
+      "difficulty": "medium"
     },
     {
       "id": 11,
-      "question": "Virtual Machine คืออะไร และใช้ยังไง",
-      "expected_intent": "digital_services",
-      "ground_truth": "ควรอธิบายบริการ Virtual Machine พร้อมวิธีการใช้งานและขั้นตอนการขอใช้บริการ",
-      "category": "complex",
+      "question": "หลักสูตรปัญญาประดิษฐ์มีทั้งหมดกี่หน่วยกิต",
+      "expected_intent": "bsc_entrance",
+      "ground_truth": "ควรระบุจำนวนหน่วยกิตทั้งหมดของหลักสูตร",
+      "category": "simple",
       "difficulty": "medium"
     },
     {
       "id": 12,
-      "question": "ทุน ASEAN & GMS มีคุณสมบัติอะไรบ้าง",
-      "expected_intent": "scholarship",
-      "ground_truth": "ควรระบุคุณสมบัติของผู้สมัครทุน ASEAN & GMS รวมถึงเงื่อนไขและผลประโยชน์ที่ได้รับ",
-      "category": "complex",
+      "question": "นักศึกษาที่จบจากหลักสูตรปัญญาประดิษฐ์สามารถประกอบอาชีพอะไรได้บ้าง",
+      "expected_intent": "services",
+      "ground_truth": "ควรแสดงอาชีพที่สามารถประกอบได้ เช่น นักวิทยาการข้อมูล นักวิเคราะห์ข้อมูล วิศวกร AI และผู้ประกอบการ",
+      "category": "general",
       "difficulty": "medium"
     },
     {
       "id": 13,
-      "question": "Apple Store ส่วนที่ 1 คืออะไร",
+      "question": "บริการดิจิตอลมีอะไรบ้าง",
       "expected_intent": "digital_services",
-      "ground_truth": "ควรอธิบายส่วนที่ 1 (ข้อตกลงในการใช้บริการ) ของบริการ Apple Store for Education",
-      "category": "complex",
-      "difficulty": "hard"
+      "ground_truth": "ควรแสดงรายการบริการดิจิตอลทั้งหมด เช่น Web Hosting Virtual Machine Apple Store Google Play และ Server ปัญญาประดิษฐ์",
+      "category": "simple",
+      "difficulty": "medium"
     },
     {
       "id": 14,
-      "question": "ลิงก์โครงงานนักศึกษา",
-      "expected_intent": "students",
+      "question": "ขอลิงค์ระบบจัดการโครงงานนักศึกษา",
+      "expected_intent": "services",
       "ground_truth": "ควรให้ลิงก์สำหรับระบบจัดการโครงงานนักศึกษา",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 15,
+      "question": "หลักสูตรปริญญาเอกทั้งหมด",
+      "expected_intent": "graduate",
+      "ground_truth": "ควรแสดงหลักสูตรปริญญาเอกทั้งหมดที่เปิดสอน รวมถึงวิทยาการคอมพิวเตอร์และภูมิสารสนเทศศาสตร์",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 16,
+      "question": "หากจบหลักสูตรวิทยาการคอมพิวเตอร์ ปริญญาตรี สามารถประกอบอาชีพใดได้บ้าง",
+      "expected_intent": "bsc_entrance",
+      "ground_truth": "ควรแสดงอาชีพที่สามารถประกอบได้ เช่น นักวิชาการคอมพิวเตอร์ นักพัฒนาซอฟต์แวร์ Data Scientist UX/UI Designer และผู้ประกอบการ",
+      "category": "general",
+      "difficulty": "medium"
+    },
+    {
+      "id": 17,
+      "question": "กลุ่มวิจัย Advanced Intelligent Interdisciplinary Integration (AIII) วิจัยเกี่ยวกับอะไร",
+      "expected_intent": "researchgroup",
+      "ground_truth": "ควรอธิบายงานวิจัยของกลุ่ม เช่น Applied Machine Learning Applied AI และ Intelligent Cybersecurity",
       "category": "simple",
       "difficulty": "easy"
     },
     {
-      "id": 15,
-      "question": "กลุ่มวิจัยมีกี่กลุ่ม มีอะไรบ้าง",
-      "expected_intent": "research",
-      "ground_truth": "ควรแสดงรายชื่อกลุ่มวิจัยทั้งหมดในวิทยาลัยการคอมพิวเตอร์ พร้อมลิงก์และรายละเอียดสั้นๆ",
+      "id": 18,
+      "question": "สมาชิกกลุ่มวิจัย Advanced Smart Computing มีใครบ้าง",
+      "expected_intent": "researchgroup",
+      "ground_truth": "ควรระบุสมาชิกกลุ่มวิจัย รวมถึงหัวหน้ากลุ่มและสมาชิกอื่นๆ",
+      "category": "general",
+      "difficulty": "medium"
+    },
+    {
+      "id": 19,
+      "question": "สามารถติดต่อคณะได้ทางไหนได้บ้าง",
+      "expected_intent": "contact",
+      "ground_truth": "ควรให้ข้อมูลการติดต่อ รวมถึงที่อยู่ เบอร์โทรศัพท์ Hot Line และอีเมล",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 20,
+      "question": "ห้องปฏิบัติการการเรียนการสอน ดูแลบำรุงรักษาเครื่องคอมพิวเตอร์ สามารถติดต่อที่ใคร",
+      "expected_intent": "contact",
+      "ground_truth": "ควรระบุชื่อและตำแหน่งของผู้รับผิดชอบงานดูแลบำรุงรักษาเครื่องคอมพิวเตอร์",
       "category": "complex",
+      "difficulty": "medium"
+    },
+    {
+      "id": 21,
+      "question": "ระบบ Network ห้องปฏิบัติการ ติดต่อที่ใคร",
+      "expected_intent": "contact",
+      "ground_truth": "ควรระบุชื่อและตำแหน่งของผู้รับผิดชอบงานระบบเครือข่าย",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 22,
+      "question": "ขอลิงค์ขั้นตอนการบันทึกการลา",
+      "expected_intent": "services",
+      "ground_truth": "ควรให้ลิงก์สำหรับเอกสารหรือขั้นตอนการบันทึกการลา",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 23,
+      "question": "ขอลิงค์ระบบแจ้งซ่อมออนไลน์",
+      "expected_intent": "services",
+      "ground_truth": "ควรให้ลิงก์สำหรับระบบแจ้งซ่อมออนไลน์",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 24,
+      "question": "ขอรายละเอียดการถอนวิชา",
+      "expected_intent": "services",
+      "ground_truth": "ควรให้ข้อมูลเกี่ยวกับการขอถอนรายวิชา รวมถึงเอกสารและลิงก์ที่เกี่ยวข้อง",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 25,
+      "question": "ขอเลื่อนสอบได้ยังไงบ้าง",
+      "expected_intent": "services",
+      "ground_truth": "ควรให้ลิงค์สำหรับขั้นตอนการขอเลื่อนสอบ",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 26,
+      "question": "แบบฟอร์มตรวจสอบการขอสำเร็จการศึกษา ระดับปริญญาตรี",
+      "expected_intent": "services",
+      "ground_truth": "ควรระบุลิงค์ของแบบฟอร์มตรวจสอบการขอสำเร็จการศึกษา",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 27,
+      "question": "รายละเอียดเกี่ยวกับ สหกิจศึกษา",
+      "expected_intent": "services",
+      "ground_truth": "ควรให้ข้อมูลเกี่ยวกับสหกิจศึกษา เช่น ลิงค์ของสหกิจศึกษา",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 28,
+      "question": "อยากเข้าหลักสูตรความมั่นคงปลอดภัยไซเบอร์ รอบที่ 2 ใช้คะแนนทั้งหมดเท่าไหร่",
+      "expected_intent": "bsc_entrance",
+      "ground_truth": "ควรระบุคะแนน NETSAT และค่าน้ำหนักแต่ละวิชาสำหรับหลักสูตรความมั่นคงปลอดภัยไซเบอร์",
+      "category": "general",
+      "difficulty": "medium"
+    },
+    {
+      "id": 29,
+      "question": "ทุนระดับบัณฑิตศึกษาสำหรับนักศึกษาระดับบัณฑิตศึกษาหลักสูตรนานาชาติ เต็มจำนวน มีเงื่อนไขอะไรบ้าง",
+      "expected_intent": "scholarship",
+      "ground_truth": "ควรระบุเงื่อนไขของทุนระดับบัณฑิตศึกษาสำหรับนักศึกษาระดับบัณฑิตศึกษาหลักสูตรนานาชาติ",
+      "category": "simple",
+      "difficulty": "medium"
+    },
+    {
+      "id": 30,
+      "question": "บริการดิจิตอลสำหรับนักศึกษามีอะไรบ้าง",
+      "expected_intent": "digital_services",
+      "ground_truth": "ควรแสดงบริการดิจิตอลที่มีให้นักศึกษา เช่น Web Hosting Virtual Machine และบริการ App Store",
+      "category": "simple",
       "difficulty": "medium"
     }
   ],
   "metadata": {
-    "total_questions": 15,
+    "total_questions": 30,
     "categories": {
-      "simple": 8,
-      "ambiguous": 2,
-      "complex": 5
+      "general": 7,
+      "simple": 21,
+      "complex": 2
     },
     "difficulty": {
-      "easy": 6,
-      "medium": 7,
-      "hard": 2
+      "medium": 29,
+      "easy": 1
     },
     "intents_coverage": {
-      "allpeople": 1,
-      "contact": 1,
-      "links": 1,
-      "scholarship": 2,
-      "student_club": 1,
-      "students": 1,
-      "research": 2,
-      "bsc_entrance": 2,
-      "digital_services": 3,
-      "unknown": 1
-    }
+      "bsc_entrance": 6,
+      "allpeople": 3,
+      "scholarship": 4,
+      "services": 11,
+      "digital_services": 2,
+      "graduate": 1,
+      "researchgroup": 2
+    },
+    "source": "eva 50 excel.xlsx",
+    "converted_from": "Excel",
+    "optimized_for": "RAGAS_evaluation",
+    "ground_truth_format": "descriptive (like old version for better RAGAS compatibility)",
+    "contexts_limit": "unlimited (sending all retrieved contexts)",
+    "llm_model": "openai/gpt-4o-mini",
+    "disabled_metrics": ["answer_relevancy"],
+    "optimization_date": "2025-01-19",
+    "notes": "Ground truth: descriptive format (ควรตอบ...) | Contexts: sending ALL retrieved contexts | Model: GPT-4o-mini | Answer Relevancy disabled (scores too low 0.05-0.06)"
   }
 }
-

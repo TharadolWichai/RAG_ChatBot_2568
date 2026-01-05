@@ -66,73 +66,83 @@ except Exception as e:
 print()
 
 # ==========================================
-# Test Dataset - Load from test_questions.json
+# Test Dataset
 # ==========================================
 
-def load_test_questions():
-    """โหลดคำถามทดสอบจากไฟล์ test_questions.json"""
-    try:
-        test_questions_path = os.path.join(os.path.dirname(__file__), "test_questions.json")
-        
-        if not os.path.exists(test_questions_path):
-            print(f"[WARNING] test_questions.json not found, using default questions")
-            return get_default_questions()
-        
-        with open(test_questions_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        
-        questions = data.get("test_questions", [])
-        print(f"[SUCCESS] Loaded {len(questions)} questions from test_questions.json")
-        return questions
-        
-    except Exception as e:
-        print(f"[WARNING] Error loading test_questions.json: {e}")
-        print("[INFO] Using default questions")
-        return get_default_questions()
-
-def get_default_questions():
-    """คำถามเริ่มต้นกรณีโหลดไฟล์ไม่ได้"""
-    return [
-        {
-            "question": "อาจารย์พุธษดี",
-            "expected_intent": "allpeople",
-            "ground_truth": "ควรตอบข้อมูลเกี่ยวกับอาจารย์ที่มีชื่อว่าพุธษดี รวมถึงตำแหน่ง คณะ และข้อมูลติดต่อ",
-            "category": "simple"
-        },
-        {
-            "question": "ติดต่อวิทยาลัย",
-            "expected_intent": "services",
-            "ground_truth": "ควรตอบเบอร์โทรศัพท์ อีเมล ที่อยู่ของวิทยาลัยการคอมพิวเตอร์ มหาวิทยาลัยขอนแก่น",
-            "category": "simple"
-        },
-        {
-            "question": "ลิงก์จองห้องประชุม",
-            "expected_intent": "services",
-            "ground_truth": "ควรให้ลิงก์สำหรับจองห้องประชุมของวิทยาลัยการคอมพิวเตอร์",
-            "category": "simple"
-        },
-        {
-            "question": "ทุนการศึกษามีอะไรบ้าง",
-            "expected_intent": "scholarship",
-            "ground_truth": "ควรแสดงรายการทุนการศึกษาทั้งหมด เช่น ทุนวิจัย ทุนนานาชาติ ทุน ASEAN & GMS",
-            "category": "simple"
-        },
-        {
-            "question": "ประธานสโมสรนักศึกษา",
-            "expected_intent": "student_club",
-            "ground_truth": "ควรตอบชื่อและข้อมูลของประธานสโมสรนักศึกษาปัจจุบัน",
-            "category": "simple"
-        },
-        {
-            "question": "กลุ่มวิจัย AIDA",
-            "ิ  ": "researchgroup",
-            "ground_truth": "ควรตอบข้อมูลเกี่ยวกับกลุ่มวิจัย AIDA (Applied Intelligence and Data Analytics) รวมถึงหัวหน้ากลุ่ม สมาชิก และลิงก์เว็บไซต์",
-            "category": "simple"
-        }
-    ]
-
-# โหลดคำถามทดสอบ
-TEST_QUESTIONS = load_test_questions()
+TEST_QUESTIONS = [
+    {
+        "question": "อาจารย์พุธษดี",
+        "expected_intent": "allpeople",
+        "ground_truth": "ควรตอบข้อมูลเกี่ยวกับอาจารย์ที่มีชื่อว่าพุธษดี รวมถึงตำแหน่ง คณะ และข้อมูลติดต่อ",
+        "category": "simple"
+    },
+    {
+        "question": "ติดต่อวิทยาลัย",
+        "expected_intent": "contact",
+        "ground_truth": "ควรตอบเบอร์โทรศัพท์ อีเมล ที่อยู่ของวิทยาลัยการคอมพิวเตอร์ มหาวิทยาลัยขอนแก่น",
+        "category": "simple"
+    },
+    {
+        "question": "ลิงก์จองห้องประชุม",
+        "expected_intent": "links",
+        "ground_truth": "ควรให้ลิงก์สำหรับจองห้องประชุมของวิทยาลัยการคอมพิวเตอร์",
+        "category": "simple"
+    },
+    {
+        "question": "ทุนการศึกษามีอะไรบ้าง",
+        "expected_intent": "scholarship",
+        "ground_truth": "ควรแสดงรายการทุนการศึกษาทั้งหมด เช่น ทุนวิจัย ทุนนานาชาติ ทุน ASEAN & GMS",
+        "category": "simple"
+    },
+    {
+        "question": "ประธานสโมสรนักศึกษา",
+        "expected_intent": "student_club",
+        "ground_truth": "ควรตอบชื่อและข้อมูลของประธานสโมสรนักศึกษาปัจจุบัน",
+        "category": "simple"
+    },
+    {
+        "question": "กลุ่มวิจัย AIDA",
+        "expected_intent": "research",
+        "ground_truth": "ควรตอบข้อมูลเกี่ยวกับกลุ่มวิจัย AIDA (Applied Intelligence and Data Analytics) รวมถึงหัวหน้ากลุ่ม สมาชิก และลิงก์เว็บไซต์",
+        "category": "simple"
+    },
+    {
+        "question": "รอบ Portfolio คืออะไร",
+        "expected_intent": "bsc_entrance",
+        "ground_truth": "ควรอธิบายรอบ Portfolio ของการรับเข้าศึกษาระดับปริญญาตรี รวมถึงเกณฑ์และวิธีสมัคร",
+        "category": "simple"
+    },
+    {
+        "question": "Web Hosting",
+        "expected_intent": "digital_services",
+        "ground_truth": "ควรอธิบายบริการ Web Hosting ของวิทยาลัยการคอมพิวเตอร์ รวมถึงวิธีการใช้งานและข้อตกลง",
+        "category": "simple"
+    },
+    {
+        "question": "ขอข้อมูลเกี่ยวกับการสมัคร",
+        "expected_intent": "bsc_entrance",
+        "ground_truth": "ควรให้ข้อมูลเกี่ยวกับการสมัครเข้าศึกษา รวมถึงรอบต่างๆ และเกณฑ์การรับเข้า",
+        "category": "ambiguous"
+    },
+    {
+        "question": "มีบริการอะไรบ้าง",
+        "expected_intent": "unknown",
+        "ground_truth": "ควรแสดงรายการบริการต่างๆ ของวิทยาลัย เช่น ลิงก์ระบบ บริการดิจิตอล หรือบริการนักศึกษา",
+        "category": "ambiguous"
+    },
+    {
+        "question": "Virtual Machine คืออะไร และใช้ยังไง",
+        "expected_intent": "digital_services",
+        "ground_truth": "ควรอธิบายบริการ Virtual Machine พร้อมวิธีการใช้งานและขั้นตอนการขอใช้บริการ",
+        "category": "complex"
+    },
+    {
+        "question": "ทุน ASEAN & GMS มีคุณสมบัติอะไรบ้าง",
+        "expected_intent": "scholarship",
+        "ground_truth": "ควรระบุคุณสมบัติของผู้สมัครทุน ASEAN & GMS รวมถึงเงื่อนไขและผลประโยชน์ที่ได้รับ",
+        "category": "complex"
+    }
+]
 
 # ==========================================
 # Chatbot Wrapper Classes
@@ -182,20 +192,13 @@ def get_contexts_from_chatbot(chatbot: Any, question: str) -> List[str]:
         question: คำถาม
         
     Returns:
-        List[str]: รายการ contexts ที่ retrieve มาได้ทั้งหมด (ไม่จำกัด)
+        List[str]: รายการ contexts ที่ retrieve มาได้
     """
     try:
         # ใช้ method answer_with_contexts() เพื่อดึง contexts จริงๆ
         if hasattr(chatbot, 'answer_with_contexts'):
             _, contexts = chatbot.answer_with_contexts(question)
-            
-            if not contexts:
-                return [f"No contexts found for: {question}"]
-            
-            # ✅ ส่ง contexts ทั้งหมดโดยไม่จำกัด (เพื่อให้ RAGAS ประเมินได้ครบถ้วน)
-            print(f"   📚 Retrieved {len(contexts)} contexts (sending all)")
-            
-            return contexts
+            return contexts if contexts else [f"No contexts found for: {question}"]
         else:
             # Fallback: chatbot ไม่มี method answer_with_contexts()
             return [f"Chatbot does not support context retrieval for: {question}"]
@@ -272,7 +275,7 @@ def run_evaluation(test_size: int = None) -> Dict[str, Any]:
                     "error": result["error"]
                 })
             
-            # Get contexts (for RAGAS) - ส่งทั้งหมดไม่จำกัด
+            # Get contexts (for RAGAS)
             contexts = get_contexts_from_chatbot(chatbot, question)
             contexts_list.append(contexts)
             
@@ -324,9 +327,9 @@ def run_evaluation(test_size: int = None) -> Dict[str, Any]:
             base_url = os.getenv("OPENAI_API_BASE", "https://openrouter.ai/api/v1")
             
             # Configure LLM with explicit settings for OpenRouter
-            # Using GPT-4o-mini for better quality RAGAS evaluation
+            # Using GPT-3.5-turbo for better compatibility with RAGAS
             llm = ChatOpenAI(
-                model="openai/gpt-4o-mini",  # OpenRouter format - better quality
+                model="openai/gpt-3.5-turbo",  # OpenRouter format
                 temperature=0.1,
                 api_key=api_key,
                 base_url=base_url,
@@ -336,25 +339,24 @@ def run_evaluation(test_size: int = None) -> Dict[str, Any]:
                 }
             )
             
-            print(f"   [DEBUG] Using model: openai/gpt-4o-mini")
+            print(f"   [DEBUG] Using model: openai/gpt-3.5-turbo")
             print(f"   [DEBUG] Base URL: {base_url}")
             print(f"   [DEBUG] API key starts with: {api_key[:10]}...")
             
-            # Use HuggingFace embeddings (local, no API needed)
+            # Use HuggingFace embeddings instead (local, no API needed)
             from langchain_huggingface import HuggingFaceEmbeddings
             embeddings = HuggingFaceEmbeddings(
                 model_name="sentence-transformers/all-MiniLM-L6-v2"
             )
             
             print(f"   [DEBUG] Embeddings configured: HuggingFace (local)")
-            print(f"   [INFO] Starting RAGAS evaluation with GPT-4o-mini (without Answer Relevancy)...")
+            print(f"   [INFO] Starting RAGAS evaluation with GPT-3.5-turbo...")
             
-            # ปิด Answer Relevancy ชั่วคราว เนื่องจากคะแนนต่ำมากและไม่ค่อยมีประโยชน์
             ragas_results = evaluate(
                 dataset,
                 metrics=[
                     faithfulness,
-                    # answer_relevancy,  # ปิดชั่วคราว - คะแนนต่ำมาก (0.05-0.06)
+                    answer_relevancy,
                     context_precision,
                     context_recall
                 ],
@@ -378,7 +380,7 @@ def run_evaluation(test_size: int = None) -> Dict[str, Any]:
             results[chatbot_name] = {
                 "ragas_scores": {
                     "faithfulness": safe_float(ragas_results["faithfulness"]),
-                    # "answer_relevancy": safe_float(ragas_results["answer_relevancy"]),  # ปิดชั่วคราว
+                    "answer_relevancy": safe_float(ragas_results["answer_relevancy"]),
                     "context_precision": safe_float(ragas_results["context_precision"]),
                     "context_recall": safe_float(ragas_results["context_recall"])
                 },
@@ -395,7 +397,7 @@ def run_evaluation(test_size: int = None) -> Dict[str, Any]:
             # Print results
             print(f"\n[SUCCESS] {chatbot_name} Results:")
             print(f"   Faithfulness:       {safe_float(ragas_results['faithfulness']):.4f}")
-            # print(f"   Answer Relevancy:   {safe_float(ragas_results['answer_relevancy']):.4f}")  # ปิดชั่วคราว
+            print(f"   Answer Relevancy:   {safe_float(ragas_results['answer_relevancy']):.4f}")
             print(f"   Context Precision:  {safe_float(ragas_results['context_precision']):.4f}")
             print(f"   Context Recall:     {safe_float(ragas_results['context_recall']):.4f}")
             print(f"   Avg Response Time:  {results[chatbot_name]['performance']['avg_response_time']:.2f}s")
@@ -432,10 +434,10 @@ def print_comparison(results: Dict[str, Any]):
     print(f"\n{'Metric':<25} | {'Rule-Based':<15} | {'LLM-Based':<15} | {'Hybrid':<15}")
     print("-" * 80)
     
-    # RAGAS Metrics (ปิด Answer Relevancy ชั่วคราว)
+    # RAGAS Metrics
     metrics = [
         "faithfulness",
-        # "answer_relevancy",  # ปิดชั่วคราว - คะแนนต่ำมากและประมวลผลช้า
+        "answer_relevancy",
         "context_precision",
         "context_recall"
     ]
@@ -554,36 +556,24 @@ def main():
     # Ask user for test size
     print("Test Dataset Options:")
     print("   1. Quick test (3 questions)")
-    print("   2. Mini test (5 questions) ⚡")
-    print("   3. Standard test (6 questions)")
-    print("   4. Small test (10 questions) 🔬")
-    print("   5. Medium test (30 questions)")
-    print("   6. Full test (all questions)")
+    print("   2. Standard test (6 questions)")
+    print("   3. Full test (all questions)")
     print()
     
     try:
-        choice = input("Select option (1-6) [default: 3]: ").strip()
+        choice = input("Select option (1-3) [default: 2]: ").strip()
         
         if choice == "1":
             test_size = 3
-        elif choice == "2":
-            test_size = 5
-        elif choice == "4":
-            test_size = 10
-        elif choice == "5":
-            test_size = 30
-        elif choice == "6":
+        elif choice == "3":
             test_size = None
         else:
             test_size = 6
     except:
         test_size = 6
     
-    # Run evaluation (ส่ง contexts ทั้งหมด)
+    # Run evaluation
     print(f"\n🚀 Starting evaluation...")
-    print(f"   📊 Testing: {test_size if test_size else 'all'} questions")
-    print(f"   📚 Using ALL contexts per question (comprehensive mode)")
-    print()
     results = run_evaluation(test_size=test_size)
     
     if results:
@@ -604,4 +594,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
