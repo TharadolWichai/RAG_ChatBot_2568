@@ -78,20 +78,20 @@ class DataIngestionOrchestrator:
                 # Fetch from API
                 content_type = "json"
                 api_data = self.scraper.fetch_api(config.url)
-                # Pass raw data object directly for better handling
+                # Convert to JSON string for LLM processing
                 import json
+                content = json.dumps(api_data, ensure_ascii=False, indent=2)
+                
+                # Log structure info for debugging
                 if isinstance(api_data, dict):
-                    # Store raw data for direct access
-                    content = json.dumps(api_data, ensure_ascii=False, indent=2)
-                    # Try to extract data.data.items directly if exists
                     if "data" in api_data and isinstance(api_data["data"], dict):
                         if "items" in api_data["data"] and isinstance(api_data["data"]["items"], list):
                             items_count = len(api_data["data"]["items"])
                             print(f"   ✅ Found nested structure: data.data.items with {items_count} items")
-                            # Store items directly for extractor to use
-                            # We'll pass this to extractor via a custom method
-                else:
-                    content = json.dumps(api_data, ensure_ascii=False, indent=2)
+                        elif "pageComponent_Mapping" in api_data["data"]:
+                            comp_count = len(api_data["data"]["pageComponent_Mapping"]) if isinstance(api_data["data"]["pageComponent_Mapping"], list) else 0
+                            if comp_count > 0:
+                                print(f"   ✅ Found pageComponent_Mapping with {comp_count} components")
             else:
                 # Scrape webpage
                 soup = self.scraper.scrape(config.url)
@@ -103,25 +103,37 @@ class DataIngestionOrchestrator:
             
             print(f"   ✅ Fetched {len(content)} characters")
             
-            # 3. Extract data using LLM or rule-based
-            print("\n🔍 Step 2: Extracting data...")
+            # Store content for preview (if needed by dashboard)
+            result.raw_content = content
+            result.content_type = content_type
             
-            # If API data, pass raw object to extractor for better handling
-            if is_api_url(config.url) and isinstance(api_data, dict):
-                # For API, use direct JSON object extraction (bypass LLM for structured data)
-                print("   🔧 Using direct JSON object extraction for API response...")
-                documents = self.extractor.extract_from_json_object(
-                    json_object=api_data,
-                    prompt=config.extraction_prompt
-                )
-                print(f"   📊 Extraction result: {len(documents)} documents")
-            else:
-                documents = self.extractor.extract(
-                    content=content,
-                    prompt=config.extraction_prompt,
-                    content_type=content_type
-                )
-                print(f"   📊 Extraction result: {len(documents)} documents")
+            # Prepare LLM preview (for dashboard display)
+            if self.extractor.use_openai and self.extractor.llm:
+                try:
+                    llm_preview, llm_prompt = self.extractor.prepare_llm_content(
+                        content=content,
+                        prompt=config.extraction_prompt,
+                        content_type=content_type
+                    )
+                    result.llm_content_preview = llm_preview
+                    result.llm_prompt_preview = llm_prompt
+                except Exception as e:
+                    print(f"   ⚠️ Could not prepare LLM preview: {e}")
+                    result.llm_content_preview = None
+                    result.llm_prompt_preview = None
+            
+            # 3. Extract data using LLM (primary) or rule-based (fallback)
+            print("\n🔍 Step 2: Extracting data...")
+            print("   🤖 Using LLM-based extraction (primary method)...")
+            print(f"   💬 Prompt: {config.extraction_prompt[:100]}...")
+            
+            # Always try LLM first for flexibility (no bypass to rule-based)
+            documents = self.extractor.extract(
+                content=content,
+                prompt=config.extraction_prompt,
+                content_type=content_type
+            )
+            print(f"   📊 Extraction result: {len(documents)} documents")
             
             if not documents:
                 raise Exception("No documents extracted")

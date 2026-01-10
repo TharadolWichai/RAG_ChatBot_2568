@@ -109,6 +109,10 @@ class ScrapingJobResult:
     execution_time: float = 0.0  # seconds
     started_at: Optional[str] = None
     completed_at: Optional[str] = None
+    raw_content: Optional[str] = None  # Raw content fetched (for preview)
+    content_type: Optional[str] = None  # Content type (html/json)
+    llm_content_preview: Optional[str] = None  # Content preview sent to LLM
+    llm_prompt_preview: Optional[str] = None  # Full prompt sent to LLM
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary"""

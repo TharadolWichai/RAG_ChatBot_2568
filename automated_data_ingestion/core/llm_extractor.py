@@ -51,6 +51,144 @@ class LLMExtractor:
             print("⚠️ langchain-openai not installed, falling back to rule-based extraction")
             self.use_openai = False
     
+    def prepare_llm_content(self, content: str, prompt: str, content_type: str = "html") -> tuple[str, str]:
+        """
+        Prepare content to send to LLM and return both preview and full prompt
+        This allows dashboard to show what will be sent to LLM
+        
+        Returns:
+            Tuple of (content_preview, full_user_prompt)
+        """
+        # Handle large content - send full data to LLM for better extraction
+        # For JSON, try to send all items if possible, or use smart chunking
+        if content_type == "json":
+            # Try to parse and send structured data
+            try:
+                import json as json_module
+                parsed_data = json_module.dumps(json_module.loads(content), ensure_ascii=False, indent=2) if isinstance(content, str) else json_module.dumps(content, ensure_ascii=False, indent=2)
+                
+                # Try to send full content if not too large (under 80K chars for better extraction)
+                # Otherwise send structured summary with examples
+                if len(parsed_data) <= 80000:
+                    # Send full content if reasonable size
+                    print(f"   📤 Sending full JSON content to LLM ({len(parsed_data)} characters)")
+                    content_preview = parsed_data
+                else:
+                    # For very large JSON, parse and create smart summary
+                    try:
+                        data = json_module.loads(parsed_data) if isinstance(parsed_data, str) else parsed_data
+                        summary_parts = []
+                        summary_parts.append(f"JSON structure: {list(data.keys()) if isinstance(data, dict) else 'array'}\n")
+                        
+                        # Find array items
+                        if isinstance(data, dict) and "data" in data:
+                            data_val = data["data"]
+                            if isinstance(data_val, dict):
+                                if "items" in data_val and isinstance(data_val["items"], list):
+                                    items_count = len(data_val["items"])
+                                    summary_parts.append(f"\nFound array: data.data.items with {items_count} items\n")
+                                    
+                                    # Try to send as many items as possible (up to token limit)
+                                    items_json = json_module.dumps(data_val["items"], ensure_ascii=False, indent=2)
+                                    
+                                    if len(items_json) <= 60000:  # Send all items if fits
+                                        summary_parts.append(f"\nAll items ({items_count} total) - EXTRACT ALL:\n")
+                                        summary_parts.append(items_json)
+                                    elif items_count <= 100:
+                                        # Send first 25 items as examples for medium arrays
+                                        summary_parts.append(f"\nExample items (first 25 of {items_count} total):\n")
+                                        summary_parts.append(json_module.dumps(data_val["items"][:25], ensure_ascii=False, indent=2))
+                                        summary_parts.append(f"\n\n[CRITICAL: Total {items_count} items exist. Extract ALL {items_count} items following the same pattern. Use examples 1-25 to extract items 26-{items_count}. Return JSON array with exactly {items_count} objects.]")
+                                    else:
+                                        # For very large arrays, send first 20 items
+                                        summary_parts.append(f"\nExample items (first 20 of {items_count} total):\n")
+                                        summary_parts.append(json_module.dumps(data_val["items"][:20], ensure_ascii=False, indent=2))
+                                        summary_parts.append(f"\n\n[CRITICAL: There are {items_count} items total. Extract ALL {items_count} items using the pattern from examples. Examples show items 1-20. Extract items 21-{items_count} with same pattern. Response must be JSON array with {items_count} objects.]")
+                                
+                                # Also check for pageComponent_Mapping
+                                elif "pageComponent_Mapping" in data_val:
+                                    comps = data_val["pageComponent_Mapping"]
+                                    if isinstance(comps, list):
+                                        comp_count = len(comps)
+                                        summary_parts.append(f"\nFound array: data.pageComponent_Mapping with {comp_count} components\n")
+                                        if comp_count <= 20:
+                                            summary_parts.append(f"\nAll components:\n")
+                                            summary_parts.append(json_module.dumps(comps, ensure_ascii=False, indent=2))
+                                        else:
+                                            summary_parts.append(f"\nExample components (first 10 of {comp_count}):\n")
+                                            summary_parts.append(json_module.dumps(comps[:10], ensure_ascii=False, indent=2))
+                                            summary_parts.append(f"\n\n[Extract ALL {comp_count} components following the same pattern]")
+                        
+                        content_preview = "".join(summary_parts)
+                    except:
+                        # Fallback: send first 20000 chars
+                        content_preview = parsed_data[:20000]
+                        if len(parsed_data) > 20000:
+                            content_preview += f"\n\n[Content truncated, total: {len(parsed_data)} characters]"
+            except:
+                # Fallback: send first 20000 chars
+                content_preview = content[:20000]
+                if len(content) > 20000:
+                    content_preview += f"\n\n[Content truncated, total: {len(content)} characters]"
+        else:
+            # For HTML, send more content
+            content_preview = content[:15000]
+            if len(content) > 15000:
+                content_preview += f"\n\n[Content truncated, total: {len(content)} characters]"
+        
+        # Build full user prompt
+        system_prompt = f"""คุณเป็นผู้ช่วยในการ extract ข้อมูลจาก {content_type.upper()} ตามที่ผู้ใช้ระบุ
+
+ภารกิจของคุณ:
+1. อ่านและเข้าใจโครงสร้างข้อมูลทั้งหมดอย่างละเอียด
+2. วิเคราะห์ prompt ที่ผู้ใช้ให้มาเพื่อเข้าใจว่าต้องการ extract ข้อมูลอะไร
+3. ค้นหาและ extract ข้อมูลที่ตรงตาม prompt จากทุกส่วนของข้อมูล
+4. ถ้ามีข้อมูลหลายรายการ (เช่นหลายคน, หลายลิงค์, หลาย item) ให้แยกเป็น document ต่างหากทั้งหมด - ไม่ควรรวมกัน
+5. ส่งคืนผลลัพธ์เป็น JSON array เท่านั้น (ไม่มี markdown, ไม่มี code blocks)
+
+รูปแบบ JSON ที่ต้องส่งคืน:
+[
+  {{
+    "content": "เนื้อหาที่ extract ได้ (ข้อมูลที่สำคัญทั้งหมด)",
+    "metadata": {{
+      "field1": "value1",
+      "field2": "value2",
+      ... (เก็บข้อมูลเพิ่มเติมที่สำคัญ)
+    }}
+  }},
+  {{
+    "content": "...",
+    "metadata": {{...}}
+  }}
+]
+
+ตัวอย่าง:
+- ถ้า prompt ว่า "ดึงข้อมูลชื่อและ URL ของลิงค์" -> สร้าง document แยกกันสำหรับแต่ละลิงค์
+- ถ้า prompt ว่า "ดึงข้อมูลคนทั้งหมด" -> สร้าง document แยกกันสำหรับแต่ละคน
+- ถ้า prompt ว่า "ดึงข้อมูลข่าว" -> สร้าง document แยกกันสำหรับแต่ละข่าว
+
+สำคัญ: 
+- ต้อง extract ข้อมูลทั้งหมดที่มี ไม่ใช่แค่ตัวอย่าง
+- ถ้าเห็น pattern ของข้อมูลในตัวอย่าง ให้ extract ข้อมูลทั้งหมดที่ตาม pattern เดียวกัน
+- ให้ความสำคัญกับ prompt มากกว่าโครงสร้างข้อมูล - extract ตามที่ prompt ระบุ ไม่ใช่ตาม structure เท่านั้น
+"""
+        
+        user_prompt = f"""เนื้อหา ({content_type.upper()}):
+{content_preview}
+
+Prompt สำหรับ extraction:
+{prompt}
+
+คำแนะนำสำคัญ:
+- อ่านและเข้าใจโครงสร้างข้อมูลทั้งหมด
+- Extract ข้อมูลตาม prompt ที่ระบุอย่างถูกต้อง
+- ถ้ามีข้อมูลหลายรายการ (เช่นหลายคน, หลายลิงค์, หลาย item) ให้แยกเป็น document ต่างหากทั้งหมด
+- ใช้โครงสร้างที่เห็นในตัวอย่างเพื่อ extract ข้อมูลทั้งหมดที่มี
+- ส่งคืนเป็น JSON array เท่านั้น (ไม่ต้องมี markdown formatting)
+- Format: [{{"content": "เนื้อหา", "metadata": {{"field1": "value1", ...}}}}, ...]"""
+        
+        return content_preview, user_prompt
+    
     def extract_with_llm(self, content: str, prompt: str, content_type: str = "html") -> List[Document]:
         """
         Extract ข้อมูลด้วย LLM
@@ -68,34 +206,47 @@ class LLMExtractor:
             return self.extract_rule_based(content, prompt, content_type)
         
         try:
+            # Use prepare_llm_content to get content preview and prompt
+            content_preview, user_prompt = self.prepare_llm_content(content, prompt, content_type)
+            
             # สร้าง system prompt
             system_prompt = f"""คุณเป็นผู้ช่วยในการ extract ข้อมูลจาก {content_type.upper()} ตามที่ผู้ใช้ระบุ
-- อ่านและเข้าใจเนื้อหา
-- Extract ข้อมูลตาม prompt ที่ให้มา
-- ส่งคืนผลลัพธ์เป็น JSON array ที่มี structure ตามนี้:
-  [
-    {{
-      "content": "เนื้อหาที่ extract ได้",
-      "metadata": {{
-        "title": "หัวข้อ (ถ้ามี)",
-        "url": "URL (ถ้ามี)",
-        "type": "ประเภทข้อมูล",
-        ...
-      }}
-    }}
-  ]
 
-- ถ้ามีข้อมูลหลายชิ้น ให้แยกเป็น document ต่างหาก
-- เก็บ metadata ที่สำคัญไว้ใน metadata field
+ภารกิจของคุณ:
+1. อ่านและเข้าใจโครงสร้างข้อมูลทั้งหมดอย่างละเอียด
+2. วิเคราะห์ prompt ที่ผู้ใช้ให้มาเพื่อเข้าใจว่าต้องการ extract ข้อมูลอะไร
+3. ค้นหาและ extract ข้อมูลที่ตรงตาม prompt จากทุกส่วนของข้อมูล
+4. ถ้ามีข้อมูลหลายรายการ (เช่นหลายคน, หลายลิงค์, หลาย item) ให้แยกเป็น document ต่างหากทั้งหมด - ไม่ควรรวมกัน
+5. ส่งคืนผลลัพธ์เป็น JSON array เท่านั้น (ไม่มี markdown, ไม่มี code blocks)
+
+รูปแบบ JSON ที่ต้องส่งคืน:
+[
+  {{
+    "content": "เนื้อหาที่ extract ได้ (ข้อมูลที่สำคัญทั้งหมด)",
+    "metadata": {{
+      "field1": "value1",
+      "field2": "value2",
+      ... (เก็บข้อมูลเพิ่มเติมที่สำคัญ)
+    }}
+  }},
+  {{
+    "content": "...",
+    "metadata": {{...}}
+  }}
+]
+
+ตัวอย่าง:
+- ถ้า prompt ว่า "ดึงข้อมูลชื่อและ URL ของลิงค์" -> สร้าง document แยกกันสำหรับแต่ละลิงค์
+- ถ้า prompt ว่า "ดึงข้อมูลคนทั้งหมด" -> สร้าง document แยกกันสำหรับแต่ละคน
+- ถ้า prompt ว่า "ดึงข้อมูลข่าว" -> สร้าง document แยกกันสำหรับแต่ละข่าว
+
+สำคัญ: 
+- ต้อง extract ข้อมูลทั้งหมดที่มี ไม่ใช่แค่ตัวอย่าง
+- ถ้าเห็น pattern ของข้อมูลในตัวอย่าง ให้ extract ข้อมูลทั้งหมดที่ตาม pattern เดียวกัน
+- ให้ความสำคัญกับ prompt มากกว่าโครงสร้างข้อมูล - extract ตามที่ prompt ระบุ ไม่ใช่ตาม structure เท่านั้น
 """
             
-            user_prompt = f"""เนื้อหา ({content_type}):
-{content[:5000]}  # จำกัดขนาดเพื่อไม่ให้ token เกิน
-
-Prompt สำหรับ extraction:
-{prompt}
-
-กรุณา extract ข้อมูลตาม prompt และส่งคืนเป็น JSON array เท่านั้น (ไม่ต้องมี markdown formatting)"""
+            # Use the prepared user prompt (content_preview is already included in user_prompt from prepare_llm_content)
             
             # Call LLM
             from langchain.schema import HumanMessage, SystemMessage

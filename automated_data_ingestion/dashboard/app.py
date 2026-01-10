@@ -219,6 +219,35 @@ def main():
                                     if result.documents_updated > 0:
                                         st.metric("Documents Updated", result.documents_updated)
                                 
+                                # Show LLM Content Preview
+                                if hasattr(result, 'llm_content_preview') and result.llm_content_preview:
+                                    with st.expander("🔍 ดู JSON/Content ที่ส่งไปให้ LLM", expanded=False):
+                                        st.markdown("**Content Preview ที่ส่งไปให้ LLM:**")
+                                        if result.content_type == "json":
+                                            try:
+                                                import json
+                                                # Try to parse as JSON for pretty display
+                                                preview_data = json.loads(result.llm_content_preview) if (result.llm_content_preview.strip().startswith('{') or result.llm_content_preview.strip().startswith('[')) else result.llm_content_preview
+                                                if isinstance(preview_data, (dict, list)):
+                                                    st.json(preview_data)
+                                                else:
+                                                    st.code(result.llm_content_preview[:5000], language="json")
+                                                    if len(result.llm_content_preview) > 5000:
+                                                        st.info(f"⚠️ Content ถูกตัดแสดง (แสดง 5000 ตัวแรกจากทั้งหมด {len(result.llm_content_preview)} ตัว)")
+                                            except:
+                                                st.code(result.llm_content_preview[:5000], language="json")
+                                                if len(result.llm_content_preview) > 5000:
+                                                    st.info(f"⚠️ Content ถูกตัดแสดง (แสดง 5000 ตัวแรกจากทั้งหมด {len(result.llm_content_preview)} ตัว)")
+                                        else:
+                                            st.code(result.llm_content_preview[:5000], language="html")
+                                            if len(result.llm_content_preview) > 5000:
+                                                st.info(f"⚠️ Content ถูกตัดแสดง (แสดง 5000 ตัวแรกจากทั้งหมด {len(result.llm_content_preview)} ตัว)")
+                                        
+                                        if hasattr(result, 'llm_prompt_preview') and result.llm_prompt_preview:
+                                            st.markdown("---")
+                                            st.markdown("**Full Prompt ที่ส่งไปให้ LLM:**")
+                                            st.text_area("LLM Prompt", result.llm_prompt_preview, height=300, key=f"llm_prompt_{result.job_id}", disabled=True, label_visibility="collapsed")
+                                
                                 if result.error_message:
                                     st.error(f"Error: {result.error_message}")
                                 
