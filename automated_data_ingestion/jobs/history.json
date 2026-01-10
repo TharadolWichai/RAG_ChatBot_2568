@@ -1006,5 +1006,77 @@
       "completed_at": "2026-01-11T05:22:30.152436"
     },
     "timestamp": "2026-01-11T05:22:30.153682"
+  },
+  {
+    "job_config": {
+      "job_id": "f1ad29e8-7305-4e6e-946e-58e91b5423c0",
+      "name": "หน้าติดต่อเรา",
+      "url": "https://api.computing.kku.ac.th/api/v1/page/getPageMappingBySlug/contact-us",
+      "collection_name": "links_embedding",
+      "extraction_prompt": "- ดึงข้อมูลทั้งภาษาไทยและภาษาอังกฤษของมหาวิทยาลัย",
+      "description": "ดึงข้อมูลของหน้าสำหรับบุคลากร",
+      "created_at": "2026-01-11T05:30:20.269294",
+      "updated_at": "2026-01-11T05:30:20.269324",
+      "use_selenium": true,
+      "wait_time": 3,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "metadata_filter": {},
+      "hash_keys": [],
+      "delete_missing": false,
+      "custom_headers": {},
+      "exclude_patterns": [],
+      "include_patterns": []
+    },
+    "result": {
+      "job_id": "f1ad29e8-7305-4e6e-946e-58e91b5423c0",
+      "status": "success",
+      "documents_processed": 28,
+      "documents_inserted": 28,
+      "documents_skipped": 0,
+      "documents_updated": 0,
+      "documents_deleted": 0,
+      "error_message": null,
+      "execution_time": 36.64334535598755,
+      "started_at": "2026-01-11T05:30:31.622629",
+      "completed_at": "2026-01-11T05:31:08.265993"
+    },
+    "timestamp": "2026-01-11T05:31:08.266979"
+  },
+  {
+    "job_config": {
+      "job_id": "681503e9-1237-4113-98b6-c2a2c1623302",
+      "name": "หน้าบุคลากร",
+      "url": "https://api.computing.kku.ac.th/api/v1/user/getUserByClassIds/?classId=[1,+2,+3]",
+      "collection_name": "allpeople_embedding",
+      "extraction_prompt": "- ดึงข้อมูลทั้งหมดของชื่อและนามสกุลทั้งภาษาไทยและภาษาอังกฤษ ตำแหน่ง อีเมล ความเชี่ยวชาญ และผลงานวิจัย ของทุกคน\n- เก็บข้อมูลแยกเป็นรายบุคคล",
+      "description": "ดึงข้อมูลของหน้าบุคลากร",
+      "created_at": "2026-01-11T05:37:12.384128",
+      "updated_at": "2026-01-11T05:37:12.384134",
+      "use_selenium": true,
+      "wait_time": 3,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "metadata_filter": {},
+      "hash_keys": [],
+      "delete_missing": false,
+      "custom_headers": {},
+      "exclude_patterns": [],
+      "include_patterns": []
+    },
+    "result": {
+      "job_id": "681503e9-1237-4113-98b6-c2a2c1623302",
+      "status": "success",
+      "documents_processed": 69,
+      "documents_inserted": 113,
+      "documents_skipped": 0,
+      "documents_updated": 0,
+      "documents_deleted": 0,
+      "error_message": null,
+      "execution_time": 9.091373682022095,
+      "started_at": "2026-01-11T05:37:16.803399",
+      "completed_at": "2026-01-11T05:37:25.894781"
+    },
+    "timestamp": "2026-01-11T05:37:25.896142"
   }
 ]

@@ -59,77 +59,23 @@ class LLMExtractor:
         Returns:
             Tuple of (content_preview, full_user_prompt)
         """
-        # Handle large content - send full data to LLM for better extraction
-        # For JSON, try to send all items if possible, or use smart chunking
+        # Always send full content to LLM - no truncation
         if content_type == "json":
-            # Try to parse and send structured data
+            # Parse and format JSON properly
             try:
                 import json as json_module
-                parsed_data = json_module.dumps(json_module.loads(content), ensure_ascii=False, indent=2) if isinstance(content, str) else json_module.dumps(content, ensure_ascii=False, indent=2)
-                
-                # Try to send full content if not too large (under 80K chars for better extraction)
-                # Otherwise send structured summary with examples
-                if len(parsed_data) <= 80000:
-                    # Send full content if reasonable size
-                    print(f"   📤 Sending full JSON content to LLM ({len(parsed_data)} characters)")
-                    content_preview = parsed_data
+                # Parse JSON if it's a string, otherwise dump it
+                if isinstance(content, str):
+                    parsed_data = json_module.loads(content)
+                    content_preview = json_module.dumps(parsed_data, ensure_ascii=False, indent=2)
                 else:
-                    # For very large JSON, parse and create smart summary
-                    try:
-                        data = json_module.loads(parsed_data) if isinstance(parsed_data, str) else parsed_data
-                        summary_parts = []
-                        summary_parts.append(f"JSON structure: {list(data.keys()) if isinstance(data, dict) else 'array'}\n")
-                        
-                        # Find array items
-                        if isinstance(data, dict) and "data" in data:
-                            data_val = data["data"]
-                            if isinstance(data_val, dict):
-                                if "items" in data_val and isinstance(data_val["items"], list):
-                                    items_count = len(data_val["items"])
-                                    summary_parts.append(f"\nFound array: data.data.items with {items_count} items\n")
-                                    
-                                    # Try to send as many items as possible (up to token limit)
-                                    items_json = json_module.dumps(data_val["items"], ensure_ascii=False, indent=2)
-                                    
-                                    if len(items_json) <= 60000:  # Send all items if fits
-                                        summary_parts.append(f"\nAll items ({items_count} total) - EXTRACT ALL:\n")
-                                        summary_parts.append(items_json)
-                                    elif items_count <= 100:
-                                        # Send first 25 items as examples for medium arrays
-                                        summary_parts.append(f"\nExample items (first 25 of {items_count} total):\n")
-                                        summary_parts.append(json_module.dumps(data_val["items"][:25], ensure_ascii=False, indent=2))
-                                        summary_parts.append(f"\n\n[CRITICAL: Total {items_count} items exist. Extract ALL {items_count} items following the same pattern. Use examples 1-25 to extract items 26-{items_count}. Return JSON array with exactly {items_count} objects.]")
-                                    else:
-                                        # For very large arrays, send first 20 items
-                                        summary_parts.append(f"\nExample items (first 20 of {items_count} total):\n")
-                                        summary_parts.append(json_module.dumps(data_val["items"][:20], ensure_ascii=False, indent=2))
-                                        summary_parts.append(f"\n\n[CRITICAL: There are {items_count} items total. Extract ALL {items_count} items using the pattern from examples. Examples show items 1-20. Extract items 21-{items_count} with same pattern. Response must be JSON array with {items_count} objects.]")
-                                
-                                # Also check for pageComponent_Mapping
-                                elif "pageComponent_Mapping" in data_val:
-                                    comps = data_val["pageComponent_Mapping"]
-                                    if isinstance(comps, list):
-                                        comp_count = len(comps)
-                                        summary_parts.append(f"\nFound array: data.pageComponent_Mapping with {comp_count} components\n")
-                                        if comp_count <= 20:
-                                            summary_parts.append(f"\nAll components:\n")
-                                            summary_parts.append(json_module.dumps(comps, ensure_ascii=False, indent=2))
-                                        else:
-                                            summary_parts.append(f"\nExample components (first 10 of {comp_count}):\n")
-                                            summary_parts.append(json_module.dumps(comps[:10], ensure_ascii=False, indent=2))
-                                            summary_parts.append(f"\n\n[Extract ALL {comp_count} components following the same pattern]")
-                        
-                        content_preview = "".join(summary_parts)
-                    except:
-                        # Fallback: send first 20000 chars
-                        content_preview = parsed_data[:20000]
-                        if len(parsed_data) > 20000:
-                            content_preview += f"\n\n[Content truncated, total: {len(parsed_data)} characters]"
+                    content_preview = json_module.dumps(content, ensure_ascii=False, indent=2)
+                
+                print(f"   📤 Sending FULL JSON content to LLM ({len(content_preview)} characters)")
             except:
-                # Fallback: send first 20000 chars
-                content_preview = content[:20000]
-                if len(content) > 20000:
-                    content_preview += f"\n\n[Content truncated, total: {len(content)} characters]"
+                # Fallback: use content as-is if JSON parsing fails
+                content_preview = content if isinstance(content, str) else str(content)
+                print(f"   📤 Sending JSON content to LLM (could not parse, {len(content_preview)} characters)")
         else:
             # For HTML, send more content
             content_preview = content[:15000]
