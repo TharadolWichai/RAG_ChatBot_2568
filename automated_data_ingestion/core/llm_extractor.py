@@ -51,16 +51,70 @@ class LLMExtractor:
             print("⚠️ langchain-openai not installed, falling back to rule-based extraction")
             self.use_openai = False
     
-    def prepare_llm_content(self, content: str, prompt: str, content_type: str = "html") -> tuple[str, str]:
+    def prepare_llm_content(self, content: str, prompt: str, content_type: str = "html", html_content: Optional[str] = None, json_content: Optional[str] = None) -> tuple[str, str]:
         """
         Prepare content to send to LLM and return both preview and full prompt
         This allows dashboard to show what will be sent to LLM
         
+        Args:
+            content: Combined or single content string
+            prompt: Extraction prompt
+            content_type: "html", "json", or "combined"
+            html_content: HTML content (if separated)
+            json_content: JSON content (if separated)
+        
         Returns:
             Tuple of (content_preview, full_user_prompt)
         """
-        # Always send full content to LLM - no truncation
-        if content_type == "json":
+        # Handle combined content (HTML + JSON)
+        if content_type == "combined" or (html_content and json_content):
+            # Clean HTML
+            html_preview = None
+            if html_content:
+                try:
+                    from bs4 import BeautifulSoup
+                    soup = BeautifulSoup(html_content, 'html.parser')
+                    for tag in soup(['script', 'style', 'noscript', 'iframe']):
+                        tag.decompose()
+                    from bs4 import Comment
+                    comments = soup.find_all(string=lambda text: isinstance(text, Comment))
+                    for comment in comments:
+                        comment.extract()
+                    html_preview = str(soup)
+                    print(f"   📤 Prepared HTML ({len(html_preview)} characters)")
+                except Exception as e:
+                    print(f"   ⚠️ Could not clean HTML: {e}")
+                    html_preview = html_content
+            
+            # Format JSON
+            json_preview = None
+            json_str = json_content if json_content else content.split("=== JSON CONTENT FROM API ===")[-1] if "=== JSON CONTENT FROM API ===" in content else None
+            if json_str:
+                try:
+                    import json as json_module
+                    if isinstance(json_str, str):
+                        parsed_data = json_module.loads(json_str)
+                        json_preview = json_module.dumps(parsed_data, ensure_ascii=False, indent=2)
+                    else:
+                        json_preview = json_module.dumps(json_str, ensure_ascii=False, indent=2)
+                    print(f"   📤 Prepared JSON ({len(json_preview)} characters)")
+                except Exception as e:
+                    print(f"   ⚠️ Could not format JSON: {e}")
+                    json_preview = json_str
+            
+            # Combine HTML and JSON
+            if html_preview and json_preview:
+                content_preview = f"=== HTML CONTENT ===\n{html_preview}\n\n=== JSON CONTENT ===\n{json_preview}"
+                print(f"   ✅ Combined HTML + JSON ({len(html_preview)} + {len(json_preview)} characters)")
+            elif html_preview:
+                content_preview = html_preview
+            elif json_preview:
+                content_preview = json_preview
+            else:
+                content_preview = content
+        
+        # Handle JSON only
+        elif content_type == "json":
             # Parse and format JSON properly
             try:
                 import json as json_module
@@ -77,19 +131,62 @@ class LLMExtractor:
                 content_preview = content if isinstance(content, str) else str(content)
                 print(f"   📤 Sending JSON content to LLM (could not parse, {len(content_preview)} characters)")
         else:
-            # For HTML, send more content
-            content_preview = content[:15000]
-            if len(content) > 15000:
-                content_preview += f"\n\n[Content truncated, total: {len(content)} characters]"
+            # For HTML, clean and send full content to LLM
+            # Clean HTML: remove script, style, comments to reduce size but keep structure
+            try:
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(content, 'html.parser')
+                
+                # Remove non-content tags that don't help extraction
+                for tag in soup(['script', 'style', 'noscript', 'iframe']):
+                    tag.decompose()
+                
+                # Remove comments
+                from bs4 import Comment
+                comments = soup.find_all(string=lambda text: isinstance(text, Comment))
+                for comment in comments:
+                    comment.extract()
+                
+                # Get cleaned HTML (keep structure for LLM to understand)
+                cleaned_html = str(soup)
+                
+                # If still very large (>200K chars), try to extract main content only
+                # But by default, send full cleaned HTML
+                if len(cleaned_html) > 200000:
+                    print(f"   ⚠️ HTML is very large ({len(cleaned_html)} chars), extracting main content...")
+                    # Try to find main content area
+                    main_content = (
+                        soup.find('main') or
+                        soup.find('article') or
+                        soup.find('div', id=re.compile('content|main|body', re.I)) or
+                        soup.find('div', class_=re.compile('content|main|body', re.I)) or
+                        soup.find('body')
+                    )
+                    if main_content:
+                        cleaned_html = str(main_content)
+                        print(f"   ✅ Extracted main content ({len(cleaned_html)} chars)")
+                    else:
+                        print(f"   📤 Sending full cleaned HTML ({len(cleaned_html)} chars)")
+                else:
+                    print(f"   📤 Sending FULL cleaned HTML to LLM ({len(cleaned_html)} characters)")
+                
+                content_preview = cleaned_html
+            except Exception as e:
+                # Fallback: send original content if cleaning fails
+                print(f"   ⚠️ Could not clean HTML, sending original ({len(content)} chars): {e}")
+                content_preview = content
         
         # Build full user prompt
-        system_prompt = f"""คุณเป็นผู้ช่วยในการ extract ข้อมูลจาก {content_type.upper()} ตามที่ผู้ใช้ระบุ
+        content_type_label = "HTML + JSON" if (content_type == "combined" or (html_content and json_content)) else content_type.upper()
+        system_prompt = f"""คุณเป็นผู้ช่วยในการ extract ข้อมูลจาก {content_type_label} ตามที่ผู้ใช้ระบุ
 
 ภารกิจของคุณ:
 1. อ่านและเข้าใจโครงสร้างข้อมูลทั้งหมดอย่างละเอียด
 2. วิเคราะห์ prompt ที่ผู้ใช้ให้มาเพื่อเข้าใจว่าต้องการ extract ข้อมูลอะไร
 3. ค้นหาและ extract ข้อมูลที่ตรงตาม prompt จากทุกส่วนของข้อมูล
-4. ถ้ามีข้อมูลหลายรายการ (เช่นหลายคน, หลายลิงค์, หลาย item) ให้แยกเป็น document ต่างหากทั้งหมด - ไม่ควรรวมกัน
+4. วิเคราะห์ว่าข้อมูลที่ได้รับเป็นรายละเอียดของรายการหนึ่งๆ หรือเป็น list ของหลายรายการ:
+   - **ถ้าเป็นรายละเอียดของรายการหนึ่ง** (เช่นรายละเอียดของกลุ่มวิจัยหนึ่ง, กลุ่มวิจัยหนึ่ง, รายการหนึ่ง): ให้รวมข้อมูลทั้งหมดไว้ใน document เดียว (ชื่อ, รายละเอียด, สมาชิก, งานวิจัย, ฯลฯ)
+   - **ถ้าเป็น list ของหลายรายการ** (เช่นหลายคน, หลายลิงค์, หลายข่าว): ให้แยกเป็น document ต่างหากทั้งหมด
 5. ส่งคืนผลลัพธ์เป็น JSON array เท่านั้น (ไม่มี markdown, ไม่มี code blocks)
 
 รูปแบบ JSON ที่ต้องส่งคืน:
@@ -109,17 +206,39 @@ class LLMExtractor:
 ]
 
 ตัวอย่าง:
-- ถ้า prompt ว่า "ดึงข้อมูลชื่อและ URL ของลิงค์" -> สร้าง document แยกกันสำหรับแต่ละลิงค์
-- ถ้า prompt ว่า "ดึงข้อมูลคนทั้งหมด" -> สร้าง document แยกกันสำหรับแต่ละคน
-- ถ้า prompt ว่า "ดึงข้อมูลข่าว" -> สร้าง document แยกกันสำหรับแต่ละข่าว
+- ถ้า prompt ว่า "ดึงข้อมูลชื่อและ URL ของลิงค์" (list page) -> สร้าง document แยกกันสำหรับแต่ละลิงค์
+- ถ้า prompt ว่า "ดึงข้อมูลคนทั้งหมด" (list page) -> สร้าง document แยกกันสำหรับแต่ละคน
+- ถ้า prompt ว่า "ดึงข้อมูลข่าว" (list page) -> สร้าง document แยกกันสำหรับแต่ละข่าว
+- ถ้า prompt ว่า "ดึงข้อมูลรายละเอียดของกลุ่มวิจัย" (detail page) -> สร้าง document เดียวที่รวมข้อมูลทั้งหมด (ชื่อกลุ่มวิจัย, คำอธิบาย, สมาชิกทั้งหมด, งานวิจัยทั้งหมด, ฯลฯ)
 
 สำคัญ: 
 - ต้อง extract ข้อมูลทั้งหมดที่มี ไม่ใช่แค่ตัวอย่าง
-- ถ้าเห็น pattern ของข้อมูลในตัวอย่าง ให้ extract ข้อมูลทั้งหมดที่ตาม pattern เดียวกัน
+- ถ้าเป็นรายละเอียดของรายการหนึ่ง ให้รวมข้อมูลทั้งหมดไว้ใน document เดียว
+- ถ้าเป็น list ของหลายรายการ ให้แยกเป็น document แยกกัน
 - ให้ความสำคัญกับ prompt มากกว่าโครงสร้างข้อมูล - extract ตามที่ prompt ระบุ ไม่ใช่ตาม structure เท่านั้น
 """
         
-        user_prompt = f"""เนื้อหา ({content_type.upper()}):
+        # Build user prompt
+        if content_type == "combined" or (html_content and json_content):
+            user_prompt = f"""เนื้อหาที่ส่งมา (HTML + JSON):
+{content_preview}
+
+Prompt สำหรับ extraction:
+{prompt}
+
+คำแนะนำสำคัญ:
+- คุณได้รับข้อมูลทั้ง HTML และ JSON พร้อมกัน - ใช้ข้อมูลทั้งสองส่วนประกอบกันเพื่อ extract ข้อมูลให้ครบถ้วน
+- HTML อาจมีข้อมูลที่แสดงบนหน้าเว็บ, JSON อาจมีโครงสร้างข้อมูลที่ชัดเจน
+- อ่านและเข้าใจโครงสร้างข้อมูลทั้งหมด (ทั้ง HTML และ JSON)
+- Extract ข้อมูลตาม prompt ที่ระบุอย่างถูกต้อง
+- วิเคราะห์ว่าข้อมูลเป็นรายละเอียดของรายการหนึ่งๆ หรือเป็น list:
+  * ถ้าเป็นรายละเอียดของรายการหนึ่ง (เช่นรายละเอียดของกลุ่มวิจัยหนึ่ง): ให้รวมข้อมูลทั้งหมดไว้ใน document เดียว
+  * ถ้าเป็น list ของหลายรายการ: ให้แยกเป็น document แยกกัน
+- ใช้โครงสร้างที่เห็นในตัวอย่างเพื่อ extract ข้อมูลทั้งหมดที่มี
+- ส่งคืนเป็น JSON array เท่านั้น (ไม่ต้องมี markdown formatting)
+- Format: [{{"content": "เนื้อหา", "metadata": {{"field1": "value1", ...}}}}, ...]"""
+        else:
+            user_prompt = f"""เนื้อหา ({content_type_label}):
 {content_preview}
 
 Prompt สำหรับ extraction:
@@ -128,7 +247,9 @@ Prompt สำหรับ extraction:
 คำแนะนำสำคัญ:
 - อ่านและเข้าใจโครงสร้างข้อมูลทั้งหมด
 - Extract ข้อมูลตาม prompt ที่ระบุอย่างถูกต้อง
-- ถ้ามีข้อมูลหลายรายการ (เช่นหลายคน, หลายลิงค์, หลาย item) ให้แยกเป็น document ต่างหากทั้งหมด
+- วิเคราะห์ว่าข้อมูลเป็นรายละเอียดของรายการหนึ่งๆ หรือเป็น list:
+  * ถ้าเป็นรายละเอียดของรายการหนึ่ง (เช่นรายละเอียดของกลุ่มวิจัยหนึ่ง): ให้รวมข้อมูลทั้งหมดไว้ใน document เดียว
+  * ถ้าเป็น list ของหลายรายการ: ให้แยกเป็น document แยกกัน
 - ใช้โครงสร้างที่เห็นในตัวอย่างเพื่อ extract ข้อมูลทั้งหมดที่มี
 - ส่งคืนเป็น JSON array เท่านั้น (ไม่ต้องมี markdown formatting)
 - Format: [{{"content": "เนื้อหา", "metadata": {{"field1": "value1", ...}}}}, ...]"""
@@ -162,7 +283,9 @@ Prompt สำหรับ extraction:
 1. อ่านและเข้าใจโครงสร้างข้อมูลทั้งหมดอย่างละเอียด
 2. วิเคราะห์ prompt ที่ผู้ใช้ให้มาเพื่อเข้าใจว่าต้องการ extract ข้อมูลอะไร
 3. ค้นหาและ extract ข้อมูลที่ตรงตาม prompt จากทุกส่วนของข้อมูล
-4. ถ้ามีข้อมูลหลายรายการ (เช่นหลายคน, หลายลิงค์, หลาย item) ให้แยกเป็น document ต่างหากทั้งหมด - ไม่ควรรวมกัน
+4. วิเคราะห์ว่าข้อมูลที่ได้รับเป็นรายละเอียดของรายการหนึ่งๆ หรือเป็น list ของหลายรายการ:
+   - **ถ้าเป็นรายละเอียดของรายการหนึ่ง** (เช่นรายละเอียดของกลุ่มวิจัยหนึ่ง, กลุ่มวิจัยหนึ่ง, รายการหนึ่ง): ให้รวมข้อมูลทั้งหมดไว้ใน document เดียว (ชื่อ, รายละเอียด, สมาชิก, งานวิจัย, ฯลฯ)
+   - **ถ้าเป็น list ของหลายรายการ** (เช่นหลายคน, หลายลิงค์, หลายข่าว): ให้แยกเป็น document ต่างหากทั้งหมด
 5. ส่งคืนผลลัพธ์เป็น JSON array เท่านั้น (ไม่มี markdown, ไม่มี code blocks)
 
 รูปแบบ JSON ที่ต้องส่งคืน:
@@ -182,13 +305,15 @@ Prompt สำหรับ extraction:
 ]
 
 ตัวอย่าง:
-- ถ้า prompt ว่า "ดึงข้อมูลชื่อและ URL ของลิงค์" -> สร้าง document แยกกันสำหรับแต่ละลิงค์
-- ถ้า prompt ว่า "ดึงข้อมูลคนทั้งหมด" -> สร้าง document แยกกันสำหรับแต่ละคน
-- ถ้า prompt ว่า "ดึงข้อมูลข่าว" -> สร้าง document แยกกันสำหรับแต่ละข่าว
+- ถ้า prompt ว่า "ดึงข้อมูลชื่อและ URL ของลิงค์" (list page) -> สร้าง document แยกกันสำหรับแต่ละลิงค์
+- ถ้า prompt ว่า "ดึงข้อมูลคนทั้งหมด" (list page) -> สร้าง document แยกกันสำหรับแต่ละคน
+- ถ้า prompt ว่า "ดึงข้อมูลข่าว" (list page) -> สร้าง document แยกกันสำหรับแต่ละข่าว
+- ถ้า prompt ว่า "ดึงข้อมูลรายละเอียดของกลุ่มวิจัย" (detail page) -> สร้าง document เดียวที่รวมข้อมูลทั้งหมด (ชื่อกลุ่มวิจัย, คำอธิบาย, สมาชิกทั้งหมด, งานวิจัยทั้งหมด, ฯลฯ)
 
 สำคัญ: 
 - ต้อง extract ข้อมูลทั้งหมดที่มี ไม่ใช่แค่ตัวอย่าง
-- ถ้าเห็น pattern ของข้อมูลในตัวอย่าง ให้ extract ข้อมูลทั้งหมดที่ตาม pattern เดียวกัน
+- ถ้าเป็นรายละเอียดของรายการหนึ่ง ให้รวมข้อมูลทั้งหมดไว้ใน document เดียว
+- ถ้าเป็น list ของหลายรายการ ให้แยกเป็น document แยกกัน
 - ให้ความสำคัญกับ prompt มากกว่าโครงสร้างข้อมูล - extract ตามที่ prompt ระบุ ไม่ใช่ตาม structure เท่านั้น
 """
             

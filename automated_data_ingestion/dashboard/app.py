@@ -124,12 +124,59 @@ def main():
         st.header("สร้าง Job ใหม่")
         st.markdown("กรอกข้อมูลเพื่อสร้าง scraping job ใหม่")
         
+        # Batch Processing Options (outside form for immediate rendering)
+        with st.expander("🔄 Batch Processing (สำหรับ List API)", expanded=False):
+            st.markdown("**ใช้เมื่อต้องการดึงข้อมูลจาก List API และสร้าง jobs สำหรับแต่ละรายการ**")
+            
+            # Use session state for checkbox to work properly
+            batch_mode_key = "batch_mode_checkbox"
+            if batch_mode_key not in st.session_state:
+                st.session_state[batch_mode_key] = False
+            
+            # Streamlit manages session state automatically when using key
+            batch_mode = st.checkbox(
+                "เปิดโหมด Batch Processing", 
+                value=st.session_state[batch_mode_key],
+                help="เปิดเพื่อใช้ batch processing",
+                key=batch_mode_key
+            )
+            
+            # Read batch_mode from session state (Streamlit updates it automatically)
+            if batch_mode_key in st.session_state:
+                batch_mode = st.session_state[batch_mode_key]
+            
+            if batch_mode:
+                # Streamlit manages session state automatically when using key
+                st.text_input(
+                    "List API URL *",
+                    value=st.session_state.get("batch_list_api", ""),
+                    placeholder="https://api.computing.kku.ac.th/api/v1/page/getPageMappingBySlug/research",
+                    help="API URL ที่มี list ของรายการ (เช่น list กลุ่มวิจัย)",
+                    key="batch_list_api"
+                )
+                st.text_input(
+                    "Detail URL Pattern",
+                    value=st.session_state.get("detail_url_pattern", ""),
+                    placeholder="https://computing.kku.ac.th/{slug}",
+                    help="Pattern สำหรับสร้าง URL รายละเอียด (ใช้ {slug} เป็น placeholder)",
+                    key="detail_url_pattern"
+                )
+                st.text_input(
+                    "Detail API Pattern",
+                    value=st.session_state.get("detail_api_pattern", ""),
+                    placeholder="https://api.computing.kku.ac.th/api/v1/page/getPageMappingBySlug/{slug}",
+                    help="Pattern สำหรับสร้าง API URL รายละเอียด (ใช้ {slug} เป็น placeholder)",
+                    key="detail_api_pattern"
+                )
+                st.info("💡 ระบบจะดึง list จาก API, extract slugs/URLs, แล้วสร้าง jobs สำหรับแต่ละรายการอัตโนมัติ")
+        
         with st.form("new_job_form"):
             col1, col2 = st.columns(2)
             
             with col1:
                 job_name = st.text_input("ชื่อ Job *", placeholder="ตัวอย่าง: Scrape Students Page")
-                url = st.text_input("URL หรือ API Endpoint *", placeholder="https://computing.kku.ac.th/students")
+                url = st.text_input("URL ของหน้าเว็บ (optional)", placeholder="https://computing.kku.ac.th/students", help="กรอก URL เพื่อดึง HTML จากหน้าเว็บ (ต้องมี URL หรือ API อย่างน้อย 1 อย่าง)")
+                api_url = st.text_input("API Endpoint (optional)", placeholder="https://api.computing.kku.ac.th/api/v1/...", help="กรอก API URL เพื่อดึง JSON จาก API (ต้องมี URL หรือ API อย่างน้อย 1 อย่าง)")
                 collection_name = st.text_input("Collection Name *", placeholder="students_embedding")
             
             with col2:
@@ -163,100 +210,122 @@ def main():
             submitted = st.form_submit_button("🚀 Create & Run Job", type="primary")
             
             if submitted:
+                # Get batch mode and values from session state
+                batch_mode = st.session_state.get("batch_mode_checkbox", False)
+                batch_list_api = st.session_state.get("batch_list_api", "") if batch_mode else None
+                detail_url_pattern = st.session_state.get("detail_url_pattern", "") if batch_mode else None
+                detail_api_pattern = st.session_state.get("detail_api_pattern", "") if batch_mode else None
+                
                 # Validation
-                if not job_name or not url or not collection_name or not extraction_prompt:
+                if not job_name or not collection_name or not extraction_prompt:
                     st.error("❌ กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน")
-                else:
-                    # Create job config
-                    job_id = str(uuid.uuid4())
-                    
-                    hash_keys = []
-                    if hash_keys_input:
-                        hash_keys = [k.strip() for k in hash_keys_input.split(",")]
-                    
-                    metadata_filter = {}
-                    if metadata_category:
-                        metadata_filter["category"] = metadata_category
-                    
-                    config = ScrapingJobConfig(
-                        job_id=job_id,
-                        name=job_name,
-                        url=url,
-                        collection_name=collection_name,
-                        extraction_prompt=extraction_prompt,
-                        description=description,
-                        use_selenium=use_selenium,
-                        wait_time=wait_time,
-                        chunk_size=chunk_size,
-                        chunk_overlap=chunk_overlap,
-                        metadata_filter=metadata_filter,
-                        hash_keys=hash_keys,
-                        delete_missing=delete_missing
-                    )
-                    
-                    # Execute job
-                    with st.spinner("🔄 กำลังรัน job..."):
-                        if initialize_orchestrator():
-                            try:
-                                result = st.session_state.orchestrator.execute_job(config)
-                                
-                                # Save to history
-                                save_job_to_history(config.to_dict(), result.to_dict())
-                                
-                                # Display results
-                                st.success("✅ Job completed!")
-                                
-                                col_result1, col_result2 = st.columns(2)
-                                
-                                with col_result1:
-                                    st.metric("Status", result.status)
-                                    st.metric("Documents Processed", result.documents_processed)
-                                    st.metric("Documents Inserted", result.documents_inserted)
-                                
-                                with col_result2:
-                                    st.metric("Execution Time", f"{result.execution_time:.2f}s")
-                                    st.metric("Documents Skipped", result.documents_skipped)
-                                    if result.documents_updated > 0:
-                                        st.metric("Documents Updated", result.documents_updated)
-                                
-                                # Show LLM Content Preview
-                                if hasattr(result, 'llm_content_preview') and result.llm_content_preview:
-                                    with st.expander("🔍 ดู JSON/Content ที่ส่งไปให้ LLM", expanded=False):
-                                        st.markdown("**Content Preview ที่ส่งไปให้ LLM:**")
-                                        if result.content_type == "json":
-                                            try:
-                                                import json
-                                                # Try to parse as JSON for pretty display
-                                                preview_data = json.loads(result.llm_content_preview) if (result.llm_content_preview.strip().startswith('{') or result.llm_content_preview.strip().startswith('[')) else result.llm_content_preview
-                                                if isinstance(preview_data, (dict, list)):
-                                                    st.json(preview_data)
-                                                else:
+                elif batch_mode:
+                    if not batch_list_api:
+                        st.error("❌ กรุณากรอก List API URL เมื่อเปิด Batch Processing")
+                    else:
+                        # Batch mode - proceed with batch processing
+                        url = url or "batch_mode"  # Placeholder
+                elif not url and not api_url:
+                    st.error("❌ กรุณากรอก URL หรือ API Endpoint อย่างน้อย 1 อย่าง")
+                
+                # Only proceed if validation passes
+                if job_name and collection_name and extraction_prompt:
+                    if (batch_mode and batch_list_api) or (not batch_mode and (url or api_url)):
+                        # Create job config
+                        job_id = str(uuid.uuid4())
+                        
+                        hash_keys = []
+                        if hash_keys_input:
+                            hash_keys = [k.strip() for k in hash_keys_input.split(",")]
+                        
+                        metadata_filter = {}
+                        if metadata_category:
+                            metadata_filter["category"] = metadata_category
+                        
+                        config = ScrapingJobConfig(
+                            job_id=job_id,
+                            name=job_name,
+                            url=url if not batch_mode else "batch_mode",
+                            api_url=api_url.strip() if api_url and api_url.strip() else None,
+                            batch_mode=batch_mode if batch_mode else False,
+                            batch_list_api=batch_list_api.strip() if batch_mode and batch_list_api else None,
+                            detail_url_pattern=detail_url_pattern.strip() if batch_mode and detail_url_pattern else None,
+                            detail_api_pattern=detail_api_pattern.strip() if batch_mode and detail_api_pattern else None,
+                            collection_name=collection_name,
+                            extraction_prompt=extraction_prompt,
+                            description=description,
+                            use_selenium=use_selenium,
+                            wait_time=wait_time,
+                            chunk_size=chunk_size,
+                            chunk_overlap=chunk_overlap,
+                            metadata_filter=metadata_filter,
+                            hash_keys=hash_keys,
+                            delete_missing=delete_missing
+                        )
+                        
+                        # Execute job
+                        with st.spinner("🔄 กำลังรัน job..."):
+                            if initialize_orchestrator():
+                                try:
+                                    result = st.session_state.orchestrator.execute_job(config)
+                                    
+                                    # Save to history
+                                    save_job_to_history(config.to_dict(), result.to_dict())
+                                    
+                                    # Display results
+                                    st.success("✅ Job completed!")
+                                    
+                                    col_result1, col_result2 = st.columns(2)
+                                    
+                                    with col_result1:
+                                        st.metric("Status", result.status)
+                                        st.metric("Documents Processed", result.documents_processed)
+                                        st.metric("Documents Inserted", result.documents_inserted)
+                                    
+                                    with col_result2:
+                                        st.metric("Execution Time", f"{result.execution_time:.2f}s")
+                                        st.metric("Documents Skipped", result.documents_skipped)
+                                        if result.documents_updated > 0:
+                                            st.metric("Documents Updated", result.documents_updated)
+                                    
+                                    # Show LLM Content Preview
+                                    if hasattr(result, 'llm_content_preview') and result.llm_content_preview:
+                                        with st.expander("🔍 ดู JSON/Content ที่ส่งไปให้ LLM", expanded=False):
+                                            st.markdown("**Content Preview ที่ส่งไปให้ LLM:**")
+                                            if result.content_type == "json":
+                                                try:
+                                                    import json
+                                                    # Try to parse as JSON for pretty display
+                                                    preview_data = json.loads(result.llm_content_preview) if (result.llm_content_preview.strip().startswith('{') or result.llm_content_preview.strip().startswith('[')) else result.llm_content_preview
+                                                    if isinstance(preview_data, (dict, list)):
+                                                        st.json(preview_data)
+                                                    else:
+                                                        st.code(result.llm_content_preview[:5000], language="json")
+                                                        if len(result.llm_content_preview) > 5000:
+                                                            st.info(f"⚠️ Content ถูกตัดแสดง (แสดง 5000 ตัวแรกจากทั้งหมด {len(result.llm_content_preview)} ตัว)")
+                                                except:
                                                     st.code(result.llm_content_preview[:5000], language="json")
                                                     if len(result.llm_content_preview) > 5000:
                                                         st.info(f"⚠️ Content ถูกตัดแสดง (แสดง 5000 ตัวแรกจากทั้งหมด {len(result.llm_content_preview)} ตัว)")
-                                            except:
-                                                st.code(result.llm_content_preview[:5000], language="json")
+                                            else:
+                                                st.code(result.llm_content_preview[:5000], language="html")
                                                 if len(result.llm_content_preview) > 5000:
                                                     st.info(f"⚠️ Content ถูกตัดแสดง (แสดง 5000 ตัวแรกจากทั้งหมด {len(result.llm_content_preview)} ตัว)")
-                                        else:
-                                            st.code(result.llm_content_preview[:5000], language="html")
-                                            if len(result.llm_content_preview) > 5000:
-                                                st.info(f"⚠️ Content ถูกตัดแสดง (แสดง 5000 ตัวแรกจากทั้งหมด {len(result.llm_content_preview)} ตัว)")
-                                        
-                                        if hasattr(result, 'llm_prompt_preview') and result.llm_prompt_preview:
-                                            st.markdown("---")
-                                            st.markdown("**Full Prompt ที่ส่งไปให้ LLM:**")
-                                            st.text_area("LLM Prompt", result.llm_prompt_preview, height=300, key=f"llm_prompt_{result.job_id}", disabled=True, label_visibility="collapsed")
-                                
-                                if result.error_message:
-                                    st.error(f"Error: {result.error_message}")
-                                
-                            except Exception as e:
-                                st.error(f"❌ Job failed: {e}")
-                                import traceback
-                                st.code(traceback.format_exc())
-                        else:
-                            st.error("❌ Failed to initialize orchestrator. Please check configuration.")
+                                            
+                                            if hasattr(result, 'llm_prompt_preview') and result.llm_prompt_preview:
+                                                st.markdown("---")
+                                                st.markdown("**Full Prompt ที่ส่งไปให้ LLM:**")
+                                                st.text_area("LLM Prompt", result.llm_prompt_preview, height=300, key=f"llm_prompt_{result.job_id}", disabled=True, label_visibility="collapsed")
+                                    
+                                    if result.error_message:
+                                        st.error(f"Error: {result.error_message}")
+                                    
+                                except Exception as e:
+                                    st.error(f"❌ Job failed: {e}")
+                                    import traceback
+                                    st.code(traceback.format_exc())
+                            else:
+                                st.error("❌ Failed to initialize orchestrator. Please check configuration.")
     
     # Tab 2: Job History
     with tab2:

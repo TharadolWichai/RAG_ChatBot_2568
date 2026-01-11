@@ -12,9 +12,14 @@ class ScrapingJobConfig:
     """Configuration สำหรับ scraping job"""
     job_id: str
     name: str
-    url: str  # URL หรือ API endpoint
+    url: str  # URL ของหน้าเว็บ
     collection_name: str  # ชื่อ collection ใน AstraDB
     extraction_prompt: str  # Prompt สำหรับระบุว่าต้องการดึงข้อมูลส่วนไหน
+    api_url: Optional[str] = None  # API endpoint (optional) - ใช้ควบคู่กับ URL
+    batch_mode: bool = False  # เปิดโหมด batch processing
+    batch_list_api: Optional[str] = None  # API URL สำหรับดึง list (ใช้ใน batch mode)
+    detail_url_pattern: Optional[str] = None  # Pattern สำหรับสร้าง URL รายละเอียด (เช่น "https://computing.kku.ac.th/{slug}")
+    detail_api_pattern: Optional[str] = None  # Pattern สำหรับสร้าง API URL รายละเอียด (เช่น "https://api.computing.kku.ac.th/api/v1/page/getPageMappingBySlug/{slug}")
     description: Optional[str] = None
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
     updated_at: str = field(default_factory=lambda: datetime.now().isoformat())
@@ -41,6 +46,11 @@ class ScrapingJobConfig:
             "job_id": self.job_id,
             "name": self.name,
             "url": self.url,
+            "api_url": self.api_url,
+            "batch_mode": self.batch_mode,
+            "batch_list_api": self.batch_list_api,
+            "detail_url_pattern": self.detail_url_pattern,
+            "detail_api_pattern": self.detail_api_pattern,
             "collection_name": self.collection_name,
             "extraction_prompt": self.extraction_prompt,
             "description": self.description,
@@ -65,6 +75,11 @@ class ScrapingJobConfig:
             job_id=data["job_id"],
             name=data["name"],
             url=data["url"],
+            api_url=data.get("api_url"),
+            batch_mode=data.get("batch_mode", False),
+            batch_list_api=data.get("batch_list_api"),
+            detail_url_pattern=data.get("detail_url_pattern"),
+            detail_api_pattern=data.get("detail_api_pattern"),
             collection_name=data["collection_name"],
             extraction_prompt=data["extraction_prompt"],
             description=data.get("description"),
