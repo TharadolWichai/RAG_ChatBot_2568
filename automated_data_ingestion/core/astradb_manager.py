@@ -306,7 +306,18 @@ class AstraDBManager:
         """Get information about a collection"""
         try:
             collection = self.database.get_collection(collection_name)
-            count = collection.count_documents({})
+            # Try to count documents with upper_bound parameter
+            try:
+                count = collection.count_documents({}, upper_bound=10000)
+            except TypeError:
+                # Fallback: try without upper_bound (older API version)
+                try:
+                    count = collection.count_documents({})
+                except Exception:
+                    # If count fails, try to get a sample to estimate
+                    sample = list(collection.find({}, limit=1))
+                    count = len(sample) if sample else 0
+            
             return {
                 "name": collection_name,
                 "document_count": count,

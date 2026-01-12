@@ -364,7 +364,13 @@ Prompt สำหรับ extraction:
   * ถ้าเป็น list ของหลายรายการ: ให้แยกเป็น document แยกกัน
 - ใช้โครงสร้างที่เห็นในตัวอย่างเพื่อ extract ข้อมูลทั้งหมดที่มี
 - ส่งคืนเป็น JSON array เท่านั้น (ไม่ต้องมี markdown formatting)
-- Format: [{{"content": "เนื้อหา", "metadata": {{"field1": "value1", ...}}}}, ...]"""
+- Format: [{{"content": "เนื้อหา", "metadata": {{"field1": "value1", ...}}}}, ...]
+
+สำคัญมาก: 
+- content field ต้องมีข้อมูลครบถ้วนและละเอียด เพื่อให้ chatbot สามารถค้นหาและตอบคำถามได้
+- อย่าเก็บข้อมูลสำคัญไว้ใน metadata เท่านั้น เพราะ chatbot จะ search จาก content field เป็นหลัก
+- ถ้าเป็นข่าว ให้รวมหัวข้อ, เนื้อหา, วันที่, ผู้เขียน, รายละเอียดทั้งหมดไว้ใน content
+- metadata ใช้เก็บข้อมูลเสริมเท่านั้น เช่น slug, url, id"""
         else:
             user_prompt = f"""เนื้อหา ({content_type_label}):
 {content_preview}
@@ -380,7 +386,13 @@ Prompt สำหรับ extraction:
   * ถ้าเป็น list ของหลายรายการ: ให้แยกเป็น document แยกกัน
 - ใช้โครงสร้างที่เห็นในตัวอย่างเพื่อ extract ข้อมูลทั้งหมดที่มี
 - ส่งคืนเป็น JSON array เท่านั้น (ไม่ต้องมี markdown formatting)
-- Format: [{{"content": "เนื้อหา", "metadata": {{"field1": "value1", ...}}}}, ...]"""
+- Format: [{{"content": "เนื้อหา", "metadata": {{"field1": "value1", ...}}}}, ...]
+
+สำคัญมาก: 
+- content field ต้องมีข้อมูลครบถ้วนและละเอียด เพื่อให้ chatbot สามารถค้นหาและตอบคำถามได้
+- อย่าเก็บข้อมูลสำคัญไว้ใน metadata เท่านั้น เพราะ chatbot จะ search จาก content field เป็นหลัก
+- ถ้าเป็นข่าว ให้รวมหัวข้อ, เนื้อหา, วันที่, ผู้เขียน, รายละเอียดทั้งหมดไว้ใน content
+- metadata ใช้เก็บข้อมูลเสริมเท่านั้น เช่น slug, url, id"""
         
         return content_preview, user_prompt
     

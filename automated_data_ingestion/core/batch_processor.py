@@ -74,10 +74,19 @@ class BatchProcessor:
 
 สำคัญ: Extract ทุกรายการที่มี ไม่ใช่แค่ตัวอย่าง"""
             
+            # เพิ่มขนาด JSON ที่ส่งให้ LLM จาก 20K เป็น 100K เพื่อให้ extract ได้ครบถ้วน
+            # และเพิ่มคำแนะนำให้ extract ทุกรายการ
+            json_preview = json_str[:100000] if len(json_str) > 100000 else json_str
+            
             user_prompt = f"""JSON API Response:
-{json_str[:20000]}  # Limit size
+{json_preview}
 
 กรุณา extract URLs หรือ slugs ของรายการทั้งหมดที่มีอยู่ใน JSON นี้
+
+สำคัญ: 
+- Extract ทุกรายการที่มี ไม่ใช่แค่ตัวอย่างแรกๆ
+- ตรวจสอบว่ามีรายการทั้งหมดกี่รายการ และ extract ให้ครบทุกรายการ
+- ถ้า JSON มี pagination หรือ structure ที่ซับซ้อน ให้ extract ทุกรายการในทุก level
 
 ส่งคืนเป็น JSON array เท่านั้น (ไม่มี markdown formatting)"""
             
@@ -112,11 +121,14 @@ class BatchProcessor:
         def find_slugs_urls(obj, path=""):
             """Recursively find slugs and URLs"""
             if isinstance(obj, dict):
-                # Check for slug field
+                # Check for slug field (prioritize this)
                 if "slug" in obj:
                     slug = obj["slug"]
                     if slug and isinstance(slug, str) and slug.strip():
-                        results.append({"slug": slug.strip()})
+                        slug_value = slug.strip()
+                        # ตรวจสอบว่าเป็น slug ที่ถูกต้อง (ไม่ใช่ empty หรือ special values)
+                        if slug_value and slug_value not in ["", "null", "undefined"]:
+                            results.append({"slug": slug_value})
                 
                 # Check for url field
                 if "url" in obj:
@@ -150,6 +162,8 @@ class BatchProcessor:
                 unique_results.append(item)
         
         print(f"   ✅ Rule-based extracted {len(unique_results)} items")
+        if len(unique_results) > 0:
+            print(f"   📋 Sample slugs: {[item.get('slug', item.get('url', ''))[:50] for item in unique_results[:5]]}")
         return unique_results
     
     def generate_detail_urls(self, items: List[Dict[str, str]], 
