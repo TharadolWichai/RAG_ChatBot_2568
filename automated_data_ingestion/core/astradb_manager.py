@@ -66,6 +66,42 @@ class AstraDBManager:
         if collection_name in existing_collections:
             collection = self.database.get_collection(collection_name)
             print(f"📂 Using existing collection: {collection_name}")
+            
+            # Try to verify vector search is enabled by attempting a test query
+            # If vector search is not enabled, this will fail gracefully
+            try:
+                # Try to do a simple find with vector sort to check if vector search is enabled
+                # This is a lightweight check that won't fail if collection is empty
+                test_result = list(collection.find({}, limit=1))
+                # If we can access the collection, try to check if it supports vector operations
+                # by checking if we can use $vector in sort (this will fail if vector search is disabled)
+                try:
+                    # Create a dummy vector to test
+                    test_vector = [0.0] * dimension
+                    # Try to use vector sort (this will fail if vector search is not enabled)
+                    list(collection.find({}, sort={"$vector": test_vector}, limit=1))
+                    print(f"   ✅ Vector search is enabled for this collection")
+                except Exception as vector_check_error:
+                    error_msg = str(vector_check_error).lower()
+                    if "vector" in error_msg and ("not enabled" in error_msg or "not supported" in error_msg):
+                        print(f"\n❌ ERROR: Collection '{collection_name}' exists but does NOT have vector search enabled!")
+                        print(f"   This collection was created as a 'Non-vector Collection'.")
+                        print(f"\n💡 Solution:")
+                        print(f"   1. Go to https://astra.datastax.com")
+                        print(f"   2. Navigate to your database")
+                        print(f"   3. Find and DELETE the collection '{collection_name}'")
+                        print(f"   4. Create a NEW collection with the same name:")
+                        print(f"      - Collection Name: {collection_name}")
+                        print(f"      - Enable 'Vector Search' (IMPORTANT!)")
+                        print(f"      - Vector Dimension: {dimension}")
+                        print(f"      - Similarity Metric: cosine")
+                        print(f"\n   ⚠️  You MUST enable 'Vector Search' when creating the collection!")
+                        raise Exception(f"Collection '{collection_name}' does not have vector search enabled. Please delete it and create a new one with vector search enabled via AstraDB UI.")
+            except Exception as e:
+                # If collection is empty or other error, we'll try to proceed
+                # The actual error will show when we try to insert documents
+                pass
+            
             return collection
         elif not auto_create:
             # Don't auto-create, just raise error with instructions
@@ -80,56 +116,85 @@ class AstraDBManager:
             raise Exception(f"Collection '{collection_name}' does not exist. Please create it via AstraDB UI.")
         else:
             print(f"📦 Creating new collection: {collection_name} (dimension={dimension})...")
-            print("⚠️  Note: AstraDB may not allow creating collections via code in some plans.")
+            print("⚠️  Note: AstraDB free tier may not allow creating collections via code.")
             print("   If this fails, please create the collection manually via AstraDB UI.")
             
+            # Try to create collection with vector search enabled
             # Try multiple methods based on different API versions
-            methods_to_try = [
-                # Method 1: Positional arguments with dimension only (researchgroup_data.py style)
-                lambda: self.database.create_collection(collection_name, dimension=dimension),
-                
-                # Method 2: Positional arguments with dimension and metric (test_incremental.py style)
-                lambda: self.database.create_collection(collection_name, dimension=dimension, metric="cosine"),
-                
-                # Method 3: Keyword arguments with name (setup_astradb.py style)
-                lambda: self.database.create_collection(name=collection_name, dimension=dimension, metric="cosine"),
-                
-                # Method 4: Keyword arguments without metric
-                lambda: self.database.create_collection(name=collection_name, dimension=dimension),
-                
-                # Method 5: Just name (if dimension is set via other means)
-                lambda: self.database.create_collection(name=collection_name),
-            ]
-            
-            last_error = None
-            for i, method in enumerate(methods_to_try, 1):
+            try:
+                print(f"   Creating collection with vector search enabled...")
+                # Method 1: Positional arguments (researchgroup_data.py style)
                 try:
-                    print(f"   Trying method {i}...")
-                    collection = method()
-                    print(f"✅ Collection created: {collection_name}")
-                    return collection
-                except TypeError as e:
-                    last_error = e
-                    continue
-                except Exception as e:
-                    # If it's not a TypeError, it might be a different issue (like permission)
-                    last_error = e
-                    break
-            
-            # If all methods failed
-            print(f"❌ Failed to create collection after trying all methods")
-            print(f"   Last error: {last_error}")
-            print("\n💡 Solution: Create collection manually via AstraDB UI:")
-            print(f"   1. Go to AstraDB Console")
-            print(f"   2. Navigate to your database")
-            print(f"   3. Click 'Create Collection'")
-            print(f"   4. Collection Name: {collection_name}")
-            print(f"   5. Vector Dimension: {dimension}")
-            print(f"   6. Similarity Metric: cosine")
-            print("\n   Or, collection may already exist. The system will use existing collection.")
-            
-            # Don't raise error - let user create manually or use existing
-            raise Exception(f"Cannot create collection '{collection_name}' programmatically. Please create it manually via AstraDB UI.")
+                    collection = self.database.create_collection(
+                        collection_name,
+                        dimension=dimension,
+                        metric="cosine"
+                    )
+                except TypeError:
+                    # Method 2: Positional arguments without metric
+                    try:
+                        collection = self.database.create_collection(
+                            collection_name,
+                            dimension=dimension
+                        )
+                    except TypeError:
+                        # Method 3: Keyword arguments with name (setup_astradb.py style)
+                        collection = self.database.create_collection(
+                            name=collection_name,
+                            dimension=dimension,
+                            metric="cosine"
+                        )
+                print(f"✅ Collection created successfully: {collection_name}")
+                print(f"   - Vector Dimension: {dimension}")
+                print(f"   - Similarity Metric: cosine")
+                
+                # Verify that collection has vector search enabled
+                # Try to get collection info to verify
+                try:
+                    collection_info = collection.find_one({})
+                    print(f"   ✅ Collection verified and ready for vector search")
+                except:
+                    # Collection exists but may not have documents yet, which is fine
+                    pass
+                
+                return collection
+                
+            except Exception as e:
+                error_msg = str(e)
+                print(f"❌ Failed to create collection: {error_msg}")
+                
+                # Check if collection was created but without vector search
+                if "VECTOR_SEARCH_NOT_SUPPORTED" in error_msg or "vector search is not enabled" in error_msg.lower():
+                    print(f"\n⚠️  Collection '{collection_name}' may have been created but without vector search enabled.")
+                    print(f"   This can happen with free tier plans.")
+                    print(f"\n💡 Solution: Create collection manually via AstraDB UI with vector search:")
+                    print(f"   1. Go to https://astra.datastax.com")
+                    print(f"   2. Navigate to your database")
+                    print(f"   3. Click 'Create Collection' or 'Add Collection'")
+                    print(f"   4. Collection Name: {collection_name}")
+                    print(f"   5. Enable 'Vector Search' or 'Vector Support'")
+                    print(f"   6. Vector Dimension: {dimension}")
+                    print(f"   7. Similarity Metric: cosine")
+                    print(f"\n   After creating manually, the system will use the existing collection.")
+                    
+                    # Try to get the collection anyway (it might exist but without vector search)
+                    try:
+                        collection = self.database.get_collection(collection_name)
+                        print(f"   ⚠️  Using collection '{collection_name}' but vector search may not be enabled")
+                        return collection
+                    except:
+                        pass
+                
+                print(f"\n💡 Alternative: Create collection manually via AstraDB UI:")
+                print(f"   1. Go to https://astra.datastax.com")
+                print(f"   2. Navigate to your database")
+                print(f"   3. Click 'Create Collection'")
+                print(f"   4. Collection Name: {collection_name}")
+                print(f"   5. Vector Dimension: {dimension}")
+                print(f"   6. Similarity Metric: cosine")
+                print(f"   7. Enable Vector Search")
+                
+                raise Exception(f"Cannot create collection '{collection_name}' with vector search. Please create it manually via AstraDB UI.")
     
     def insert_documents(self, collection_name: str, documents: List[Document],
                         metadata_filter: Optional[Dict[str, Any]] = None,
@@ -152,8 +217,8 @@ class AstraDBManager:
         Returns:
             Dictionary with stats (inserted, skipped, updated, deleted)
         """
-        # Get or create collection
-        collection = self.get_or_create_collection(collection_name)
+        # Get or create collection (auto-create if not exists)
+        collection = self.get_or_create_collection(collection_name, auto_create=True)
         
         # Split documents if needed
         if len(documents) > 0 and len(documents[0].page_content) > chunk_size:

@@ -51,6 +51,151 @@ class LLMExtractor:
             print("⚠️ langchain-openai not installed, falling back to rule-based extraction")
             self.use_openai = False
     
+    def _clean_html_to_text(self, html_content: str) -> str:
+        """
+        ทำความสะอาด HTML และแปลงเป็น plain text โดยลบ tags ทั้งหมด
+        
+        Args:
+            html_content: HTML content string
+            
+        Returns:
+            Cleaned plain text content
+        """
+        try:
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            # ลบ script, style, noscript, iframe, meta, link
+            for tag in soup(['script', 'style', 'noscript', 'iframe', 'meta', 'link', 'head']):
+                tag.decompose()
+            
+            # ลบ comments
+            from bs4 import Comment
+            comments = soup.find_all(string=lambda text: isinstance(text, Comment))
+            for comment in comments:
+                comment.extract()
+            
+            # แปลงเป็น plain text
+            text = soup.get_text(separator='\n', strip=True)
+            
+            # ทำความสะอาด whitespace
+            lines = [line.strip() for line in text.split('\n') if line.strip()]
+            cleaned_text = '\n'.join(lines)
+            
+            return cleaned_text
+        except Exception as e:
+            print(f"   ⚠️ Could not clean HTML to text: {e}")
+            return html_content
+    
+    def _extract_json_content(self, json_data: Any, max_depth: int = 6, current_depth: int = 0) -> str:
+        """
+        Extract เนื้อหาที่สำคัญจาก JSON โดยลบ structure ที่ซับซ้อน
+        
+        Args:
+            json_data: JSON data (dict, list, or string)
+            max_depth: ความลึกสูงสุดที่ต้องการ extract (เพิ่มเป็น 6 เพื่อให้ extract ข้อมูลได้ลึกขึ้น)
+            current_depth: ความลึกปัจจุบัน
+            
+        Returns:
+            Plain text content extracted from JSON
+        """
+        if current_depth >= max_depth:
+            return ""
+        
+        try:
+            # ถ้าเป็น string ให้ parse ก่อน
+            if isinstance(json_data, str):
+                try:
+                    json_data = json.loads(json_data)
+                except:
+                    return json_data
+            
+            # ถ้าเป็น dict
+            if isinstance(json_data, dict):
+                content_parts = []
+                for key, value in json_data.items():
+                    # ข้าม keys ที่เป็น metadata เท่านั้น (ไม่ข้าม 'data' เพราะมีข้อมูลสำคัญ)
+                    if key.lower() in ['domain', 'timestamp', 'created_at', 'updated_at', 
+                                      'status', 'code', 'message', 'success', 'error']:
+                        continue
+                    
+                    # ถ้าเป็น 'data' key และมี nested structure ให้ extract ลึกขึ้น
+                    if key.lower() == 'data' and isinstance(value, (dict, list)):
+                        nested_content = self._extract_json_content(value, max_depth, current_depth)
+                        if nested_content:
+                            content_parts.append(nested_content)
+                        continue
+                    
+                    # ถ้า value เป็น string หรือ number ให้เก็บ
+                    if isinstance(value, (str, int, float, bool)):
+                        if value:  # ข้าม empty values
+                            # ถ้าเป็น string
+                            if isinstance(value, str):
+                                # ถ้ามี HTML tags ให้ทำความสะอาด
+                                if '<' in value and '>' in value:
+                                    cleaned_value = self._clean_html_to_text(value)
+                                    # ถ้าเป็น JSON string (เช่น shortPrefix, prefix) ให้ format ให้อ่านง่าย
+                                    if cleaned_value.strip().startswith('[') or cleaned_value.strip().startswith('{'):
+                                        try:
+                                            parsed_json = json.loads(cleaned_value)
+                                            # Format JSON ให้อ่านง่าย
+                                            if isinstance(parsed_json, list):
+                                                formatted = ', '.join([str(item) for item in parsed_json])
+                                            elif isinstance(parsed_json, dict):
+                                                formatted = ', '.join([f"{k}: {v}" for k, v in parsed_json.items()])
+                                            else:
+                                                formatted = str(parsed_json)
+                                            content_parts.append(f"{key}: {formatted}")
+                                        except:
+                                            content_parts.append(f"{key}: {cleaned_value}")
+                                    else:
+                                        content_parts.append(f"{key}: {cleaned_value}")
+                                else:
+                                    content_parts.append(f"{key}: {value}")
+                            else:
+                                content_parts.append(f"{key}: {value}")
+                    # ถ้า value เป็น dict หรือ list ให้ recursive
+                    elif isinstance(value, (dict, list)):
+                        nested_content = self._extract_json_content(value, max_depth, current_depth + 1)
+                        if nested_content:
+                            # ถ้าเป็น list ของ objects ให้เพิ่ม separator
+                            if isinstance(value, list) and len(value) > 0 and isinstance(value[0], dict):
+                                content_parts.append(f"\n--- {key} (รายการที่ {len(value)} รายการ) ---\n{nested_content}")
+                            else:
+                                content_parts.append(f"{key}:\n{nested_content}")
+                
+                return '\n'.join(content_parts)
+            
+            # ถ้าเป็น list
+            elif isinstance(json_data, list):
+                content_parts = []
+                for idx, item in enumerate(json_data):
+                    if isinstance(item, (str, int, float, bool)):
+                        if item:
+                            # ถ้าเป็น string และมี HTML tags ให้ทำความสะอาด
+                            if isinstance(item, str) and ('<' in item and '>' in item):
+                                cleaned_item = self._clean_html_to_text(item)
+                                content_parts.append(cleaned_item)
+                            else:
+                                content_parts.append(str(item))
+                    elif isinstance(item, (dict, list)):
+                        nested_content = self._extract_json_content(item, max_depth, current_depth + 1)
+                        if nested_content:
+                            # ถ้าเป็น list ของ objects ให้เพิ่ม separator
+                            if isinstance(item, dict):
+                                content_parts.append(f"\n--- รายการที่ {idx + 1} ---\n{nested_content}")
+                            else:
+                                content_parts.append(nested_content)
+                
+                return '\n'.join(content_parts)
+            
+            # ถ้าเป็น primitive type
+            else:
+                return str(json_data) if json_data else ""
+        
+        except Exception as e:
+            print(f"   ⚠️ Could not extract JSON content: {e}")
+            return str(json_data) if json_data else ""
+    
     def prepare_llm_content(self, content: str, prompt: str, content_type: str = "html", html_content: Optional[str] = None, json_content: Optional[str] = None) -> tuple[str, str]:
         """
         Prepare content to send to LLM and return both preview and full prompt
@@ -68,25 +213,13 @@ class LLMExtractor:
         """
         # Handle combined content (HTML + JSON)
         if content_type == "combined" or (html_content and json_content):
-            # Clean HTML
+            # Clean HTML to plain text
             html_preview = None
             if html_content:
-                try:
-                    from bs4 import BeautifulSoup
-                    soup = BeautifulSoup(html_content, 'html.parser')
-                    for tag in soup(['script', 'style', 'noscript', 'iframe']):
-                        tag.decompose()
-                    from bs4 import Comment
-                    comments = soup.find_all(string=lambda text: isinstance(text, Comment))
-                    for comment in comments:
-                        comment.extract()
-                    html_preview = str(soup)
-                    print(f"   📤 Prepared HTML ({len(html_preview)} characters)")
-                except Exception as e:
-                    print(f"   ⚠️ Could not clean HTML: {e}")
-                    html_preview = html_content
+                html_preview = self._clean_html_to_text(html_content)
+                print(f"   📤 Cleaned HTML to text ({len(html_preview)} characters)")
             
-            # Format JSON
+            # Extract content from JSON (remove structure, keep only content)
             json_preview = None
             json_str = json_content if json_content else content.split("=== JSON CONTENT FROM API ===")[-1] if "=== JSON CONTENT FROM API ===" in content else None
             if json_str:
@@ -94,13 +227,29 @@ class LLMExtractor:
                     import json as json_module
                     if isinstance(json_str, str):
                         parsed_data = json_module.loads(json_str)
-                        json_preview = json_module.dumps(parsed_data, ensure_ascii=False, indent=2)
                     else:
-                        json_preview = json_module.dumps(json_str, ensure_ascii=False, indent=2)
-                    print(f"   📤 Prepared JSON ({len(json_preview)} characters)")
+                        parsed_data = json_str
+                    
+                    # ถ้า JSON มี structure แบบ API response (มี 'data' key) ให้ extract จาก data
+                    if isinstance(parsed_data, dict) and 'data' in parsed_data:
+                        # Extract จาก data.items ถ้ามี (สำหรับ API แบบ getUserByClassIds)
+                        if isinstance(parsed_data['data'], dict) and 'items' in parsed_data['data']:
+                            items = parsed_data['data']['items']
+                            print(f"   📊 Found {len(items)} items in data.items")
+                            # Extract content จาก items
+                            json_preview = self._extract_json_content(items)
+                        else:
+                            # Extract จาก data โดยตรง
+                            json_preview = self._extract_json_content(parsed_data['data'])
+                    else:
+                        # Extract จาก JSON ทั้งหมด
+                        json_preview = self._extract_json_content(parsed_data)
+                    
+                    print(f"   📤 Extracted JSON content ({len(json_preview)} characters)")
                 except Exception as e:
-                    print(f"   ⚠️ Could not format JSON: {e}")
-                    json_preview = json_str
+                    print(f"   ⚠️ Could not extract JSON content: {e}")
+                    # Fallback: try to extract as text anyway
+                    json_preview = self._extract_json_content(json_str)
             
             # Combine HTML and JSON
             if html_preview and json_preview:
@@ -115,62 +264,41 @@ class LLMExtractor:
         
         # Handle JSON only
         elif content_type == "json":
-            # Parse and format JSON properly
+            # Extract content from JSON (remove structure, keep only content)
             try:
                 import json as json_module
-                # Parse JSON if it's a string, otherwise dump it
+                # Parse JSON if it's a string, otherwise use as-is
                 if isinstance(content, str):
                     parsed_data = json_module.loads(content)
-                    content_preview = json_module.dumps(parsed_data, ensure_ascii=False, indent=2)
                 else:
-                    content_preview = json_module.dumps(content, ensure_ascii=False, indent=2)
+                    parsed_data = content
                 
-                print(f"   📤 Sending FULL JSON content to LLM ({len(content_preview)} characters)")
-            except:
-                # Fallback: use content as-is if JSON parsing fails
-                content_preview = content if isinstance(content, str) else str(content)
-                print(f"   📤 Sending JSON content to LLM (could not parse, {len(content_preview)} characters)")
-        else:
-            # For HTML, clean and send full content to LLM
-            # Clean HTML: remove script, style, comments to reduce size but keep structure
-            try:
-                from bs4 import BeautifulSoup
-                soup = BeautifulSoup(content, 'html.parser')
-                
-                # Remove non-content tags that don't help extraction
-                for tag in soup(['script', 'style', 'noscript', 'iframe']):
-                    tag.decompose()
-                
-                # Remove comments
-                from bs4 import Comment
-                comments = soup.find_all(string=lambda text: isinstance(text, Comment))
-                for comment in comments:
-                    comment.extract()
-                
-                # Get cleaned HTML (keep structure for LLM to understand)
-                cleaned_html = str(soup)
-                
-                # If still very large (>200K chars), try to extract main content only
-                # But by default, send full cleaned HTML
-                if len(cleaned_html) > 200000:
-                    print(f"   ⚠️ HTML is very large ({len(cleaned_html)} chars), extracting main content...")
-                    # Try to find main content area
-                    main_content = (
-                        soup.find('main') or
-                        soup.find('article') or
-                        soup.find('div', id=re.compile('content|main|body', re.I)) or
-                        soup.find('div', class_=re.compile('content|main|body', re.I)) or
-                        soup.find('body')
-                    )
-                    if main_content:
-                        cleaned_html = str(main_content)
-                        print(f"   ✅ Extracted main content ({len(cleaned_html)} chars)")
+                # ถ้า JSON มี structure แบบ API response (มี 'data' key) ให้ extract จาก data
+                if isinstance(parsed_data, dict) and 'data' in parsed_data:
+                    # Extract จาก data.items ถ้ามี (สำหรับ API แบบ getUserByClassIds)
+                    if isinstance(parsed_data['data'], dict) and 'items' in parsed_data['data']:
+                        items = parsed_data['data']['items']
+                        print(f"   📊 Found {len(items)} items in data.items")
+                        # Extract content จาก items
+                        content_preview = self._extract_json_content(items)
                     else:
-                        print(f"   📤 Sending full cleaned HTML ({len(cleaned_html)} chars)")
+                        # Extract จาก data โดยตรง
+                        content_preview = self._extract_json_content(parsed_data['data'])
                 else:
-                    print(f"   📤 Sending FULL cleaned HTML to LLM ({len(cleaned_html)} characters)")
+                    # Extract จาก JSON ทั้งหมด
+                    content_preview = self._extract_json_content(parsed_data)
                 
-                content_preview = cleaned_html
+                print(f"   📤 Extracted JSON content to send to LLM ({len(content_preview)} characters)")
+            except Exception as e:
+                # Fallback: try to extract as text anyway
+                print(f"   ⚠️ Could not parse JSON, trying to extract as text: {e}")
+                content_preview = self._extract_json_content(content if isinstance(content, str) else str(content))
+                print(f"   📤 Sending extracted content to LLM ({len(content_preview)} characters)")
+        else:
+            # For HTML, convert to plain text (remove all tags, keep only content)
+            try:
+                content_preview = self._clean_html_to_text(content)
+                print(f"   📤 Converted HTML to plain text for LLM ({len(content_preview)} characters)")
             except Exception as e:
                 # Fallback: send original content if cleaning fails
                 print(f"   ⚠️ Could not clean HTML, sending original ({len(content)} chars): {e}")

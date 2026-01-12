@@ -177,7 +177,13 @@ def main():
                 job_name = st.text_input("ชื่อ Job *", placeholder="ตัวอย่าง: Scrape Students Page")
                 url = st.text_input("URL ของหน้าเว็บ (optional)", placeholder="https://computing.kku.ac.th/students", help="กรอก URL เพื่อดึง HTML จากหน้าเว็บ (ต้องมี URL หรือ API อย่างน้อย 1 อย่าง)")
                 api_url = st.text_input("API Endpoint (optional)", placeholder="https://api.computing.kku.ac.th/api/v1/...", help="กรอก API URL เพื่อดึง JSON จาก API (ต้องมี URL หรือ API อย่างน้อย 1 อย่าง)")
-                collection_name = st.text_input("Collection Name *", placeholder="students_embedding")
+                
+                # Collection input - system will check if exists and create if needed
+                collection_name = st.text_input(
+                    "Collection Name *",
+                    placeholder="students_embedding",
+                    help="กรอกชื่อ collection ระบบจะตรวจสอบว่ามีอยู่แล้วหรือไม่ ถ้ามีจะใช้ collection ที่มีอยู่ ถ้าไม่มีจะสร้างใหม่ให้อัตโนมัติ"
+                )
             
             with col2:
                 use_selenium = st.checkbox("ใช้ Selenium (สำหรับ JavaScript)", value=True)
@@ -217,8 +223,12 @@ def main():
                 detail_api_pattern = st.session_state.get("detail_api_pattern", "") if batch_mode else None
                 
                 # Validation
-                if not job_name or not collection_name or not extraction_prompt:
-                    st.error("❌ กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน")
+                if not job_name:
+                    st.error("❌ กรุณากรอกชื่อ Job")
+                elif not collection_name or (isinstance(collection_name, str) and not collection_name.strip()):
+                    st.error("❌ กรุณาเลือกหรือกรอกชื่อ Collection")
+                elif not extraction_prompt or (isinstance(extraction_prompt, str) and not extraction_prompt.strip()):
+                    st.error("❌ กรุณากรอก Extraction Prompt")
                 elif batch_mode:
                     if not batch_list_api:
                         st.error("❌ กรุณากรอก List API URL เมื่อเปิด Batch Processing")
@@ -229,7 +239,8 @@ def main():
                     st.error("❌ กรุณากรอก URL หรือ API Endpoint อย่างน้อย 1 อย่าง")
                 
                 # Only proceed if validation passes
-                if job_name and collection_name and extraction_prompt:
+                if (job_name and collection_name and extraction_prompt and 
+                    (isinstance(collection_name, str) and collection_name.strip())):
                     if (batch_mode and batch_list_api) or (not batch_mode and (url or api_url)):
                         # Create job config
                         job_id = str(uuid.uuid4())
