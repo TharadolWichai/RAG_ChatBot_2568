@@ -6,6 +6,7 @@ import uuid
 from astrapy import DataAPIClient
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
+from incremental_utils import enable_incremental_mode
 from langchain.schema import Document
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
@@ -33,8 +34,27 @@ chrome_options = Options()
 chrome_options.add_argument("--headless")
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
-driver_path = "D:/CS YEAR 4/chatbot_kkucp2568/RAG_ChatBot_2568/chromedriver-win64/chromedriver.exe"
-service = Service(driver_path)
+chrome_options.add_argument("--disable-gpu")
+chrome_options.add_argument("--remote-debugging-port=9222")
+
+# ลองใช้ webdriver-manager เพื่อดาวน์โหลด ChromeDriver อัตโนมัติ
+try:
+    from selenium.webdriver.chrome.service import Service as ChromeService
+    from webdriver_manager.chrome import ChromeDriverManager
+    service = ChromeService(ChromeDriverManager().install())
+    print("✅ ใช้ webdriver-manager สำหรับ ChromeDriver")
+except ImportError:
+    # Fallback: ใช้ chromedriver จากโฟลเดอร์ drivers
+    driver_path = os.path.join(os.path.dirname(__file__), "..", "drivers", "chromedriver.exe")
+    if os.path.exists(driver_path):
+        service = Service(driver_path)
+        print(f"⚠️  ใช้ ChromeDriver จากโฟลเดอร์ drivers (อาจเวอร์ชันไม่ตรง)")
+    else:
+        raise FileNotFoundError(
+            f"ChromeDriver not found at {driver_path}. "
+            "Please install webdriver-manager: pip install webdriver-manager"
+        )
+
 driver = webdriver.Chrome(service=service, options=chrome_options)
 
 url = "https://computing.kku.ac.th/bsc-entrance"
@@ -122,17 +142,6 @@ for div_index, div in enumerate(content_divs, start=1):
 print(f"📝 Scraped {len(docs)} documents")
 
 # -------------------------------
-# Split documents into chunks
-# -------------------------------
-splitter = CharacterTextSplitter(
-    chunk_size=300,
-    chunk_overlap=50,
-    separator="\n"
-)
-chunks = splitter.split_documents(docs)
-print(f"📄 Created {len(chunks)} chunks")
-
-# -------------------------------
 # Embeddings
 # -------------------------------
 embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
@@ -146,27 +155,23 @@ collection = db.get_collection(COLLECTION_NAME)
 print(f"✅ Connected to AstraDB collection: {COLLECTION_NAME}")
 
 # -------------------------------
-# Insert chunks in batch
+# Use incremental indexing
 # -------------------------------
-batch_size = 50
-documents_to_insert = []
-
-for i, chunk in enumerate(chunks):
-    vector = embedding_model.embed_query(chunk.page_content)
-    doc = {
-        "_id": str(uuid.uuid4()),
-        "content": chunk.page_content,
-        "$vector": vector,
-        "metadata": chunk.metadata
-    }
-    documents_to_insert.append(doc)
+print("\n🚀 Starting incremental indexing...")
+try:
+    stats = enable_incremental_mode(
+        collection=collection,
+        embedding_model=embedding_model,
+        new_documents=docs,
+        metadata_filter={"type": "bsc_entrance"},  # Filter สำหรับดึงเอกสารคณะ
+        hash_keys=["source", "type"],  # Keys สำหรับสร้าง unique hash
+        delete_missing=False  # ไม่ลบเอกสารเก่า
+    )
     
-    if len(documents_to_insert) >= batch_size or i == len(chunks) - 1:
-        try:
-            result = collection.insert_many(documents_to_insert)
-            print(f"📊 Inserted {len(result.inserted_ids)} documents (chunk {i+1}/{len(chunks)})")
-            documents_to_insert = []
-        except Exception as e:
-            print(f"❌ Failed to insert batch: {e}")
-
-print("🎉 AstraDB ingestion completed successfully!")
+    print(f"\n✅ Incremental indexing completed!")
+    print(f"   - New documents inserted: {stats['inserted']}")
+    print(f"   - Existing documents skipped: {stats['skipped']}")
+    print("🎉 AstraDB ingestion completed successfully!")
+    
+except Exception as e:
+    print(f"❌ Failed to process incremental indexing: {e}")

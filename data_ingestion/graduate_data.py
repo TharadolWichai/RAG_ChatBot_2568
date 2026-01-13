@@ -12,6 +12,7 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+from incremental_utils import enable_incremental_mode
 
 load_dotenv()
 
@@ -68,10 +69,26 @@ def setup_driver():
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--remote-debugging-port=9222")
     
-    # ใช้ relative path ในโปรเจค
-    driver_path = os.path.join(os.path.dirname(__file__), "..", "drivers", "chromedriver.exe")
-    service = Service(driver_path)
+    # ลองใช้ webdriver-manager เพื่อดาวน์โหลด ChromeDriver อัตโนมัติ
+    try:
+        from selenium.webdriver.chrome.service import Service as ChromeService
+        from webdriver_manager.chrome import ChromeDriverManager
+        service = ChromeService(ChromeDriverManager().install())
+        print("✅ ใช้ webdriver-manager สำหรับ ChromeDriver")
+    except ImportError:
+        # Fallback: ใช้ chromedriver จากโฟลเดอร์ drivers
+        driver_path = os.path.join(os.path.dirname(__file__), "..", "drivers", "chromedriver.exe")
+        if os.path.exists(driver_path):
+            service = Service(driver_path)
+            print(f"⚠️  ใช้ ChromeDriver จากโฟลเดอร์ drivers (อาจเวอร์ชันไม่ตรง)")
+        else:
+            raise FileNotFoundError(
+                f"ChromeDriver not found at {driver_path}. "
+                "Please install webdriver-manager: pip install webdriver-manager"
+            )
+    
     driver = webdriver.Chrome(service=service, options=chrome_options)
     return driver
 
@@ -285,57 +302,31 @@ def main():
         print(f"Program: {doc.metadata.get('program_name')}")
         print(f"Content: {doc.page_content[:150]}...")
     
-    # Split documents into chunks
-    splitter = CharacterTextSplitter(
-        chunk_size=500,  # Smaller chunks to avoid AstraDB 8000 byte limit
-        chunk_overlap=50,
-        separator="\n"
-    )
-    chunks = splitter.split_documents(all_documents)
-    print(f"\n📄 Created {len(chunks)} chunks from {len(all_documents)} documents")
+    print(f"\n📝 Processed {len(all_documents)} graduate program documents")
     
     # Initialize embeddings
     print("🧠 Initializing embeddings model...")
     embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
     
-    # Insert chunks into AstraDB
-    print("💾 Inserting graduate program data into AstraDB...")
-    
-    batch_size = 50
-    documents_to_insert = []
-    skipped_count = 0
-    
-    for i, chunk in enumerate(chunks):
-        # Check content size (AstraDB has 8000 byte limit)
-        content_size = len(chunk.page_content.encode('utf-8'))
-        if content_size > 7500:  # Leave some margin
-            print(f"⚠️ Skipping chunk {i+1} - too large ({content_size} bytes)")
-            skipped_count += 1
-            continue
+    # Use incremental indexing
+    print("\n🚀 Starting incremental indexing...")
+    try:
+        stats = enable_incremental_mode(
+            collection=collection,
+            embedding_model=embedding_model,
+            new_documents=all_documents,
+            metadata_filter={"type": "graduate"},  # Filter สำหรับดึงเอกสารบัณฑิตศึกษา
+            hash_keys=["category", "program_name"],  # Keys สำหรับสร้าง unique hash
+            delete_missing=False  # ไม่ลบเอกสารเก่า
+        )
         
-        # Generate embedding
-        vector = embedding_model.embed_query(chunk.page_content)
+        print(f"\n✅ Incremental indexing completed!")
+        print(f"   - New documents inserted: {stats['inserted']}")
+        print(f"   - Existing documents skipped: {stats['skipped']}")
         
-        # Prepare document for insertion
-        doc = {
-            "_id": str(uuid.uuid4()),
-            "content": chunk.page_content,
-            "$vector": vector,
-            "metadata": chunk.metadata
-        }
-        documents_to_insert.append(doc)
-        
-        # Insert in batches
-        if len(documents_to_insert) >= batch_size or i == len(chunks) - 1:
-            try:
-                result = collection.insert_many(documents_to_insert)
-                print(f"📊 Inserted {len(result.inserted_ids)} documents (chunk {i+1}/{len(chunks)})")
-                documents_to_insert = []
-            except Exception as e:
-                print(f"❌ Failed to insert batch: {e}")
-    
-    if skipped_count > 0:
-        print(f"⚠️ Skipped {skipped_count} chunks due to size limitations")
+    except Exception as e:
+        print(f"❌ Failed to process incremental indexing: {e}")
+        return False
     
     # Verify insertion
     try:

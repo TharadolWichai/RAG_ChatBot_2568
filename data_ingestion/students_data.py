@@ -29,6 +29,8 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 load_dotenv()
 
+from incremental_utils import enable_incremental_mode
+
 def scrape_with_selenium():
     """ใช้ Selenium สแครปหน้าเว็บที่มี JavaScript"""
     url = "https://computing.kku.ac.th/students"
@@ -43,13 +45,26 @@ def scrape_with_selenium():
     chrome_options.add_argument('--ignore-ssl-errors')
     chrome_options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
     
-    # ใช้ chromedriver จากโฟลเดอร์ drivers
-    driver_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'drivers', 'chromedriver.exe')
-    
     driver = None
     try:
-        # เริ่ม Chrome driver
-        service = Service(driver_path)
+        # ลองใช้ webdriver-manager เพื่อดาวน์โหลด ChromeDriver อัตโนมัติ
+        try:
+            from selenium.webdriver.chrome.service import Service as ChromeService
+            from webdriver_manager.chrome import ChromeDriverManager
+            service = ChromeService(ChromeDriverManager().install())
+            print("   ✅ ใช้ webdriver-manager สำหรับ ChromeDriver")
+        except ImportError:
+            # Fallback: ใช้ chromedriver จากโฟลเดอร์ drivers
+            driver_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'drivers', 'chromedriver.exe')
+            if os.path.exists(driver_path):
+                service = Service(driver_path)
+                print(f"   ⚠️  ใช้ ChromeDriver จากโฟลเดอร์ drivers (อาจเวอร์ชันไม่ตรง)")
+            else:
+                raise FileNotFoundError(
+                    f"ChromeDriver not found at {driver_path}. "
+                    "Please install webdriver-manager: pip install webdriver-manager"
+                )
+        
         driver = webdriver.Chrome(service=service, options=chrome_options)
         
         print(f"   🌐 กำลังโหลดหน้าเว็บ: {url}")
@@ -401,41 +416,28 @@ def main():
 
     print(f"📝 Processed {len(docs)} student link documents")
 
-    # Split documents (though links are usually short, this ensures consistency)
-    splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-    chunks = splitter.split_documents(docs)
-    print(f"📄 Created {len(chunks)} chunks")
-
     # Initialize embeddings
     print("🧠 Initializing embeddings model...")
     embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
-    # Generate embeddings and insert to AstraDB
-    print("💾 Inserting student links data into AstraDB...")
-    
-    documents_to_insert = []
-    for i, chunk in enumerate(chunks):
-        # Generate embedding
-        vector = embedding.embed_query(chunk.page_content)
-        
-        # Prepare document for insertion
-        doc = {
-            "_id": str(uuid.uuid4()),
-            "content": chunk.page_content,
-            "$vector": vector,
-            "metadata": chunk.metadata
-        }
-        documents_to_insert.append(doc)
-        
-        if i % 5 == 0:
-            print(f"📊 Processed {i+1}/{len(chunks)} chunks...")
-    
-    # Insert all documents
+    # Use incremental indexing
+    print("\n🚀 Starting incremental indexing...")
     try:
-        result = collection.insert_many(documents_to_insert)
-        print(f"✅ Successfully inserted {len(result.inserted_ids)} student link documents into AstraDB!")
+        stats = enable_incremental_mode(
+            collection=collection,
+            embedding_model=embedding,
+            new_documents=docs,
+            metadata_filter={"category": "students"},  # Filter สำหรับดึงเอกสารนักศึกษา
+            hash_keys=["link_text", "url"],  # Keys สำหรับสร้าง unique hash
+            delete_missing=False  # ไม่ลบเอกสารเก่า
+        )
+        
+        print(f"\n✅ Incremental indexing completed!")
+        print(f"   - New documents inserted: {stats['inserted']}")
+        print(f"   - Existing documents skipped: {stats['skipped']}")
+        
     except Exception as e:
-        print(f"❌ Failed to insert documents: {e}")
+        print(f"❌ Failed to process incremental indexing: {e}")
         return False
     
     # Verify insertion

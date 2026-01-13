@@ -248,6 +248,6 @@ if __name__ == "__main__":
             print("⚠️ ไม่มี API key สำหรับ LLM, ไม่สามารถสร้างคำตอบได้")
             continue
 
-        response = qa_chain.run({"query": query, "context": merged_context})
+        response = qa_chain.run({"question": query, "context": merged_context})
         print("🤖 คำตอบ:", response)
         print("-"*50)

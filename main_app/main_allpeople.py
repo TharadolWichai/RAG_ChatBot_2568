@@ -1,22 +1,21 @@
 # main_allpeople.py - AstraDB Version สำหรับ allpeople_data.py โดยเฉพาะ (Enhanced with PyThaiNLP)
 
-import sys
 import os
+import sys
+from typing import List
 
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.chat_models import ChatOpenAI
-from langchain_community.retrievers import BM25Retriever
+from astrapy import DataAPIClient
+from dotenv import load_dotenv
+from langchain.callbacks.manager import CallbackManagerForRetrieverRun
 from langchain.prompts import PromptTemplate
 from langchain.schema import BaseRetriever, Document
-from langchain.callbacks.manager import CallbackManagerForRetrieverRun
-import os
-from dotenv import load_dotenv
-from typing import List 
-from astrapy import DataAPIClient
+from langchain_community.chat_models import ChatOpenAI
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.retrievers import BM25Retriever
 
 # PyThaiNLP imports for advanced Thai processing
 try:
-    from pythainlp import word_tokenize, pos_tag
+    from pythainlp import pos_tag, word_tokenize
     from pythainlp.corpus import thai_stopwords
     from pythainlp.util import normalize
     from rank_bm25 import BM25Okapi
@@ -348,7 +347,7 @@ class AllPeopleRetriever(BaseRetriever):
     def _preprocess_query_for_bm25(self, query: str) -> str:
         """ประมวลผลคำถามก่อนส่งให้ BM25 เพื่อแก้ปัญหาการไม่เว้นวรรค"""
         import re
-        
+
         # Remove common prefixes but keep the core name
         processed = query.replace("ขอข้อมูล", "").replace("อาจารย์", "").strip()
         
