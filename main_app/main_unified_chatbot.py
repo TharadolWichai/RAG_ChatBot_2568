@@ -1,10 +1,11 @@
 # main_unified_chatbot.py - Unified Multi-Agent RAG Chatbot
 # รวมแชทบอททั้งหมดไว้ที่เดียว พร้อม Intent Classification
 
-import sys
 import os
 import re
-from typing import Dict, List, Tuple, Optional
+import sys
+from typing import Dict, List, Optional, Tuple
+
 from dotenv import load_dotenv
 
 # PyThaiNLP for Thai text processing
@@ -16,70 +17,80 @@ except ImportError:
 
 # Import all chatbot modules
 try:
-    from main_allpeople import retriever as allpeople_retriever, manual_qa_chain as allpeople_qa
+    from main_allpeople import manual_qa_chain as allpeople_qa
+    from main_allpeople import retriever as allpeople_retriever
     ALLPEOPLE_AVAILABLE = True
 except Exception as e:
     print(f"[WARNING] AllPeople chatbot not available: {e}")
     ALLPEOPLE_AVAILABLE = False
 
 try:
-    from main_contact import retriever as contact_retriever, manual_qa_chain as contact_qa
+    from main_contact import manual_qa_chain as contact_qa
+    from main_contact import retriever as contact_retriever
     CONTACT_AVAILABLE = True
 except Exception as e:
     print(f"[WARNING] Contact chatbot not available: {e}")
     CONTACT_AVAILABLE = False
 
 try:
-    from main_links import retriever as links_retriever, manual_qa_chain as links_qa
+    from main_links import manual_qa_chain as links_qa
+    from main_links import retriever as links_retriever
     LINKS_AVAILABLE = True
 except Exception as e:
     print(f"⚠️ Links chatbot not available: {e}")
     LINKS_AVAILABLE = False
 
 try:
-    from main_scholarship import retriever as scholarship_retriever, manual_qa_chain as scholarship_qa
+    from main_scholarship import manual_qa_chain as scholarship_qa
+    from main_scholarship import retriever as scholarship_retriever
     SCHOLARSHIP_AVAILABLE = True
 except Exception as e:
     print(f"⚠️ Scholarship chatbot not available: {e}")
     SCHOLARSHIP_AVAILABLE = False
 
 try:
-    from main_student_club import retriever as club_retriever, manual_qa_chain as club_qa
+    from main_student_club import manual_qa_chain as club_qa
+    from main_student_club import retriever as club_retriever
     CLUB_AVAILABLE = True
 except Exception as e:
     print(f"⚠️ Student Club chatbot not available: {e}")
     CLUB_AVAILABLE = False
 
 try:
-    from main_students import retriever as students_retriever, manual_qa_chain as students_qa
+    from main_students import manual_qa_chain as students_qa
+    from main_students import retriever as students_retriever
     STUDENTS_AVAILABLE = True
 except Exception as e:
     print(f"⚠️ Students chatbot not available: {e}")
     STUDENTS_AVAILABLE = False
 
 try:
-    from main_researchgroup import retriever as research_retriever, manual_qa_chain as research_qa
+    from main_researchgroup import manual_qa_chain as research_qa
+    from main_researchgroup import retriever as research_retriever
     RESEARCH_AVAILABLE = True
 except Exception as e:
     print(f"⚠️ Research Group chatbot not available: {e}")
     RESEARCH_AVAILABLE = False
 
 try:
-    from main_bsc_entrance import retriever as bsc_retriever, manual_qa_chain as bsc_qa
+    from main_bsc_entrance import manual_qa_chain as bsc_qa
+    from main_bsc_entrance import retriever as bsc_retriever
     BSC_AVAILABLE = True
 except Exception as e:
     print(f"⚠️ BSC Entrance chatbot not available: {e}")
     BSC_AVAILABLE = False
 
 try:
-    from main_digital_services import retriever as digital_retriever, manual_qa_chain as digital_qa
+    from main_digital_services import manual_qa_chain as digital_qa
+    from main_digital_services import retriever as digital_retriever
     DIGITAL_AVAILABLE = True
 except Exception as e:
     print(f"⚠️ Digital Services chatbot not available: {e}")
     DIGITAL_AVAILABLE = False
 
 try:
-    from main_graduate import retriever as graduate_retriever, manual_qa_chain as graduate_qa
+    from main_graduate import manual_qa_chain as graduate_qa
+    from main_graduate import retriever as graduate_retriever
     GRADUATE_AVAILABLE = True
 except Exception as e:
     print(f"⚠️ Graduate Programs chatbot not available: {e}")
@@ -690,4 +701,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

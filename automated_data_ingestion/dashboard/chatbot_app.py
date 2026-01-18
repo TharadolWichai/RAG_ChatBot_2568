@@ -35,7 +35,7 @@ def inject_css():
             max-width: 1400px;
         }
 
-            h1, h2, h3 { letter-spacing: -0.02em; }
+        h1, h2, h3 { letter-spacing: -0.02em; }
 
         /* buttons / inputs */
         .stButton>button {
@@ -56,14 +56,23 @@ def inject_css():
             padding-top: 1.5rem;
         }
 
+        /* card / container */
+        div[data-testid="stMetric"],
+        .sidebar-card {
+        background: #ffffff;
+        }
+
+        /* chat bubble assistant */
+        [data-testid="stChatMessageContent"] {
+        background: #f8fafc;
+        }
+
         /* badge */
         .badge {
-            display:inline-block;
-            padding: 4px 10px;
-            border-radius: 999px;
-            border: 1px solid rgba(229,231,235,0.7);
-            font-size: 12px;
-        }
+        background: #eff6ff;
+        border-color: #93c5fd;
+        color: #1d4ed8;
+}
         </style>
         """,
         unsafe_allow_html=True
@@ -96,7 +105,8 @@ def initialize_chatbot():
     """Initialize chatbot"""
     if st.session_state.chatbot is None:
         try:
-            from main_unified_chatbot_automated import UnifiedChatbotAutomated
+            from main_app.main_unified_chatbot_automated import UnifiedChatbotAutomated
+
             with st.spinner("🤖 กำลังโหลด Chatbot..."):
                 st.session_state.chatbot = UnifiedChatbotAutomated()
                 return True
@@ -114,8 +124,27 @@ def render_topbar():
     left, b1, b2, b3 = st.columns([7, 1.2, 1.2, 1.2])
 
     with left:
-        st.markdown("## 💬 RAG Chatbot")
-        st.caption("ถามคำถามเกี่ยวกับข้อมูลที่เก็บในระบบ (AstraDB + RAG)")
+        logo_col, title_col = st.columns([1, 12], vertical_alignment="center")
+        with logo_col:
+            st.image(
+                "assets/cp-kku-logo.webp",
+                width=46,              # ปรับตรงนี้ได้ (40–52 กำลังสวย)
+            )
+        with title_col:
+            st.markdown(
+                """
+                <div style="line-height:1.15">
+                    <div style="font-size:20px; font-weight:700;">
+                    ระบบถามตอบข้อมูลวิทยาลัยการคอมพิวเตอร์
+                    </div>
+                    <div style="font-size:14px; color:#475569;">
+                    มหาวิทยาลัยขอนแก่น
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        # status badge
         if st.session_state.chatbot is None:
             st.markdown('<span class="badge">Status: Not Ready</span>', unsafe_allow_html=True)
         else:

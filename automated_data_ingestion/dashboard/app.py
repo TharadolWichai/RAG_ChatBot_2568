@@ -1,13 +1,14 @@
 """
 Streamlit Dashboard สำหรับ Automated Data Ingestion
 """
-import streamlit as st
-import sys
-import os
 import json
+import os
+import sys
 import uuid
 from datetime import datetime
 from pathlib import Path
+
+import streamlit as st
 
 # Add parent directories to path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -15,8 +16,10 @@ project_root = os.path.dirname(os.path.dirname(current_dir))
 sys.path.insert(0, project_root)
 sys.path.insert(0, current_dir)
 
-from automated_data_ingestion.core.orchestrator import DataIngestionOrchestrator
-from automated_data_ingestion.models.job_config import ScrapingJobConfig, ScrapingJobResult
+from automated_data_ingestion.core.orchestrator import \
+    DataIngestionOrchestrator
+from automated_data_ingestion.models.job_config import (ScrapingJobConfig,
+                                                        ScrapingJobResult)
 from automated_data_ingestion.utils.config import Config
 
 # Page config
@@ -121,7 +124,7 @@ def main():
             st.rerun()
     
     # Main content tabs
-    tab1, tab2, tab3 = st.tabs(["Create New Job", "Job History", "Collections"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Create New Job", "Job History", "Collections", "Chatbot"])
     
     # Tab 1: Create New Job
     with tab1:
@@ -388,6 +391,183 @@ def main():
         else:
             st.info("👆 Click 'Refresh Collections' to load collections")
     
+    # Tab 4: Chatbot
+    with tab4:
+        st.header("💬 RAG Chatbot")
+        st.markdown("ถามคำถามเกี่ยวกับข้อมูลที่เก็บในระบบ")
+        
+        # Initialize chatbot
+        def initialize_chatbot():
+            """Initialize chatbot"""
+            if st.session_state.chatbot is None:
+                try:
+                    # Import chatbot
+                    sys.path.insert(0, os.path.join(project_root, "main_app"))
+                    from main_unified_chatbot_automated import \
+                        UnifiedChatbotAutomated
+                    
+                    with st.spinner("🤖 กำลังโหลด Chatbot..."):
+                        chatbot = UnifiedChatbotAutomated()
+                        st.session_state.chatbot = chatbot
+                        return True
+                except Exception as e:
+                    st.error(f"❌ Failed to initialize chatbot: {e}")
+                    import traceback
+                    with st.expander("🔍 ดู Error Details"):
+                        st.code(traceback.format_exc())
+                    return False
+            return True
+        
+        # Chatbot initialization and controls
+        col_init1, col_init2, col_init3 = st.columns([2, 1, 1])
+        with col_init1:
+            if st.button("🚀 Initialize Chatbot", type="primary", use_container_width=True):
+                if initialize_chatbot():
+                    st.success("✅ Chatbot initialized successfully!")
+                    st.rerun()
+        
+        with col_init2:
+            if st.button("🔄 Clear Chat", use_container_width=True):
+                st.session_state.chat_history = []
+                st.rerun()
+        
+        with col_init3:
+            if st.button("🔄 Reload", use_container_width=True):
+                st.session_state.chatbot = None
+                st.session_state.chat_history = []
+                st.rerun()
+        
+        # Check if chatbot is initialized
+        if st.session_state.chatbot is None:
+            st.info("👆 Click 'Initialize Chatbot' to start chatting")
+            
+            with st.expander("📋 ข้อมูลเพิ่มเติม", expanded=True):
+                st.markdown("""
+                ### ✨ Features:
+                - **Hybrid Intent Classification**: ใช้ Rule-Based + LLM
+                - **Auto-Discovery**: ค้นหา collections อัตโนมัติ
+                - **Dynamic Retrievers**: สร้าง retrievers แบบ dynamic
+                - **Multi-Agent Search**: ค้นหาจากทุก collections เมื่อไม่แน่ใจ
+                
+                ### 🎯 ตัวอย่างคำถาม:
+                - "อาจารย์สมชาย" → อาจารย์และบุคลากร
+                - "ติดต่อวิทยาลัย" → ข้อมูลติดต่อ
+                - "ลิงก์จองห้องประชุม" → ลิงก์และระบบ
+                - "ทุนการศึกษา" → ทุนการศึกษา
+                """)
+        else:
+            # Show chatbot status
+            if hasattr(st.session_state.chatbot, 'chatbot_map'):
+                num_agents = len(st.session_state.chatbot.chatbot_map)
+                st.success(f"✅ Chatbot ready with {num_agents} agents")
+            
+            # Display chat history
+            st.markdown("---")
+            
+            # Chat container - display all messages
+            for message in st.session_state.chat_history:
+                if message["role"] == "user":
+                    with st.chat_message("user"):
+                        st.write(message["content"])
+                else:
+                    with st.chat_message("assistant"):
+                        st.markdown(message["content"])
+                        
+                        # Show metadata if available
+                        if "metadata" in message and message["metadata"].get("debug_output"):
+                            with st.expander("🔍 Debug Info"):
+                                st.code(message["metadata"]["debug_output"], language="text")
+            
+            # Chat input
+            user_question = st.chat_input("พิมพ์คำถามของคุณ...")
+            
+            if user_question:
+                # Add user message to history immediately
+                st.session_state.chat_history.append({
+                    "role": "user",
+                    "content": user_question
+                })
+                
+                # Display user message immediately
+                with st.chat_message("user"):
+                    st.write(user_question)
+                
+                # Get answer from chatbot
+                with st.chat_message("assistant"):
+                    with st.spinner("🤔 กำลังคิด..."):
+                        try:
+                            # Capture output for display (optional)
+                            import io
+                            from contextlib import (redirect_stderr,
+                                                    redirect_stdout)
+
+                            # Create string buffer to capture output
+                            output_buffer = io.StringIO()
+                            
+                            # Get answer (with output capture)
+                            with redirect_stdout(output_buffer), redirect_stderr(output_buffer):
+                                answer = st.session_state.chatbot.answer(user_question)
+                            
+                            # Get captured output
+                            debug_output = output_buffer.getvalue()
+                            
+                            # Display answer
+                            st.markdown(answer)
+                            
+                            # Add assistant message to history
+                            st.session_state.chat_history.append({
+                                "role": "assistant",
+                                "content": answer,
+                                "metadata": {
+                                    "debug_output": debug_output if debug_output else None
+                                }
+                            })
+                            
+                        except Exception as e:
+                            error_msg = f"❌ เกิดข้อผิดพลาด: {str(e)}"
+                            st.error(error_msg)
+                            
+                            # Add error to history
+                            st.session_state.chat_history.append({
+                                "role": "assistant",
+                                "content": error_msg
+                            })
+                            
+                            # Show traceback in expander
+                            import traceback
+                            with st.expander("🔍 ดู Error Details"):
+                                st.code(traceback.format_exc())
+            
+            # Sidebar info for chatbot tab
+            with st.sidebar:
+                if st.session_state.chatbot:
+                    st.markdown("---")
+                    st.header("🤖 Chatbot Info")
+                    
+                    # Show available agents
+                    if hasattr(st.session_state.chatbot, 'chatbot_map'):
+                        st.write(f"**Available Agents:** {len(st.session_state.chatbot.chatbot_map)}")
+                        for intent, config in list(st.session_state.chatbot.chatbot_map.items())[:5]:  # Show first 5
+                            st.text(f"  {config['icon']} {config['name']}")
+                            st.caption(f"    📦 {config['collection']}")
+                        
+                        if len(st.session_state.chatbot.chatbot_map) > 5:
+                            st.caption(f"... and {len(st.session_state.chatbot.chatbot_map) - 5} more")
+                    
+                    # Show chat stats
+                    st.markdown("---")
+                    st.metric("Chat Messages", len(st.session_state.chat_history))
+                    
+                    # Export chat history
+                    if st.session_state.chat_history:
+                        chat_json = json.dumps(st.session_state.chat_history, ensure_ascii=False, indent=2)
+                        st.download_button(
+                            label="📥 Export Chat History",
+                            data=chat_json,
+                            file_name=f"chat_history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                            mime="application/json"
+                        )
+
 
 if __name__ == "__main__":
     main()

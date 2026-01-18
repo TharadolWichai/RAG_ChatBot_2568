@@ -1,16 +1,17 @@
 # main_unified_chatbot_automated.py - Unified Chatbot with Automated Data Ingestion Integration
 # รวม Hybrid Intent Classification + Dynamic Collections จาก Automated Data Ingestion
 
-import sys
+import json
 import os
 import re
-import json
-from typing import Dict, List, Tuple, Optional, Any
+import sys
+from typing import Any, Dict, List, Optional, Tuple
+
 from dotenv import load_dotenv
 
 # PyThaiNLP for Thai text processing
 try:
-    from pythainlp import word_tokenize, pos_tag
+    from pythainlp import pos_tag, word_tokenize
     from pythainlp.corpus import thai_stopwords
     from pythainlp.util import normalize
     from rank_bm25 import BM25Okapi
@@ -28,17 +29,25 @@ except ImportError:
     OPENAI_AVAILABLE = False
     print("⚠️ OpenAI library not available. LLM fallback will be disabled.")
 
+from astrapy import DataAPIClient
+from langchain.callbacks.manager import CallbackManagerForRetrieverRun
+from langchain.chains import LLMChain
+from langchain.prompts import PromptTemplate
 # LangChain imports
 from langchain.schema import BaseRetriever, Document
-from langchain.callbacks.manager import CallbackManagerForRetrieverRun
-from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.chat_models import ChatOpenAI
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
-from astrapy import DataAPIClient
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
 # Import Automated Data Ingestion components
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))  # main_app -> project root
+MAIN_APP_DIR = os.path.join(PROJECT_ROOT, "main_app")
+
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+if MAIN_APP_DIR not in sys.path:
+    sys.path.insert(0, MAIN_APP_DIR)
+
+# Import Automated Data Ingestion components
 try:
     from automated_data_ingestion.core.astradb_manager import AstraDBManager
     AUTOMATED_AVAILABLE = True
@@ -48,74 +57,85 @@ except ImportError:
 
 # Import all chatbot modules (like hybrid version)
 try:
-    from main_allpeople import retriever as allpeople_retriever, manual_qa_chain as allpeople_qa
+    from main_allpeople import manual_qa_chain as allpeople_qa
+    from main_allpeople import retriever as allpeople_retriever
     ALLPEOPLE_AVAILABLE = True
 except Exception as e:
     print(f"⚠️ AllPeople chatbot not available: {e}")
     ALLPEOPLE_AVAILABLE = False
 
 try:
-    from main_contact import retriever as contact_retriever, manual_qa_chain as contact_qa
+    from main_contact import manual_qa_chain as contact_qa
+    from main_contact import retriever as contact_retriever
     CONTACT_AVAILABLE = True
 except Exception as e:
     print(f"⚠️ Contact chatbot not available: {e}")
     CONTACT_AVAILABLE = False
 
 try:
-    from main_links import retriever as links_retriever, manual_qa_chain as links_qa
+    from main_links import manual_qa_chain as links_qa
+    from main_links import retriever as links_retriever
     LINKS_AVAILABLE = True
 except Exception as e:
     print(f"⚠️ Links chatbot not available: {e}")
     LINKS_AVAILABLE = False
 
 try:
-    from main_scholarship import retriever as scholarship_retriever, manual_qa_chain as scholarship_qa
+    from main_scholarship import manual_qa_chain as scholarship_qa
+    from main_scholarship import retriever as scholarship_retriever
     SCHOLARSHIP_AVAILABLE = True
 except Exception as e:
     print(f"⚠️ Scholarship chatbot not available: {e}")
     SCHOLARSHIP_AVAILABLE = False
 
 try:
-    from main_student_club import retriever as club_retriever, manual_qa_chain as club_qa
+    from main_student_club import manual_qa_chain as club_qa
+    from main_student_club import retriever as club_retriever
     CLUB_AVAILABLE = True
 except Exception as e:
     print(f"⚠️ Student Club chatbot not available: {e}")
     CLUB_AVAILABLE = False
 
 try:
-    from main_students import retriever as students_retriever, manual_qa_chain as students_qa
+    from main_students import manual_qa_chain as students_qa
+    from main_students import retriever as students_retriever
     STUDENTS_AVAILABLE = True
 except Exception as e:
     print(f"⚠️ Students chatbot not available: {e}")
     STUDENTS_AVAILABLE = False
 
 try:
-    from main_researchgroup import retriever as research_retriever, manual_qa_chain as research_qa
+    from main_researchgroup import manual_qa_chain as research_qa
+    from main_researchgroup import retriever as research_retriever
     RESEARCH_AVAILABLE = True
 except Exception as e:
     print(f"⚠️ Research Group chatbot not available: {e}")
     RESEARCH_AVAILABLE = False
 
 try:
-    from main_bsc_entrance import retriever as bsc_retriever, manual_qa_chain as bsc_qa
+    from main_bsc_entrance import manual_qa_chain as bsc_qa
+    from main_bsc_entrance import retriever as bsc_retriever
     BSC_AVAILABLE = True
 except Exception as e:
     print(f"⚠️ BSC Entrance chatbot not available: {e}")
     BSC_AVAILABLE = False
 
 try:
-    from main_digital_services import retriever as digital_retriever, manual_qa_chain as digital_qa
+    from main_digital_services import manual_qa_chain as digital_qa
+    from main_digital_services import retriever as digital_retriever
     DIGITAL_AVAILABLE = True
 except Exception as e:
     print(f"⚠️ Digital Services chatbot not available: {e}")
     DIGITAL_AVAILABLE = False
 
 try:
-    from main_graduate import retriever as graduate_retriever, manual_qa_chain as graduate_qa
+    from main_graduate import manual_qa_chain as graduate_qa
+    from main_graduate import retriever as graduate_retriever
     GRADUATE_AVAILABLE = True
 except Exception as e:
     print(f"⚠️ Graduate Programs chatbot not available: {e}")
     GRADUATE_AVAILABLE = False
+
 
 load_dotenv()
 
@@ -1340,4 +1360,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
