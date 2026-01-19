@@ -8,7 +8,15 @@ import os
 import sys
 from datetime import datetime
 
+import requests
 import streamlit as st
+
+# -----------------------------
+# API Config
+# -----------------------------
+API_URL = os.getenv("CHATBOT_API_URL", "http://localhost:8000/api/v1/chat/completions")
+HEALTH_URL = os.getenv("CHATBOT_HEALTH_URL", "http://localhost:8000/api/v1/health")
+META_URL = os.getenv("CHATBOT_META_URL", "http://localhost:8000/api/v1/chatbot/meta")
 
 # -----------------------------
 # Page config (ต้องมาก่อน st.* อื่น ๆ)
@@ -80,7 +88,7 @@ def inject_css():
 inject_css()
 
 # -----------------------------
-# Path setup
+# Path setup (ยังเก็บไว้เพื่อไม่ให้พังโครงสร้างเดิม)
 # -----------------------------
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))      # .../dashboard
 PROJECT_ROOT = os.path.dirname(os.path.dirname(CURRENT_DIR))  # project root
@@ -93,25 +101,42 @@ sys.path.insert(0, os.path.join(PROJECT_ROOT, "main_app"))
 # -----------------------------
 if "chatbot" not in st.session_state:
     st.session_state.chatbot = None
+if "chatbot_meta" not in st.session_state:
+    st.session_state.chatbot_meta = None
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 if "pending_question" not in st.session_state:
     st.session_state.pending_question = None
+if "strict_mode" not in st.session_state:
+    st.session_state.strict_mode = False
+if "return_contexts" not in st.session_state:
+    st.session_state.return_contexts = False
+if "return_debug" not in st.session_state:
+    st.session_state.return_debug = True
 
 # -----------------------------
 # Helpers
 # -----------------------------
 def initialize_chatbot():
-    """Initialize chatbot"""
+    """Initialize chatbot by checking FastAPI health (instead of importing chatbot class)."""
     if st.session_state.chatbot is None:
         try:
-            from main_app.main_unified_chatbot_automated import UnifiedChatbotAutomated
+            with st.spinner("🔌 กำลังเชื่อมต่อ API..."):
+                r = requests.get(HEALTH_URL, timeout=10)
+            r.raise_for_status()
 
-            with st.spinner("🤖 กำลังโหลด Chatbot..."):
-                st.session_state.chatbot = UnifiedChatbotAutomated()
-                return True
+            # Fetch meta for sidebar (agents/collections)
+            try:
+                meta = requests.get(META_URL, timeout=10)
+                meta.raise_for_status()
+                st.session_state.chatbot_meta = meta.json()
+            except Exception:
+                st.session_state.chatbot_meta = None
+
+            st.session_state.chatbot = "api_ready"
+            return True
         except Exception as e:
-            st.error(f"❌ Failed to initialize chatbot: {e}")
+            st.error(f"❌ Failed to connect API: {e}")
             import traceback
             with st.expander("🔍 ดู Error Details"):
                 st.code(traceback.format_exc())
@@ -124,11 +149,11 @@ def render_topbar():
     left, b1, b2, b3 = st.columns([7, 1.2, 1.2, 1.2])
 
     with left:
-        logo_col, title_col = st.columns([1, 12], vertical_alignment="center")
+        logo_col, title_col = st.columns([2, 10], vertical_alignment="center")
         with logo_col:
             st.image(
-                "assets/cp-kku-logo.webp",
-                width=46,              # ปรับตรงนี้ได้ (40–52 กำลังสวย)
+                "assets/cp-kku-logo.png",
+                width=90,              # ปรับตรงนี้ได้ (40–52 กำลังสวย)
             )
         with title_col:
             st.markdown(
@@ -151,7 +176,7 @@ def render_topbar():
             st.markdown('<span class="badge">Status: Ready</span>', unsafe_allow_html=True)
 
     with b1:
-        if st.button("🚀 Init", type="primary", use_container_width=True):
+        if st.button("🚀 Start", type="primary", use_container_width=True):
             if initialize_chatbot():
                 st.success("✅ Initialized!")
                 st.rerun()
@@ -164,6 +189,7 @@ def render_topbar():
     with b3:
         if st.button("🔄 Reload", use_container_width=True):
             st.session_state.chatbot = None
+            st.session_state.chatbot_meta = None
             st.session_state.chat_history = []
             st.rerun()
 # -----------------------------
@@ -176,20 +202,50 @@ def ask(question: str):
     with st.chat_message("assistant"):
         with st.spinner("🤔 กำลังคิด..."):
             try:
-                import io
-                from contextlib import redirect_stderr, redirect_stdout
+                payload = {
+                    "question": question,
+                    "strict_mode": st.session_state.get("strict_mode", False),
+                    "return_contexts": st.session_state.get("return_contexts", False),
+                    "return_debug": st.session_state.get("return_debug", True),
+                }
+                res = requests.post(API_URL, json=payload, timeout=120)
+                res.raise_for_status()
+                data = res.json()
 
-                output_buffer = io.StringIO()
-                with redirect_stdout(output_buffer), redirect_stderr(output_buffer):
-                    answer = st.session_state.chatbot.answer(question)
+                answer = data.get("answer", "")
+                intent = data.get("intent")
+                confidence = data.get("confidence")
+                contexts = data.get("contexts") or []
+                debug_output = data.get("debug_output")
 
-                debug_output = output_buffer.getvalue()
                 st.markdown(answer)
+
+                meta_bits = []
+                if intent:
+                    meta_bits.append(f"**Intent:** `{intent}`")
+                if confidence is not None:
+                    if isinstance(confidence, (int, float)):
+                        meta_bits.append(f"**Confidence:** `{confidence:.2f}`")
+                    else:
+                        meta_bits.append(f"**Confidence:** `{confidence}`")
+                if meta_bits:
+                    st.caption(" • ".join(meta_bits))
+
+                if contexts:
+                    with st.expander("📚 Contexts ที่ใช้ตอบ"):
+                        st.markdown(f"**📄 ใช้ context ทั้งหมด {len(contexts)} รายการ**")
+                        for i, c in enumerate(contexts, 1):
+                            st.markdown(f"**{i}.** {c}")
 
                 st.session_state.chat_history.append({
                     "role": "assistant",
                     "content": answer,
-                    "metadata": {"debug_output": debug_output if debug_output else None}
+                    "metadata": {
+                        "intent": intent,
+                        "confidence": confidence,
+                        "contexts": contexts if contexts else None,
+                        "debug_output": debug_output if debug_output else None
+                    }
                 })
 
                 if debug_output:
@@ -218,7 +274,7 @@ with st.container(border=True):
     with colA:
         st.markdown("### ✨ ใช้งานเร็ว")
         st.markdown(
-            "- กด **Init** เพื่อเริ่มใช้งาน\n"
+            "- กด **Start** เพื่อเริ่มใช้งาน\n"
             "- พิมพ์คำถามด้านล่าง หรือกดปุ่มตัวอย่าง\n"
             "- สามารถ Export ประวัติแชทได้จาก Sidebar"
         )
@@ -265,7 +321,10 @@ if st.session_state.chatbot is None:
     st.stop()
 
 # Status bar (metrics)
-agents = len(getattr(st.session_state.chatbot, "chatbot_map", {}) or {})
+agents = 0
+if st.session_state.chatbot_meta and isinstance(st.session_state.chatbot_meta, dict):
+    agents = int(st.session_state.chatbot_meta.get("total", 0) or 0)
+
 m1, m2, m3 = st.columns(3)
 m1.metric("Status", "Ready")
 m2.metric("Agents", agents)
@@ -274,16 +333,36 @@ m3.metric("Messages", len(st.session_state.chat_history))
 st.divider()
 
 # Chat history
-for message in st.session_state.chat_history:
+for idx, message in enumerate(st.session_state.chat_history):
     if message["role"] == "user":
         with st.chat_message("user"):
             st.write(message["content"])
     else:
         with st.chat_message("assistant"):
             st.markdown(message["content"])
-            if "metadata" in message and message["metadata"].get("debug_output"):
-                with st.expander("🔍 Debug Info"):
-                    st.code(message["metadata"]["debug_output"], language="text")
+            if "metadata" in message:
+                md = message["metadata"] or {}
+                meta_bits = []
+                if md.get("intent"):
+                    meta_bits.append(f"**Intent:** `{md.get('intent')}`")
+                if md.get("confidence") is not None:
+                    conf = md.get("confidence")
+                    if isinstance(conf, (int, float)):
+                        meta_bits.append(f"**Confidence:** `{conf:.2f}`")
+                    else:
+                        meta_bits.append(f"**Confidence:** `{conf}`")
+                if meta_bits:
+                    st.caption(" • ".join(meta_bits))
+
+                if md.get("contexts"):
+                    with st.expander("📚 Contexts ที่ใช้ตอบ"):
+                        st.markdown(f"**📄 ใช้ context ทั้งหมด {len(md['contexts'])} รายการ**")
+                        for i, c in enumerate(md["contexts"], 1):
+                            st.markdown(f"**{i}.** {c}")
+
+                if md.get("debug_output"):
+                    with st.expander("🔍 Debug Info"):
+                        st.code(md["debug_output"], language="text")
 
 # Quick prompt
 if st.session_state.pending_question:
@@ -301,12 +380,20 @@ with st.sidebar:
     st.markdown('<div class="sidebar-card"><b>🤖 Chatbot Info</b></div>', unsafe_allow_html=True)
     st.metric("Chat Messages", len(st.session_state.chat_history))
 
-    if hasattr(st.session_state.chatbot, "chatbot_map"):
-        st.markdown('<div class="sidebar-card"><b>🧩 Available Agents</b><br>', unsafe_allow_html=True)
-        for _, config in list(st.session_state.chatbot.chatbot_map.items())[:6]:
-            st.write(f"{config.get('icon','📦')} {config.get('name','-')}")
-            st.caption(f"📦 {config.get('collection','-')}")
-        st.markdown("</div>", unsafe_allow_html=True)
+    # ✅ คืน sidebar collection/agent list เหมือนเดิม
+    if st.session_state.chatbot_meta and isinstance(st.session_state.chatbot_meta, dict):
+        agents_list = st.session_state.chatbot_meta.get("agents", []) or []
+        if agents_list:
+            st.markdown('<div class="sidebar-card"><b>🧩 Available Agents</b><br>', unsafe_allow_html=True)
+            for a in agents_list[:6]:
+                st.write(f"{a.get('icon','📦')} {a.get('name','-')}")
+                st.caption(f"📦 {a.get('collection','-')}")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    st.session_state.strict_mode = st.toggle("Strict mode", value=st.session_state.strict_mode)
+    st.session_state.return_contexts = st.toggle("Return contexts", value=st.session_state.return_contexts)
+    st.session_state.return_debug = st.toggle("Return debug", value=st.session_state.return_debug)
+    st.caption(f"API: {API_URL}")
 
     if st.session_state.chat_history:
         chat_json = json.dumps(st.session_state.chat_history, ensure_ascii=False, indent=2)
@@ -319,3 +406,4 @@ with st.sidebar:
         )
 
     st.markdown('<div class="sidebar-card"><b>🔗 Instant Link</b><br>พอร์ตนี้คือเว็บแยกสำหรับแชร์ลิงก์ให้คนอื่นเข้าใช้งาน</div>', unsafe_allow_html=True)
+ 
