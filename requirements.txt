@@ -16,3 +16,6 @@ langchain-astradb
 astrapy
 beautifulsoup4
 lxml
+fastapi
+uvicorn
+pydantic
