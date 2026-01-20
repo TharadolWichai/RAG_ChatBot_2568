@@ -151,8 +151,10 @@ def render_topbar():
     with left:
         logo_col, title_col = st.columns([2, 10], vertical_alignment="center")
         with logo_col:
+            # ใช้ path ที่ relative กับไฟล์นี้
+            logo_path = os.path.join(os.path.dirname(__file__), "assets", "cp-kku-logo.png")
             st.image(
-                "assets/cp-kku-logo.png",
+                logo_path,
                 width=90,              # ปรับตรงนี้ได้ (40–52 กำลังสวย)
             )
         with title_col:

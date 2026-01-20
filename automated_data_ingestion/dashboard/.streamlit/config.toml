@@ -1,0 +1,8 @@
+[theme]
+base = "light"
+
+primaryColor = "#2563EB"              # ฟ้าน้ำเงิน (ปุ่ม / highlight)
+backgroundColor = "#FFFFFF"           # พื้นหลังหลัก
+secondaryBackgroundColor = "#F5F7FB"  # กล่อง / sidebar
+textColor = "#0F172A"                 # ตัวอักษร (เกือบดำ อ่านง่าย)
+font = "sans serif"
