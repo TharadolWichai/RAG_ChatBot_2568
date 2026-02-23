@@ -23,13 +23,24 @@ class BatchProcessor:
         """Initialize OpenAI client"""
         try:
             api_key = os.getenv("OPENAI_API_KEY")
+            base_url = os.getenv("OPENAI_BASE_URL")
+            model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+            
             if api_key:
-                self.llm = ChatOpenAI(
-                    model_name="gpt-4o-mini",
-                    temperature=0,
-                    openai_api_key=api_key
-                )
-                print("✅ OpenAI LLM initialized for batch processing")
+                # Build initialization parameters
+                init_params = {
+                    "model_name": model_name,
+                    "temperature": 0,
+                    "openai_api_key": api_key
+                }
+                
+                # Add custom base URL if specified (for KKU IntelSphere or other providers)
+                if base_url:
+                    init_params["openai_api_base"] = base_url
+                    print(f"✅ Using custom base URL: {base_url}")
+                
+                self.llm = ChatOpenAI(**init_params)
+                print(f"✅ OpenAI LLM initialized for batch processing (model: {model_name})")
             else:
                 print("⚠️ OPENAI_API_KEY not found, using rule-based extraction")
                 self.use_openai = False

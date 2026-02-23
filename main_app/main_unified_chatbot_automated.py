@@ -1253,6 +1253,114 @@ class UnifiedChatbotAutomated:
         
         return combined
     
+    def answer_with_contexts(self, question: str) -> Tuple[str, List[str], Dict[str, Any]]:
+        """
+        ตอบคำถามพร้อม contexts และ classification info
+        สำหรับการประเมินผลด้วย RAGAS
+        
+        Args:
+            question: คำถามจากผู้ใช้
+            
+        Returns:
+            tuple: (answer, contexts, classification_info)
+            - answer: คำตอบจากโมเดล (str)
+            - contexts: รายการ contexts ที่ retrieve มา (List[str])
+            - classification_info: ข้อมูล classification (Dict)
+        """
+        print(f"\n{'='*60}")
+        print(f"🔀 [WITH CONTEXTS] กำลังวิเคราะห์คำถามด้วย Hybrid Classification...")
+        print(f"   คำถาม: '{question}'")
+        print(f"{'='*60}")
+        
+        # Step 1: Hybrid Intent Classification
+        intent, confidence, method, reason = self.classifier.classify(question)
+        
+        classification_info = {
+            "intent": intent,
+            "confidence": float(confidence),
+            "method": method,
+            "reason": reason
+        }
+        
+        print(f"\n🎯 Hybrid Intent Classification Result:")
+        print(f"   ประเภท: {intent}")
+        print(f"   ความมั่นใจ: {confidence:.2f}")
+        print(f"   วิธีการ: {method}")
+        print(f"   เหตุผล: {reason}")
+        
+        # Step 2: Get contexts and answer based on intent
+        contexts = []
+        
+        if intent == "unknown" or intent not in self.chatbot_map:
+            print(f"\n❓ ไม่แน่ใจประเภทคำถาม - จะค้นหาจากทุก Agent และรวม contexts")
+            
+            # Multi-agent search - collect contexts from all agents
+            for intent_key, config in self.chatbot_map.items():
+                try:
+                    if "retriever" in config and config["retriever"]:
+                        print(f"   📚 ดึง contexts จาก {config['name']}...")
+                        docs = config["retriever"].get_relevant_documents(question)
+                        agent_contexts = [doc.page_content for doc in docs]
+                        contexts.extend(agent_contexts)
+                        print(f"      ✅ ได้ {len(agent_contexts)} contexts")
+                except Exception as e:
+                    print(f"      ⚠️ Error: {e}")
+            
+            # Get answer
+            answer = self._multi_agent_search(question)
+            
+            # Remove duplicate contexts while preserving order
+            seen = set()
+            unique_contexts = []
+            for ctx in contexts:
+                if ctx not in seen:
+                    unique_contexts.append(ctx)
+                    seen.add(ctx)
+            contexts = unique_contexts
+            
+            print(f"\n📊 รวม contexts จากทุก agent: {len(contexts)} contexts (unique)")
+            
+        else:
+            # Specific agent - get contexts from that agent
+            chatbot_config = self.chatbot_map[intent]
+            print(f"\n{'='*60}")
+            print(f"➡️  เลือก Agent: {chatbot_config['icon']} {chatbot_config['name']}")
+            print(f"📦 Collection: {chatbot_config['collection']}")
+            print(f"{'='*60}\n")
+            
+            try:
+                # Get contexts if retriever available
+                if "retriever" in chatbot_config and chatbot_config["retriever"]:
+                    print(f"📚 กำลังดึง contexts จาก {chatbot_config['name']}...")
+                    docs = chatbot_config["retriever"].get_relevant_documents(question)
+                    contexts = [doc.page_content for doc in docs]
+                    print(f"   ✅ ได้ {len(contexts)} contexts")
+                else:
+                    print(f"   ⚠️ Agent นี้ไม่มี retriever")
+                
+                # Get answer
+                answer = chatbot_config["qa_function"](question)
+                answer = f"{chatbot_config['icon']} [{chatbot_config['name']}]\n\n{answer}"
+                
+            except Exception as e:
+                print(f"\n❌ Error from {chatbot_config['name']}: {e}")
+                import traceback
+                traceback.print_exc()
+                answer = f"ขอโทษ เกิดข้อผิดพลาดจาก Agent {chatbot_config['name']}: {str(e)}"
+                contexts = []
+        
+        # Ensure we have at least some context
+        if not contexts:
+            contexts = [f"No contexts retrieved for question: {question}"]
+            print(f"   ⚠️ ไม่มี contexts - ใช้ fallback message")
+        
+        print(f"\n✅ เสร็จสิ้น:")
+        print(f"   - Answer length: {len(answer)} chars")
+        print(f"   - Total contexts: {len(contexts)}")
+        print(f"   - Classification: {intent} ({confidence:.2f})")
+        
+        return answer, contexts, classification_info
+    
     def show_help(self):
         """แสดงคำแนะนำการใช้งาน"""
         print("\n" + "="*60)

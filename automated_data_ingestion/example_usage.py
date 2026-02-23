@@ -6,6 +6,19 @@
 """
 import sys
 import os
+from dotenv import load_dotenv
+
+# Get the root project directory (parent of automated_data_ingestion)
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Load environment variables from .env file in project root
+env_path = os.path.join(project_root, '.env')
+if os.path.exists(env_path):
+    load_dotenv(env_path)
+    print(f"✅ Loaded .env from: {env_path}\n")
+else:
+    print(f"⚠️ .env file not found at: {env_path}\n")
+    load_dotenv()  # Try to load from current directory
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
