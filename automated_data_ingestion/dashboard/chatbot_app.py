@@ -7,7 +7,6 @@ import json
 import os
 import sys
 from datetime import datetime
-from pathlib import Path
 import requests
 import streamlit as st
 
@@ -32,64 +31,138 @@ st.set_page_config(
 # CSS (UI polish)
 # -----------------------------
 def inject_css():
-    st.markdown(
-        """
-        <style>
-          /* FIX: กันหัวขาด */
-        .block-container {
-            padding-top: 3.2rem !important;
-            padding-left: 2rem;
-            padding-right: 2rem;
-            max-width: 1400px;
-        }
+    st.markdown("""
+    <style>
 
-        h1, h2, h3 { letter-spacing: -0.02em; }
+    /* ----------- Layout ----------- */
 
-        /* buttons / inputs */
-        .stButton>button {
-        border-radius: 14px;
-        padding: 0.6rem 1rem;
-        height: 42px;                     /* ⬅ กันปุ่มโดนตัด */
-        }
+    .block-container {
+        padding-top: 2.8rem !important;
+        padding-left: 2rem;
+        padding-right: 2rem;
+        max-width: 1050px;
+    }
 
-          /* chat spacing */
-        [data-testid="stChatMessage"] { padding: 0.35rem 0; }
-        [data-testid="stChatMessageContent"]{
-            border-radius: 18px;
-            padding: 0.9rem 1.1rem;
-        }
+    h1,h2,h3{
+        letter-spacing:-0.02em;
+    }
 
-        /* sidebar */
-        section[data-testid="stSidebar"] .block-container {
-            padding-top: 1.2rem;
-        }
-        section[data-testid="stSidebar"] {
-            border-right: 1px solid #e2e8f0;
-        }
+    /* ----------- Buttons ----------- */
 
-        /* card / container */
-        div[data-testid="stMetric"],
-        .sidebar-card {
-        background: #ffffff;
-        }
+    .stButton>button{
+        border-radius:12px;
+        height:40px;
+        border:1px solid #e5e7eb;
+        background:white;
+        font-weight:500;
+        transition:all .15s ease;
+    }
 
-        /* chat bubble assistant */
-        [data-testid="stChatMessageContent"] {
-        background: #f8fafc;
-        }
+    .stButton>button:hover{
+        border-color:#2563eb;
+        color:#2563eb;
+    }
 
-        /* badge */
-        .badge {
-        background: #eff6ff;
-        border-color: #93c5fd;
-        color: #1d4ed8;
-}
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+    /* ----------- Chat Layout ----------- */
+
+    [data-testid="stChatMessage"]{
+        padding:10px 0;
+    }
+
+    /* avatar / emoji */
+
+    [data-testid="stChatMessageAvatar"]{
+        width:32px;
+        height:32px;
+        font-size:16px;
+    }
+
+    /* bubble base */
+
+    [data-testid="stChatMessageContent"]{
+        border-radius:16px;
+        padding:12px 16px;
+        font-size:15px;
+        line-height:1.65;
+        box-shadow:none;
+        border:none;
+        max-width:720px;
+    }
+
+    /* assistant bubble */
+
+    [data-testid="stChatMessage"][data-testid*="assistant"]
+    [data-testid="stChatMessageContent"]{
+        background:#f8fafc;
+        color:#0f172a;
+    }
+
+    /* user bubble */
+
+    [data-testid="stChatMessage"][data-testid*="user"]
+    [data-testid="stChatMessageContent"]{
+        background:#2563eb;
+        color:white;
+    }
+
+    /* ----------- Chat Input ----------- */
+
+    textarea{
+        border-radius:14px !important;
+        border:1px solid #e5e7eb !important;
+        font-size:15px !important;
+        padding:10px !important;
+    }
+
+    textarea:focus{
+        border-color:#2563eb !important;
+        box-shadow:none !important;
+    }
+
+    /* ----------- Metrics ----------- */
+
+    [data-testid="stMetric"]{
+        border-radius:12px;
+        padding:12px;
+        background:#ffffff;
+        border:1px solid #f1f5f9;
+    }
+
+    /* ----------- Containers ----------- */
+
+    div[data-testid="stContainer"]{
+        border-radius:16px;
+    }
+
+    /* ----------- Sidebar ----------- */
+
+    section[data-testid="stSidebar"] .block-container{
+        padding-top:1.5rem;
+    }
+
+    /* ----------- Badge ----------- */
+
+    .badge{
+        background:#eff6ff;
+        border:1px solid #bfdbfe;
+        color:#1d4ed8;
+        padding:4px 10px;
+        border-radius:8px;
+        font-size:13px;
+        font-weight:500;
+    }
+
+    /* ----------- Cleaner spacing ----------- */
+
+    hr{
+        margin-top:1.2rem;
+        margin-bottom:1.2rem;
+    }
+
+    </style>
+    """, unsafe_allow_html=True)
+
 inject_css()
-
 # -----------------------------
 # Path setup (ยังเก็บไว้เพื่อไม่ให้พังโครงสร้างเดิม)
 # -----------------------------
@@ -149,18 +222,17 @@ def initialize_chatbot():
 st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
 def render_topbar():
-    left, b1, b2, b3 = st.columns([7, 1.2, 1.2, 1.2])
+    left, b1, b2 = st.columns([8, 1, 1])
 
     with left:
         logo_col, title_col = st.columns([2, 10], vertical_alignment="center")
         with logo_col:
-            APP_DIR = Path(__file__).resolve().parent        # โฟลเดอร์ที่มี chatbot_app.py
-            LOGO_PATH = APP_DIR / "assets" / "cp-kku-logo.png"
-
-            if LOGO_PATH.exists():
-                st.image(str(LOGO_PATH), width=90)
-            else:
-                st.warning(f"Logo not found: {LOGO_PATH}")
+            # ใช้ path ที่ relative กับไฟล์นี้
+            logo_path = os.path.join(os.path.dirname(__file__), "assets", "cp-kku-logo.png")
+            st.image(
+                logo_path,
+                width=90,              # ปรับตรงนี้ได้ (40–52 กำลังสวย)
+            )
         with title_col:
             st.markdown(
                 """
@@ -188,11 +260,6 @@ def render_topbar():
                 st.rerun()
 
     with b2:
-        if st.button("🧹 Clear", use_container_width=True):
-            st.session_state.chat_history = []
-            st.rerun()
-
-    with b3:
         if st.button("🔄 Reload", use_container_width=True):
             st.session_state.chatbot = None
             st.session_state.chatbot_meta = None
@@ -278,7 +345,16 @@ with st.container(border=True):
     colA, colB = st.columns([3, 2])  # ✅ สมดุลขึ้น
 
     with colA:
-        st.markdown("### ✨ ใช้งานเร็ว")
+        st.markdown("""
+            <div style="display:flex; align-items:center; gap:10px; font-size:24px; font-weight:700;">
+            <svg xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 -960 960 960"
+            fill="#327ffb">
+            <path d="m381-240 424-424-57-56-368 367-169-170-57 57 227 226Zm0 113L42-466l169-170 170 170 366-367 172 168-538 538Z"/>
+            </svg>ใช้งานเร็ว</div>
+            """, unsafe_allow_html=True)
         st.markdown(
             "- กด **Start** เพื่อเริ่มใช้งาน\n"
             "- พิมพ์คำถามด้านล่าง หรือกดปุ่มตัวอย่าง\n"
@@ -286,7 +362,11 @@ with st.container(border=True):
         )
 
     with colB:
-        st.markdown("### ⚡ Quick Prompts")
+        st.markdown("""
+            <div style="display:flex; align-items:center; gap:10px; font-size:24px; font-weight:700;">
+            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#327ffb"><path d="m720-120-56-56 63-64H560v-80h167l-63-64 56-56 160 160-160 160Zm-600 0v-600q0-33 23.5-56.5T200-800h480q33 0 56.5 23.5T760-720v203q-10-2-20-2.5t-20-.5q-10 0-20 .5t-20 2.5v-203H200v400h283q-2 10-2.5 20t-.5 20q0 1₀ .5 2₀t2.5 2₀H24₀L1₂₀-1₂₀Zm16₀-44₀h3₂₀v-8₀H28₀v8₀Zm0 16₀h2₀₀v-8₀H28₀v8₀Zm-8₀ 8₀v-4₀₀ 4₀₀Z"/></svg>Quick Prompts</div>
+            
+            """, unsafe_allow_html=True)
         qp1, qp2 = st.columns(2)
         with qp1:
             if st.button("📞 ติดต่อวิทยาลัย", use_container_width=True):
@@ -309,20 +389,18 @@ if st.session_state.chatbot is None:
     st.info("💡 Tip: ถ้าเจอ 503 จาก AstraDB ให้ลองรอสักครู่แล้วกด Init ใหม่")
 
     with st.container(border=True):
-        st.warning("👆 กด **Init** (ปุ่มด้านบน) เพื่อเริ่มใช้งาน Chatbot")
+        st.warning("👆 กด **Start** (ปุ่มด้านบน) เพื่อเริ่มใช้งาน Chatbot")
         with st.expander("📋 ข้อมูลเพิ่มเติม", expanded=True):
             st.markdown("""
-            ### ✨ Features:
+            ### Features:
             - **Hybrid Intent Classification**: ใช้ Rule-Based + LLM
             - **Auto-Discovery**: ค้นหา collections อัตโนมัติ
             - **Dynamic Retrievers**: สร้าง retrievers แบบ dynamic
             - **Multi-Agent Search**: ค้นหาจากทุก collections เมื่อไม่แน่ใจ
 
-            ### 🎯 ตัวอย่างคำถาม:
-            - "อาจารย์สมชาย" → อาจารย์และบุคลากร
-            - "ติดต่อวิทยาลัย" → ข้อมูลติดต่อ
-            - "ลิงก์จองห้องประชุม" → ลิงก์และระบบ
-            - "ทุนการศึกษา" → ทุนการศึกษา
+            ### ตัวอย่างคำถาม:
+            - "ฉันจะติดต่อวิทยาลัยการคอมพิวเตอร์ได้อย่างไร?"
+            - "มีทุนการศึกษาอะไรบ้าง และสมัครอย่างไร?"
             """)
     st.stop()
 
@@ -383,78 +461,37 @@ if user_question:
 
 # Sidebar info (ตอน ready ค่อยมีเนื้อหา)
 with st.sidebar:
-    st.markdown("## 💬 RAG Chatbot")
 
-    # --- Status Card ---
-    with st.container(border=True):
-        st.markdown("### Status")
-        status = "Ready ✅" if st.session_state.chatbot is not None else "Not Ready ⚠️"
-        st.write(status)
-        st.caption(f"API: {API_URL}")
+    st.markdown("### ⚙️ Settings")
 
-        cols = st.columns(2)
-        cols[0].metric("Messages", len(st.session_state.chat_history))
+    st.session_state.strict_mode = st.toggle(
+        "Strict mode", value=st.session_state.strict_mode
+    )
 
-        agents_count = 0
-        if st.session_state.chatbot_meta and isinstance(st.session_state.chatbot_meta, dict):
-            agents_count = int(st.session_state.chatbot_meta.get("total", 0) or 0)
-        cols[1].metric("Agents", agents_count)
+    st.session_state.return_contexts = st.toggle(
+        "Return contexts", value=st.session_state.return_contexts
+    )
 
-    # --- Settings Card ---
-    with st.container(border=True):
-        st.markdown("### ⚙️ Settings")
-        st.caption("ปรับพฤติกรรมการตอบของบอท")
+    st.session_state.return_debug = st.toggle(
+        "Debug", value=st.session_state.return_debug
+    )
 
-        st.session_state.strict_mode = st.toggle(
-            "Strict mode",
-            value=st.session_state.strict_mode,
-            help="เข้มงวดกับการตอบจาก context มากขึ้น ลดการเดา"
-        )
-        st.session_state.return_contexts = st.toggle(
-            "Show contexts",
-            value=st.session_state.return_contexts,
-            help="แสดง context ที่ใช้ตอบ"
-        )
-        st.session_state.return_debug = st.toggle(
-            "Show debug",
-            value=st.session_state.return_debug,
-            help="แสดง debug output สำหรับ dev"
+    st.divider()
+
+    st.metric("Messages", len(st.session_state.chat_history))
+
+    if st.session_state.chat_history:
+        chat_json = json.dumps(
+            st.session_state.chat_history,
+            ensure_ascii=False,
+            indent=2
         )
 
-    # --- Tools / Actions ---
-    with st.container(border=True):
-        st.markdown("### 🧰 Tools")
-        c1, c2 = st.columns(2)
+        st.download_button(
+            "📥 Export Chat",
+            data=chat_json,
+            file_name=f"chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            mime="application/json",
+            use_container_width=True
+        )
 
-        if c1.button("🧹 Clear chat", use_container_width=True):
-            st.session_state.chat_history = []
-            st.rerun()
-
-        if c2.button("🔄 Reset API", use_container_width=True):
-            st.session_state.chatbot = None
-            st.session_state.chatbot_meta = None
-            st.session_state.chat_history = []
-            st.rerun()
-
-        st.caption("Tip: ถ้าเจอ 503/เชื่อมต่อหลุด ให้ Reset แล้วกด Start ใหม่")
-
-    # --- Export ---
-    with st.container(border=True):
-        st.markdown("### 📤 Export")
-        if st.session_state.chat_history:
-            chat_json = json.dumps(st.session_state.chat_history, ensure_ascii=False, indent=2)
-            st.download_button(
-                label="📥 Download chat history (.json)",
-                data=chat_json,
-                file_name=f"chat_history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                mime="application/json",
-                use_container_width=True
-            )
-        else:
-            st.caption("ยังไม่มีประวัติแชทให้ดาวน์โหลด")
-
-    # --- Share / About ---
-    with st.container(border=True):
-        st.markdown("### 🔗 Share")
-        st.caption("พอร์ตนี้คือเว็บแยกสำหรับแชร์ลิงก์ให้คนอื่นเข้าใช้งาน")
-        st.code("streamlit run chatbot_app.py --server.port 8502", language="bash")

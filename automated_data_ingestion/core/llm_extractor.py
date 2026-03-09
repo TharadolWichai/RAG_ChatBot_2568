@@ -18,14 +18,16 @@ class LLMExtractor:
     3. สร้าง Document objects สำหรับเก็บใน database
     """
     
-    def __init__(self, use_openai: bool = True, model_name: str = "gpt-4o-mini"):
+    def __init__(self, use_openai: bool = True, model_name: str = None):
         """
         Args:
             use_openai: ใช้ OpenAI API (ถ้า False จะใช้ rule-based extraction)
-            model_name: ชื่อ OpenAI model
+            model_name: ชื่อโมเดล (ถ้าไม่ระบุจะอ่านจาก OPENAI_MODEL env หรือใช้ default)
         """
+        import os
         self.use_openai = use_openai
-        self.model_name = model_name
+        # อ่าน model name จาก env หรือใช้ค่า default
+        self.model_name = model_name or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
         self.llm = None
         
         if use_openai:
@@ -36,14 +38,25 @@ class LLMExtractor:
         try:
             from langchain_openai import ChatOpenAI
             import os
+            
             api_key = os.getenv("OPENAI_API_KEY")
+            base_url = os.getenv("OPENAI_BASE_URL")
+            
             if api_key:
-                self.llm = ChatOpenAI(
-                    model_name=self.model_name,
-                    temperature=0,
-                    openai_api_key=api_key
-                )
-                print("✅ OpenAI LLM initialized")
+                # Build initialization parameters
+                init_params = {
+                    "model_name": self.model_name,
+                    "temperature": 0,
+                    "openai_api_key": api_key
+                }
+                
+                # Add custom base URL if specified (for KKU IntelSphere or other providers)
+                if base_url:
+                    init_params["openai_api_base"] = base_url
+                    print(f"✅ Using custom base URL: {base_url}")
+                
+                self.llm = ChatOpenAI(**init_params)
+                print(f"✅ OpenAI LLM initialized (model: {self.model_name})")
             else:
                 print("⚠️ OPENAI_API_KEY not found, falling back to rule-based extraction")
                 self.use_openai = False

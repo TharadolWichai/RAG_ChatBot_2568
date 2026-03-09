@@ -33,18 +33,18 @@ print(f"✅ Connected to AstraDB Collection: {COLLECTION_NAME}")
 # -------------------------------
 # LLM Setup (OpenRouter)
 # -------------------------------
-openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
-if not openrouter_api_key:
-    print("⚠️ Warning: OPENROUTER_API_KEY not found, LLM responses will not work")
+openai_api_key = os.getenv("OPENAI_API_KEY")
+if not openai_api_key:
+    print("⚠️ Warning: OPENAI_API_KEY not found, LLM responses will not work")
     llm = None
 else:
     llm = ChatOpenAI(
-        model="openai/gpt-4o-mini",
+        model="openai/gpt-5.1",
         temperature=0.3,
-        openai_api_key=openrouter_api_key,
-        openai_api_base="https://openrouter.ai/api/v1"
+        openai_api_key=openai_api_key,
+        openai_api_base="https://gen.ai.kku.ac.th/api/v1"
     )
-    print("✅ OpenRouter LLM initialized successfully")
+    print("✅ OpenAI LLM initialized successfully")
 
 # -------------------------------
 # Custom Retriever with BM25 + Vector + Thai Tokenizer

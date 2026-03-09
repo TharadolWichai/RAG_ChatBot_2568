@@ -969,19 +969,19 @@ PROMPT = PromptTemplate.from_template("""
 """)
 
 # ✅ โหลด Chat Model - Fixed for OpenRouter
-openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
+openai_api_key = os.getenv("OPENAI_API_KEY")
 
-if not openrouter_api_key:
-    print("⚠️ Warning: OPENROUTER_API_KEY not found in .env file")
+if not openai_api_key:
+    print("⚠️ Warning: OPENAI_API_KEY not found in .env file")
     print("LLM responses will not work without API key")
     llm = None
 else:
     try:
         llm = ChatOpenAI(
-            model="openai/gpt-4o-mini",  # Free model on OpenRouter
+            model="openai/gpt-5.1",  # Free model on OpenRouter
             temperature=0,
-            openai_api_key=openrouter_api_key,
-            openai_api_base="https://openrouter.ai/api/v1",
+            openai_api_key=openai_api_key,
+            openai_api_base="https://gen.ai.kku.ac.th/api/v1",
             default_headers={
                 "HTTP-Referer": "https://github.com/your-repo",
                 "X-Title": "Faculty RAG Chatbot"

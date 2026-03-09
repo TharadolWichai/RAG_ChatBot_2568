@@ -16,7 +16,6 @@ langchain-astradb
 astrapy
 beautifulsoup4
 lxml
-pip install requests beautifulsoup4 lxml # web scrapping
-faiss-cpu
-pip install --upgrade certifi
-python -m pip install fastapi uvicorn[standard]
+fastapi
+uvicorn
+pydantic

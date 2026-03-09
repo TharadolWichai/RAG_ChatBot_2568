@@ -1,0 +1,43 @@
+[
+  {
+    "job_config": {
+      "job_id": "b9164809-dee6-42c4-8a56-2e34076f83d1",
+      "name": "หน้าติดต่อเรา",
+      "url": "https://computing.kku.ac.th/contact-us",
+      "api_url": null,
+      "batch_mode": false,
+      "batch_list_api": null,
+      "detail_url_pattern": null,
+      "detail_api_pattern": null,
+      "collection_name": "test_embedding",
+      "extraction_prompt": "- ดึงข้อมูลติดต่อทั้งหมดของมหาวืทยาลัย\n- ดึงข้อมูลทั้งหมดของบุคลากร\n- เก็บข้อมูลแยก chunk กัน",
+      "description": "",
+      "created_at": "2026-02-24T01:34:42.514367",
+      "updated_at": "2026-02-24T01:34:42.514374",
+      "use_selenium": true,
+      "wait_time": 10,
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "metadata_filter": {},
+      "hash_keys": [],
+      "delete_missing": false,
+      "custom_headers": {},
+      "exclude_patterns": [],
+      "include_patterns": []
+    },
+    "result": {
+      "job_id": "b9164809-dee6-42c4-8a56-2e34076f83d1",
+      "status": "success",
+      "documents_processed": 16,
+      "documents_inserted": 17,
+      "documents_skipped": 0,
+      "documents_updated": 0,
+      "documents_deleted": 0,
+      "error_message": null,
+      "execution_time": 108.71648573875427,
+      "started_at": "2026-02-24T01:34:56.255279",
+      "completed_at": "2026-02-24T01:36:44.971760"
+    },
+    "timestamp": "2026-02-24T01:36:47.213719"
+  }
+]
