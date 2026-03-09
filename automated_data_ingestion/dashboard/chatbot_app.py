@@ -7,7 +7,7 @@ import json
 import os
 import sys
 from datetime import datetime
-
+from pathlib import Path
 import requests
 import streamlit as st
 
@@ -61,7 +61,10 @@ def inject_css():
 
         /* sidebar */
         section[data-testid="stSidebar"] .block-container {
-            padding-top: 1.5rem;
+            padding-top: 1.2rem;
+        }
+        section[data-testid="stSidebar"] {
+            border-right: 1px solid #e2e8f0;
         }
 
         /* card / container */
@@ -151,10 +154,13 @@ def render_topbar():
     with left:
         logo_col, title_col = st.columns([2, 10], vertical_alignment="center")
         with logo_col:
-            st.image(
-                "assets/cp-kku-logo.png",
-                width=90,              # ปรับตรงนี้ได้ (40–52 กำลังสวย)
-            )
+            APP_DIR = Path(__file__).resolve().parent        # โฟลเดอร์ที่มี chatbot_app.py
+            LOGO_PATH = APP_DIR / "assets" / "cp-kku-logo.png"
+
+            if LOGO_PATH.exists():
+                st.image(str(LOGO_PATH), width=90)
+            else:
+                st.warning(f"Logo not found: {LOGO_PATH}")
         with title_col:
             st.markdown(
                 """
@@ -377,33 +383,78 @@ if user_question:
 
 # Sidebar info (ตอน ready ค่อยมีเนื้อหา)
 with st.sidebar:
-    st.markdown('<div class="sidebar-card"><b>🤖 Chatbot Info</b></div>', unsafe_allow_html=True)
-    st.metric("Chat Messages", len(st.session_state.chat_history))
+    st.markdown("## 💬 RAG Chatbot")
 
-    # ✅ คืน sidebar collection/agent list เหมือนเดิม
-    if st.session_state.chatbot_meta and isinstance(st.session_state.chatbot_meta, dict):
-        agents_list = st.session_state.chatbot_meta.get("agents", []) or []
-        if agents_list:
-            st.markdown('<div class="sidebar-card"><b>🧩 Available Agents</b><br>', unsafe_allow_html=True)
-            for a in agents_list[:6]:
-                st.write(f"{a.get('icon','📦')} {a.get('name','-')}")
-                st.caption(f"📦 {a.get('collection','-')}")
-            st.markdown("</div>", unsafe_allow_html=True)
+    # --- Status Card ---
+    with st.container(border=True):
+        st.markdown("### Status")
+        status = "Ready ✅" if st.session_state.chatbot is not None else "Not Ready ⚠️"
+        st.write(status)
+        st.caption(f"API: {API_URL}")
 
-    st.session_state.strict_mode = st.toggle("Strict mode", value=st.session_state.strict_mode)
-    st.session_state.return_contexts = st.toggle("Return contexts", value=st.session_state.return_contexts)
-    st.session_state.return_debug = st.toggle("Return debug", value=st.session_state.return_debug)
-    st.caption(f"API: {API_URL}")
+        cols = st.columns(2)
+        cols[0].metric("Messages", len(st.session_state.chat_history))
 
-    if st.session_state.chat_history:
-        chat_json = json.dumps(st.session_state.chat_history, ensure_ascii=False, indent=2)
-        st.download_button(
-            label="📥 Export Chat History",
-            data=chat_json,
-            file_name=f"chat_history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-            mime="application/json",
-            use_container_width=True
+        agents_count = 0
+        if st.session_state.chatbot_meta and isinstance(st.session_state.chatbot_meta, dict):
+            agents_count = int(st.session_state.chatbot_meta.get("total", 0) or 0)
+        cols[1].metric("Agents", agents_count)
+
+    # --- Settings Card ---
+    with st.container(border=True):
+        st.markdown("### ⚙️ Settings")
+        st.caption("ปรับพฤติกรรมการตอบของบอท")
+
+        st.session_state.strict_mode = st.toggle(
+            "Strict mode",
+            value=st.session_state.strict_mode,
+            help="เข้มงวดกับการตอบจาก context มากขึ้น ลดการเดา"
+        )
+        st.session_state.return_contexts = st.toggle(
+            "Show contexts",
+            value=st.session_state.return_contexts,
+            help="แสดง context ที่ใช้ตอบ"
+        )
+        st.session_state.return_debug = st.toggle(
+            "Show debug",
+            value=st.session_state.return_debug,
+            help="แสดง debug output สำหรับ dev"
         )
 
-    st.markdown('<div class="sidebar-card"><b>🔗 Instant Link</b><br>พอร์ตนี้คือเว็บแยกสำหรับแชร์ลิงก์ให้คนอื่นเข้าใช้งาน</div>', unsafe_allow_html=True)
- 
+    # --- Tools / Actions ---
+    with st.container(border=True):
+        st.markdown("### 🧰 Tools")
+        c1, c2 = st.columns(2)
+
+        if c1.button("🧹 Clear chat", use_container_width=True):
+            st.session_state.chat_history = []
+            st.rerun()
+
+        if c2.button("🔄 Reset API", use_container_width=True):
+            st.session_state.chatbot = None
+            st.session_state.chatbot_meta = None
+            st.session_state.chat_history = []
+            st.rerun()
+
+        st.caption("Tip: ถ้าเจอ 503/เชื่อมต่อหลุด ให้ Reset แล้วกด Start ใหม่")
+
+    # --- Export ---
+    with st.container(border=True):
+        st.markdown("### 📤 Export")
+        if st.session_state.chat_history:
+            chat_json = json.dumps(st.session_state.chat_history, ensure_ascii=False, indent=2)
+            st.download_button(
+                label="📥 Download chat history (.json)",
+                data=chat_json,
+                file_name=f"chat_history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                mime="application/json",
+                use_container_width=True
+            )
+        else:
+            st.caption("ยังไม่มีประวัติแชทให้ดาวน์โหลด")
+
+    # --- Share / About ---
+    with st.container(border=True):
+        st.markdown("### 🔗 Share")
+        st.caption("พอร์ตนี้คือเว็บแยกสำหรับแชร์ลิงก์ให้คนอื่นเข้าใช้งาน")
+        st.code("streamlit run chatbot_app.py --server.port 8502", language="bash")

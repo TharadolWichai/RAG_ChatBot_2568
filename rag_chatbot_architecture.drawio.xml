@@ -1,0 +1,135 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="RAG Chatbot Architecture">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1"
+      tooltips="1" connect="1" arrows="1" fold="1" page="1"
+      pageScale="1" pageWidth="1169" pageHeight="827">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Client -->
+        <mxCell id="client" value="Client UI&#10;(Streamlit)"
+          style="rounded=0;whiteSpace=wrap;strokeColor=#000000;fillColor=#FFFFFF;"
+          vertex="1" parent="1">
+          <mxGeometry x="40" y="300" width="200" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- FastAPI -->
+        <mxCell id="api" value="FastAPI Server&#10;server.py : chat()"
+          style="rounded=0;whiteSpace=wrap;strokeColor=#000000;fillColor=#FFFFFF;"
+          vertex="1" parent="1">
+          <mxGeometry x="300" y="300" width="260" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Singleton -->
+        <mxCell id="singleton"
+          value="deps.get_chatbot()&#10;UnifiedChatbotAutomated&#10;(Singleton)"
+          style="rounded=0;whiteSpace=wrap;strokeColor=#000000;fillColor=#FFFFFF;"
+          vertex="1" parent="1">
+          <mxGeometry x="620" y="300" width="300" height="90" as="geometry"/>
+        </mxCell>
+
+        <!-- Answer -->
+        <mxCell id="answer" value="answer(question)"
+          style="rounded=0;whiteSpace=wrap;strokeColor=#000000;fillColor=#FFFFFF;"
+          vertex="1" parent="1">
+          <mxGeometry x="980" y="300" width="200" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Classifier -->
+        <mxCell id="classifier" value="Hybrid Classifier&#10;(Keyword + LLM)"
+          style="rounded=0;whiteSpace=wrap;strokeColor=#000000;fillColor=#FFFFFF;"
+          vertex="1" parent="1">
+          <mxGeometry x="980" y="420" width="240" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Router -->
+        <mxCell id="router" value="Router&#10;(Intent Selection)"
+          style="rounded=0;whiteSpace=wrap;strokeColor=#000000;fillColor=#FFFFFF;"
+          vertex="1" parent="1">
+          <mxGeometry x="980" y="510" width="240" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Lookup -->
+        <mxCell id="lookup" value="Lookup chatbot_map[intent]"
+          style="rounded=0;whiteSpace=wrap;strokeColor=#000000;fillColor=#FFFFFF;"
+          vertex="1" parent="1">
+          <mxGeometry x="980" y="600" width="260" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- QA -->
+        <mxCell id="qa" value="QA Function&#10;(Retriever + LLM)"
+          style="rounded=0;whiteSpace=wrap;strokeColor=#000000;fillColor=#FFFFFF;"
+          vertex="1" parent="1">
+          <mxGeometry x="980" y="690" width="260" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- AstraDB -->
+        <mxCell id="db" value="Vector Database&#10;(AstraDB)"
+          style="shape=cylinder;whiteSpace=wrap;strokeColor=#000000;fillColor=#FFFFFF;"
+          vertex="1" parent="1">
+          <mxGeometry x="1280" y="700" width="200" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Response -->
+        <mxCell id="response" value="ChatResponse JSON"
+          style="rounded=0;whiteSpace=wrap;strokeColor=#000000;fillColor=#FFFFFF;"
+          vertex="1" parent="1">
+          <mxGeometry x="620" y="180" width="260" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Edges (WITH geometry → arrows visible) -->
+        <mxCell id="e1" edge="1" parent="1" source="client" target="api"
+          style="endArrow=block;strokeColor=#000000;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e2" edge="1" parent="1" source="api" target="singleton"
+          style="endArrow=block;strokeColor=#000000;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e3" edge="1" parent="1" source="singleton" target="answer"
+          style="endArrow=block;strokeColor=#000000;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e4" edge="1" parent="1" source="answer" target="classifier"
+          style="endArrow=block;strokeColor=#000000;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e5" edge="1" parent="1" source="classifier" target="router"
+          style="endArrow=block;strokeColor=#000000;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e6" edge="1" parent="1" source="router" target="lookup"
+          style="endArrow=block;strokeColor=#000000;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e7" edge="1" parent="1" source="lookup" target="qa"
+          style="endArrow=block;strokeColor=#000000;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e8" edge="1" parent="1" source="qa" target="db"
+          style="endArrow=block;strokeColor=#000000;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e9" edge="1" parent="1" source="qa" target="response"
+          style="endArrow=block;strokeColor=#000000;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e10" edge="1" parent="1" source="response" target="client"
+          style="endArrow=block;strokeColor=#000000;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
