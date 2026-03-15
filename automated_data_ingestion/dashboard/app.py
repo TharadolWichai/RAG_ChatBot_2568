@@ -45,6 +45,8 @@ if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 if 'selected_model' not in st.session_state:
     st.session_state.selected_model = os.getenv("OPENAI_MODEL", "gemini-2.5-flash-lite")
+if 'chatbot_model' not in st.session_state:
+    st.session_state.chatbot_model = os.getenv("CHATBOT_MODEL", "gpt-5-mini")
 if 'available_models' not in st.session_state:
     st.session_state.available_models = []
 if 'available_collections' not in st.session_state:
@@ -117,8 +119,8 @@ def main():
         st.header("⚙️ Configuration")
         
         # Model Selection Section
-        with st.expander("🤖 Model Selection", expanded=True):
-            st.markdown("**เลือกโมเดล LLM สำหรับ Extraction:**")
+        with st.expander("🤖 Model Selection (Data Extraction)", expanded=True):
+            st.markdown("**เลือกโมเดล LLM สำหรับการดึงข้อมูล:**")
             
             # Fetch models button
             col_model1, col_model2 = st.columns([2, 1])
@@ -198,6 +200,69 @@ def main():
                 if st.session_state.selected_model in recommendations:
                     info = recommendations[st.session_state.selected_model]
                     st.caption(f"📊 {info['description']}")
+        
+        st.markdown("---")
+        
+        # Chatbot Model Selection Section
+        with st.expander("💬 Chatbot Model Selection", expanded=False):
+            st.markdown("**เลือกโมเดล LLM สำหรับ Chatbot:**")
+            
+            # Load models if not already loaded
+            if not st.session_state.available_models:
+                model_manager = get_model_manager()
+                st.session_state.available_models = model_manager.get_models_with_fallback()
+            
+            # Categorize models for chatbot
+            model_manager = get_model_manager()
+            categorized = model_manager.categorize_models(st.session_state.available_models)
+            
+            # Create flat list with category headers for chatbot
+            all_chatbot_models_flat = []
+            chatbot_model_display_names = {}
+            
+            for category, models in categorized.items():
+                if models:  # Only add category if it has models
+                    all_chatbot_models_flat.append(f"─── {category.upper()} ───")
+                    for model in models:
+                        all_chatbot_models_flat.append(model)
+                        # Create display name (remove prefix if exists)
+                        if "/" in model:
+                            chatbot_model_display_names[model] = model.split("/")[-1]
+                        else:
+                            chatbot_model_display_names[model] = model
+            
+            # Find current chatbot selection index
+            try:
+                current_chatbot_index = all_chatbot_models_flat.index(st.session_state.chatbot_model)
+            except ValueError:
+                # If selected model not in list, add it
+                all_chatbot_models_flat.insert(0, st.session_state.chatbot_model)
+                current_chatbot_index = 0
+            
+            # Chatbot Model selector
+            selected_chatbot_display = st.selectbox(
+                "เลือกโมเดลสำหรับ Chatbot:",
+                options=all_chatbot_models_flat,
+                index=current_chatbot_index,
+                format_func=lambda x: chatbot_model_display_names.get(x, x),
+                key="chatbot_model_selector"
+            )
+            
+            # Update selected chatbot model (skip category headers)
+            if selected_chatbot_display and not selected_chatbot_display.startswith("───"):
+                st.session_state.chatbot_model = selected_chatbot_display
+                # Update environment variable for this session
+                os.environ["CHATBOT_MODEL"] = selected_chatbot_display
+            
+            # Show selected chatbot model info
+            if st.session_state.chatbot_model:
+                st.success(f"✅ ใช้โมเดล Chatbot: **{st.session_state.chatbot_model}**")
+                
+                # Show model info if available
+                recommendations = model_manager.get_model_recommendations()
+                if st.session_state.chatbot_model in recommendations:
+                    info = recommendations[st.session_state.chatbot_model]
+                    st.caption(f"💬 {info['description']}")
         
         st.markdown("---")
         
@@ -804,6 +869,11 @@ def main():
             """Initialize chatbot"""
             if st.session_state.chatbot is None:
                 try:
+                    # Set chatbot model in environment before importing
+                    if st.session_state.chatbot_model:
+                        os.environ["CHATBOT_MODEL"] = st.session_state.chatbot_model
+                        st.info(f"🤖 กำลังโหลด Chatbot ด้วยโมเดล: **{st.session_state.chatbot_model}**")
+                    
                     # Import chatbot
                     sys.path.insert(0, os.path.join(project_root, "main_app"))
                     from main_unified_chatbot_automated import UnifiedChatbotAutomated
@@ -843,6 +913,10 @@ def main():
         if st.session_state.chatbot is None:
             st.info("👆 Click 'Initialize Chatbot' to start chatting")
             
+            # Show current chatbot model selection
+            st.info(f"📝 จะใช้โมเดล: **{st.session_state.chatbot_model}**")
+            st.caption("💡 เปลี่ยนโมเดลได้ที่ Sidebar → 💬 Chatbot Model Selection")
+            
             with st.expander("📋 ข้อมูลเพิ่มเติม", expanded=True):
                 st.markdown("""
                 ### ✨ Features:
@@ -858,10 +932,10 @@ def main():
                 - "ทุนการศึกษา" → ทุนการศึกษา
                 """)
         else:
-            # Show chatbot status
+            # Show chatbot status with model info
             if hasattr(st.session_state.chatbot, 'chatbot_map'):
                 num_agents = len(st.session_state.chatbot.chatbot_map)
-                st.success(f"✅ Chatbot ready with {num_agents} agents")
+                st.success(f"✅ Chatbot ready with {num_agents} agents | Model: **{st.session_state.chatbot_model}**")
             
             # Display chat history
             st.markdown("---")

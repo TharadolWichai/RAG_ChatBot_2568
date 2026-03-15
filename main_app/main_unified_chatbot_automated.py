@@ -451,12 +451,19 @@ def create_qa_chain_with_logging(retriever: BaseRetriever, collection_name: str)
     Returns:
         QA function ที่รับ question และ return answer
     """
-    # Initialize LLM
+    # Initialize LLM (Using KKU IntelSphere API)
     try:
-        api_key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENROUTER_API_KEY")
-        base_url = os.getenv("OPENAI_BASE_URL", "https://openrouter.ai/api/v1")
-        model_name = os.getenv("OPENAI_MODEL", "openai/gpt-4o-mini")
-        
+        api_key = os.getenv("OPENAI_API_KEY")
+        base_url = os.getenv("OPENAI_BASE_URL")
+        model_name = os.getenv("CHATBOT_MODEL") or os.getenv("OPENAI_MODEL", "gemini-2.5-flash-lite")
+
+        if not api_key or not base_url:
+            # Fallback to OpenRouter if KKU API not configured
+            api_key = os.getenv("OPENROUTER_API_KEY")
+            base_url = "https://openrouter.ai/api/v1"
+            model_name = "openai/gpt-4o-mini"
+            print("⚠️ Using OpenRouter as fallback (KKU API not configured)")
+
         llm = ChatOpenAI(
             openai_api_key=api_key,
             openai_api_base=base_url,
@@ -849,12 +856,21 @@ class HybridIntentClassifier:
         self.llm_client = None
         if OPENAI_AVAILABLE:
             try:
-                api_key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENROUTER_API_KEY")
-                if api_key:
-                    base_url = os.getenv("OPENAI_BASE_URL", "https://openrouter.ai/api/v1")
+                # Try KKU IntelSphere API first
+                api_key = os.getenv("OPENAI_API_KEY")
+                base_url = os.getenv("OPENAI_BASE_URL")
+                
+                if api_key and base_url:
                     self.llm_client = OpenAI(api_key=api_key, base_url=base_url)
-                    self.llm_model = "openai/gpt-4o-mini"
-                    print("✅ LLM fallback initialized successfully!")
+                    self.llm_model = os.getenv("CHATBOT_MODEL") or os.getenv("OPENAI_MODEL", "gemini-2.5-flash-lite")
+                    print(f"✅ LLM fallback initialized with KKU IntelSphere API (model: {self.llm_model})!")
+                else:
+                    # Fallback to OpenRouter
+                    api_key = os.getenv("OPENROUTER_API_KEY")
+                    if api_key:
+                        self.llm_client = OpenAI(api_key=api_key, base_url="https://openrouter.ai/api/v1")
+                        self.llm_model = "openai/gpt-4o-mini"
+                        print("✅ LLM fallback initialized with OpenRouter (fallback)!")
             except Exception as e:
                 print(f"⚠️ LLM fallback initialization failed: {e}")
     

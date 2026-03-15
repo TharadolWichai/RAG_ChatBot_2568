@@ -18,7 +18,8 @@ def health():
 @app.post("/api/v1/chat/completions")
 def chat(req: ChatRequest):
     try:
-        bot = get_chatbot()
+        # Get chatbot with specified model (or use default)
+        bot = get_chatbot(model=req.model)
 
         output_buffer = io.StringIO()
         with redirect_stdout(output_buffer), redirect_stderr(output_buffer):
@@ -70,7 +71,7 @@ def chat(req: ChatRequest):
 
 @app.get("/api/v1/chatbot/meta")
 def chatbot_meta():
-    bot = get_chatbot()
+    bot = get_chatbot()  # Use default model for meta info
 
     chatbot_map = getattr(bot, "chatbot_map", {}) or {}
 

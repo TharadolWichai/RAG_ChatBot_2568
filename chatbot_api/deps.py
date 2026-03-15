@@ -12,11 +12,28 @@ if MAIN_APP_DIR not in sys.path:
 
 from main_app.main_unified_chatbot_automated import UnifiedChatbotAutomated
 
-# สร้างครั้งเดียว (Singleton)
+# สร้างครั้งเดียว (Singleton) แต่รองรับ dynamic model
 _chatbot = None
+_current_model = None
 
-def get_chatbot():
-    global _chatbot
-    if _chatbot is None:
-        _chatbot = UnifiedChatbotAutomated()  # automated ไม่มี strict_mode
+def get_chatbot(model: str = None):
+    """
+    Get or create chatbot instance.
+    If model is specified and different from current, recreate chatbot.
+    """
+    global _chatbot, _current_model
+    
+    # Get model from parameter or environment
+    requested_model = model or os.getenv("CHATBOT_MODEL", "gpt-5-mini")
+    
+    # Recreate if model changed or chatbot doesn't exist
+    if _chatbot is None or (requested_model != _current_model):
+        # Set model in environment before creating chatbot
+        if requested_model:
+            os.environ["CHATBOT_MODEL"] = requested_model
+            print(f"🤖 Creating chatbot with model: {requested_model}")
+        
+        _chatbot = UnifiedChatbotAutomated()
+        _current_model = requested_model
+    
     return _chatbot

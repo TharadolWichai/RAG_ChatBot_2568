@@ -7,6 +7,7 @@ class ChatRequest(BaseModel):
     strict_mode: Optional[bool] = False
     return_contexts: Optional[bool] = False
     return_debug: Optional[bool] = True   # ✅ เพิ่ม: ขอ debug จาก API
+    model: Optional[str] = None           # ✅ เพิ่ม: เลือกโมเดล LLM
 
 
 class ChatResponse(BaseModel):

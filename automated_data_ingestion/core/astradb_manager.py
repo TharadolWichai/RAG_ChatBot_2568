@@ -22,13 +22,13 @@ class AstraDBManager:
     """จัดการการเชื่อมต่อและเก็บข้อมูลใน AstraDB"""
     
     def __init__(self, token: Optional[str] = None, endpoint: Optional[str] = None, 
-                 keyspace: Optional[str] = None, embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):
+                 keyspace: Optional[str] = None, embedding_model_name: str = "intfloat/multilingual-e5-large"):
         """
         Args:
             token: AstraDB application token
             endpoint: AstraDB API endpoint
             keyspace: AstraDB keyspace name
-            embedding_model_name: ชื่อ embedding model
+            embedding_model_name: ชื่อ embedding model (default: multilingual-e5-large for better Thai support)
         """
         self.token = token or os.getenv("ASTRA_DB_APPLICATION_TOKEN")
         self.endpoint = endpoint or os.getenv("ASTRA_DB_API_ENDPOINT")
@@ -42,20 +42,22 @@ class AstraDBManager:
         self.database = self.client.get_database_by_api_endpoint(self.endpoint)
         
         # Initialize embedding model
-        print("🧠 Initializing embedding model...")
+        print("🧠 Initializing embedding model (multilingual-e5-large for better Thai support)...")
+        print("   ⏳ First run may take 5-10 minutes to download model (~2.2GB)")
         self.embedding_model = HuggingFaceEmbeddings(model_name=embedding_model_name)
+        print("   ✅ Model loaded successfully!")
         
         print(f"✅ Connected to AstraDB: {self.endpoint}")
         print(f"🏠 Using keyspace: {self.keyspace}")
     
-    def get_or_create_collection(self, collection_name: str, dimension: int = 384, 
+    def get_or_create_collection(self, collection_name: str, dimension: int = 1024, 
                                   auto_create: bool = False) -> Any:
         """
         Get existing collection or create new one
         
         Args:
             collection_name: ชื่อ collection
-            dimension: Vector dimension (default 384 สำหรับ all-MiniLM-L6-v2)
+            dimension: Vector dimension (default 1024 สำหรับ multilingual-e5-large)
             auto_create: ถ้า True จะพยายามสร้าง collection อัตโนมัติ (default: False)
             
         Returns:

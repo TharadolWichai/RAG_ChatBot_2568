@@ -7,9 +7,28 @@ import json
 import os
 import sys
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables FIRST
+load_dotenv()
 
 import requests
 import streamlit as st
+
+# Add parent directories to path for importing model_manager
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(CURRENT_DIR))
+
+sys.path.insert(0, PROJECT_ROOT)
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "main_app"))
+
+# Import model manager
+try:
+    from automated_data_ingestion.utils.model_manager import get_model_manager
+    MODEL_MANAGER_AVAILABLE = True
+except ImportError:
+    MODEL_MANAGER_AVAILABLE = False
+    print("⚠️ Model manager not available")
 
 # -----------------------------
 # API Config
@@ -113,6 +132,10 @@ if "return_contexts" not in st.session_state:
     st.session_state.return_contexts = False
 if "return_debug" not in st.session_state:
     st.session_state.return_debug = True
+if 'chatbot_model' not in st.session_state:
+    st.session_state.chatbot_model = os.getenv("CHATBOT_MODEL", "gpt-5-mini")
+if 'available_models' not in st.session_state:
+    st.session_state.available_models = []
 
 # -----------------------------
 # Helpers
@@ -209,6 +232,7 @@ def ask(question: str):
                     "strict_mode": st.session_state.get("strict_mode", False),
                     "return_contexts": st.session_state.get("return_contexts", False),
                     "return_debug": st.session_state.get("return_debug", True),
+                    "model": st.session_state.get("chatbot_model"),  # ✅ เพิ่ม: ส่งโมเดลที่เลือก
                 }
                 res = requests.post(API_URL, json=payload, timeout=120)
                 res.raise_for_status()
@@ -230,6 +254,9 @@ def ask(question: str):
                         meta_bits.append(f"**Confidence:** `{confidence:.2f}`")
                     else:
                         meta_bits.append(f"**Confidence:** `{confidence}`")
+                # แสดงโมเดลที่ใช้
+                if st.session_state.get("chatbot_model"):
+                    meta_bits.append(f"**Model:** `{st.session_state.chatbot_model}`")
                 if meta_bits:
                     st.caption(" • ".join(meta_bits))
 
@@ -246,7 +273,8 @@ def ask(question: str):
                         "intent": intent,
                         "confidence": confidence,
                         "contexts": contexts if contexts else None,
-                        "debug_output": debug_output if debug_output else None
+                        "debug_output": debug_output if debug_output else None,
+                        "model": st.session_state.get("chatbot_model")  # ✅ บันทึกโมเดล
                     }
                 })
 
@@ -353,6 +381,9 @@ for idx, message in enumerate(st.session_state.chat_history):
                         meta_bits.append(f"**Confidence:** `{conf:.2f}`")
                     else:
                         meta_bits.append(f"**Confidence:** `{conf}`")
+                # แสดงโมเดลที่ใช้
+                if md.get("model"):
+                    meta_bits.append(f"**Model:** `{md.get('model')}`")
                 if meta_bits:
                     st.caption(" • ".join(meta_bits))
 
@@ -381,6 +412,75 @@ if user_question:
 with st.sidebar:
     st.markdown('<div class="sidebar-card"><b>🤖 Chatbot Info</b></div>', unsafe_allow_html=True)
     st.metric("Chat Messages", len(st.session_state.chat_history))
+    
+    # ✅ Model Selection Section
+    st.markdown("---")
+    st.markdown('<div class="sidebar-card"><b>💬 Model Selection</b></div>', unsafe_allow_html=True)
+    
+    # Load available models from KKU API
+    if not st.session_state.available_models:
+        if MODEL_MANAGER_AVAILABLE:
+            try:
+                model_manager = get_model_manager()
+                models = model_manager.get_models_with_fallback()
+                st.session_state.available_models = models if models else []
+                st.caption(f"✅ โหลด {len(models)} โมเดลจาก KKU API")
+            except Exception as e:
+                st.caption(f"⚠️ ไม่สามารถดึงโมเดล: {e}")
+                # Fallback to default list
+                st.session_state.available_models = [
+                    "gpt-5-mini",
+                    "gemini-2.5-flash-lite",
+                    "claude-3-5-sonnet",
+                ]
+        else:
+            # Fallback to default list
+            st.session_state.available_models = [
+                "gpt-5-mini",
+                "gemini-2.5-flash-lite",
+                "claude-3-5-sonnet",
+            ]
+    
+    # Refresh models button
+    if st.button("🔄 Refresh Models", use_container_width=True):
+        if MODEL_MANAGER_AVAILABLE:
+            with st.spinner("กำลังดึงรายการโมเดล..."):
+                try:
+                    model_manager = get_model_manager()
+                    models = model_manager.fetch_available_models()
+                    if models:
+                        st.session_state.available_models = models
+                        st.success(f"✅ พบ {len(models)} โมเดล")
+                    else:
+                        st.warning("⚠️ ไม่พบโมเดล ใช้ default")
+                except Exception as e:
+                    st.error(f"❌ Error: {e}")
+    
+    # Model selector
+    if st.session_state.available_models:
+        try:
+            current_index = st.session_state.available_models.index(st.session_state.chatbot_model)
+        except ValueError:
+            current_index = 0
+            
+        selected_model = st.selectbox(
+            "เลือกโมเดล:",
+            options=st.session_state.available_models,
+            index=current_index,
+            key="model_selector_sidebar"
+        )
+        
+        # Update selected model
+        if selected_model != st.session_state.chatbot_model:
+            st.session_state.chatbot_model = selected_model
+            st.success(f"✅ เปลี่ยนเป็น: **{selected_model}**")
+            st.info("💡 โมเดลจะถูกใช้ในคำถามถัดไป")
+        
+        st.caption(f"🤖 ใช้โมเดล: **{st.session_state.chatbot_model}**")
+    else:
+        st.warning("⚠️ ไม่พบรายการโมเดล")
+    
+    st.markdown("---")
 
     # ✅ คืน sidebar collection/agent list เหมือนเดิม
     if st.session_state.chatbot_meta and isinstance(st.session_state.chatbot_meta, dict):

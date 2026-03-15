@@ -37,7 +37,209 @@ load_dotenv()
 # -------------------------------
 # Digital Services Web URLs
 # -------------------------------
-DIGITAL_SERVICES = {
+# -------------------------------
+# Auto-discover Services from Main Page
+# -------------------------------
+def auto_discover_services() -> Dict:
+    """
+    Auto-discover บริการทั้งหมดจากหน้า digital-services หลัก
+    ไม่ต้อง hardcode รายการบริการ - ระบบจะหาเองอัตโนมัติ
+    """
+    if not SELENIUM_AVAILABLE:
+        print("⚠️ Selenium not available, using fallback services")
+        return FALLBACK_SERVICES
+    
+    main_url = "https://computing.kku.ac.th/digital-services"
+    
+    # ตั้งค่า Chrome options
+    chrome_options = Options()
+    chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--disable-gpu')
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--disable-dev-shm-usage')
+    chrome_options.add_argument('--ignore-certificate-errors')
+    chrome_options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
+    
+    driver = None
+    discovered_services = {}
+    
+    try:
+        # Setup ChromeDriver
+        try:
+            from selenium.webdriver.chrome.service import Service as ChromeService
+            from webdriver_manager.chrome import ChromeDriverManager
+            service = ChromeService(ChromeDriverManager().install())
+        except ImportError:
+            driver_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'drivers', 'chromedriver.exe')
+            if os.path.exists(driver_path):
+                service = Service(driver_path)
+            else:
+                raise FileNotFoundError("ChromeDriver not found")
+        
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+        
+        print(f"🔍 Auto-discovering services from: {main_url}")
+        driver.get(main_url)
+        time.sleep(5)  # รอให้หน้าโหลดเสร็จ
+        
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
+        
+        # หา links ที่เป็นบริการจริงๆ จากหน้า digital-services
+        # Strategy: หาเฉพาะ cards/boxes ที่เป็นบริการ (มักจะมี structure พิเศษ)
+        
+        # หาจาก service cards หรือ service items (ปรับตาม structure ของเว็บ)
+        service_cards = soup.find_all(['div', 'a'], class_=lambda x: x and any(
+            keyword in str(x).lower() for keyword in ['service', 'card', 'item', 'box']
+        ))
+        
+        # ถ้าหาแบบ class ไม่เจอ ให้หาจาก links ทั้งหมด แต่กรองเฉพาะที่มี pattern ของ digital services
+        if not service_cards:
+            service_cards = soup.find_all('a', href=True)
+        
+        for card in service_cards:
+            # ดึง link จาก card (อาจจะเป็น <a> เองหรือมี <a> ข้างใน)
+            if card.name == 'a':
+                link = card
+            else:
+                link = card.find('a', href=True)
+                if not link:
+                    continue
+            
+            href = link.get('href', '')
+            text = link.get_text().strip()
+            
+            # Filter 1: ต้องมี href และ text ที่มีความหมาย
+            if not href or not text or len(text) < 3:
+                continue
+            
+            # Filter 2: สร้าง full URL
+            if href.startswith('/'):
+                full_url = f"https://computing.kku.ac.th{href}"
+            elif href.startswith('http'):
+                full_url = href
+            else:
+                continue
+            
+            # Filter 3: ต้องเป็น URL ใน computing.kku.ac.th และไม่ใช่หน้าหลัก
+            if 'computing.kku.ac.th' not in full_url or full_url == main_url:
+                continue
+            
+            # Filter 4: Skip URLs ที่ไม่ใช่บริการ (เพิ่มรายการให้เข้มงวด)
+            skip_patterns = [
+                # Navigation & Structure
+                '/home', '/about', '/contact', '/vision', '/mission', '/history',
+                '/structure', '/institution', '/board', '/facilities',
+                # Academic
+                '/academics', '/course', '/admission', '/entrance', '/graduate',
+                '/scholarship', '/bsc-', '/msc-', '/phd-',
+                # People & Community
+                '/people', '/students', '/staffs', '/alumni', '/club',
+                '/international-student', '/for-staffs',
+                # Other
+                '/news', '/research', '/publication', '/project',
+                '/event', '/gallery', '/download', '/document',
+                '/en/', '/th/', '#', 'javascript:', 'mailto:', 'tel:',
+                '/login', '/register', 'facebook.com', 'twitter.com', 'youtube.com',
+                # Specific non-services
+                '/mikrotik', '/content/', '/cp-'
+            ]
+            
+            if any(pattern in full_url.lower() for pattern in skip_patterns):
+                continue
+            
+            # Filter 5: ต้องมี pattern ที่บ่งบอกว่าเป็น digital service
+            # หรืออย่างน้อยต้องไม่อยู่ใน skip list ด้านบน
+            service_indicators = [
+                'digital', 'service', 'hosting', 'virtual', 'vm', 'cloud',
+                'apple', 'google', 'grammarly', 'chatgpt', 'gpt', 'ai',
+                'server', 'nas', 'storage', 'gpu', 'h100', 'snapdrop',
+                'backup', 'database', 'api', 'app', 'software'
+            ]
+            
+            # ต้องมีคำที่บ่งบอกว่าเป็นบริการอย่างน้อย 1 คำ
+            has_service_indicator = any(
+                indicator in full_url.lower() or indicator in text.lower()
+                for indicator in service_indicators
+            )
+            
+            if not has_service_indicator:
+                continue
+            
+            # ผ่านการกรองแล้ว
+            if 'computing.kku.ac.th' in full_url and full_url != main_url:
+                    # สร้าง slug จาก URL
+                    slug = href.split('/')[-1].strip()
+                    if not slug:
+                        slug = href.split('/')[-2].strip()
+                    
+                    # ทำความสะอาดชื่อ
+                    clean_name = re.sub(r'\s+', ' ', text).strip()
+                    
+                    # ถ้ายังไม่มีใน dict และชื่อไม่ซ้ำ
+                    if slug and clean_name and slug not in discovered_services:
+                        # Categorize based on keywords
+                        category = "service"
+                        keywords = [clean_name.lower()]
+                        
+                        if any(word in clean_name.lower() for word in ['host', 'โฮส']):
+                            category = "hosting"
+                            keywords.extend(["hosting", "web hosting"])
+                        elif any(word in clean_name.lower() for word in ['virtual', 'vm', 'เครื่องเสมือน']):
+                            category = "infrastructure"
+                            keywords.extend(["virtual machine", "vm"])
+                        elif any(word in clean_name.lower() for word in ['apple', 'แอปเปิล']):
+                            category = "software"
+                            keywords.extend(["apple", "ios"])
+                        elif any(word in clean_name.lower() for word in ['google', 'กูเกิล']):
+                            category = "software"
+                            keywords.extend(["google", "android"])
+                        elif any(word in clean_name.lower() for word in ['ai', 'ปัญญา', 'chatgpt', 'gpt']):
+                            category = "ai"
+                            keywords.extend(["ai", "artificial intelligence"])
+                        elif any(word in clean_name.lower() for word in ['server', 'เซิร์ฟเวอร์']):
+                            category = "infrastructure"
+                            keywords.extend(["server", "computing"])
+                        elif any(word in clean_name.lower() for word in ['nas', 'storage', 'จัดเก็บ']):
+                            category = "storage"
+                            keywords.extend(["storage", "backup"])
+                        elif any(word in clean_name.lower() for word in ['gpu', 'h100', 'graphics']):
+                            category = "infrastructure"
+                            keywords.extend(["gpu", "graphics", "computing"])
+                        
+                        discovered_services[slug] = {
+                            "name": clean_name,
+                            "name_en": clean_name,  # จะถูกปรับในภายหลังถ้าจำเป็น
+                            "url": full_url,
+                            "category": category,
+                            "keywords": keywords,
+                            "auto_discovered": True
+                        }
+        
+        driver.quit()
+        
+        # ถ้าไม่พบบริการเลย ใช้ fallback
+        if not discovered_services:
+            print("⚠️ No services discovered, using fallback")
+            return FALLBACK_SERVICES
+        
+        print(f"✅ Discovered {len(discovered_services)} services:")
+        for slug, info in discovered_services.items():
+            print(f"   • {info['name']} - {info['url']}")
+        
+        return discovered_services
+        
+    except Exception as e:
+        print(f"❌ Error during auto-discovery: {e}")
+        if driver:
+            driver.quit()
+        print("⚠️ Falling back to default services")
+        return FALLBACK_SERVICES
+
+
+# -------------------------------
+# Fallback Services (ใช้ตอน auto-discovery ล้มเหลว)
+# -------------------------------
+FALLBACK_SERVICES = {
     "web_hosting": {
         "name": "บริการ Web Hosting",
         "name_en": "Digital Services - Web Hosting",
@@ -87,14 +289,45 @@ DIGITAL_SERVICES = {
         "category": "infrastructure",
         "keywords": ["data science", "ai server", "เซิร์ฟเวอร์", "machine learning", "ข้อมูล"]
     },
+    "nas": {
+        "name": "บริการ NAS (Network Attached Storage)",
+        "name_en": "NAS Service",
+        "url": "https://computing.kku.ac.th/nas",
+        "category": "storage",
+        "keywords": ["nas", "network storage", "จัดเก็บข้อมูล", "storage", "backup"]
+    },
     "kku_snapdrop": {
         "name": "บริการ KKU Snapdrop",
         "name_en": "KKU Snapdrop Service",
         "url": "https://computing.kku.ac.th/kku-snapdrop",
         "category": "utility",
         "keywords": ["snapdrop", "แชร์ไฟล์", "file sharing", "transfer", "ส่งไฟล์"]
+    },
+    "h100": {
+        "name": "บริการ H100 GPU",
+        "name_en": "H100 GPU Service",
+        "url": "https://computing.kku.ac.th/h100",
+        "category": "infrastructure",
+        "keywords": ["h100", "gpu", "nvidia", "graphics", "ประมวลผล"]
     }
 }
+
+# -------------------------------
+# Digital Services (Auto-discover or Fallback)
+# -------------------------------
+print("\n" + "="*60)
+print("🔍 Auto-discovering Digital Services...")
+print("="*60)
+
+try:
+    DIGITAL_SERVICES = auto_discover_services()
+    print(f"✅ Loaded {len(DIGITAL_SERVICES)} services")
+except Exception as e:
+    print(f"❌ Auto-discovery failed: {e}")
+    print("⚠️ Using fallback services")
+    DIGITAL_SERVICES = FALLBACK_SERVICES
+
+print("="*60 + "\n")
 
 # -------------------------------
 # AstraDB Config
@@ -102,7 +335,7 @@ DIGITAL_SERVICES = {
 ASTRA_TOKEN = os.getenv("ASTRA_DB_APPLICATION_TOKEN")
 ASTRA_ENDPOINT = os.getenv("ASTRA_DB_API_ENDPOINT")
 ASTRA_KEYSPACE = os.getenv("ASTRA_DB_KEYSPACE", "default_keyspace")
-COLLECTION_NAME = "digital_services_embedding"
+COLLECTION_NAME = "newdigital_services_embedding"  # NEW: Changed to use multilingual-e5-large (1024 dim)
 
 if not ASTRA_TOKEN or not ASTRA_ENDPOINT:
     raise ValueError("❌ Missing AstraDB credentials in .env")
@@ -328,7 +561,7 @@ def main():
             print(f"❌ Collection {COLLECTION_NAME} not found!")
             print("Please create the collection via AstraDB UI with vector support:")
             print(f"  - Collection Name: {COLLECTION_NAME}")
-            print("  - Vector Dimension: 384")
+            print("  - Vector Dimension: 1024")  # Updated for multilingual-e5-large
             print("  - Vector Metric: cosine")
             return False
             
@@ -365,9 +598,11 @@ def main():
     
     print(f"\n📝 Total documents from all services: {len(all_documents)}")
     
-    # Initialize embeddings
-    print("\n🧠 Initializing embeddings model...")
-    embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    # Initialize embeddings - Using multilingual-e5-large for better Thai support
+    print("\n🧠 Initializing embeddings model (multilingual-e5-large)...")
+    print("   ⏳ First run may take 5-10 minutes to download model (~2.2GB)")
+    embedding = HuggingFaceEmbeddings(model_name="intfloat/multilingual-e5-large")
+    print("   ✅ Model loaded successfully!")
     
     # Use incremental indexing
     print("\n🚀 Starting incremental indexing...")

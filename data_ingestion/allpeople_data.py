@@ -45,7 +45,7 @@ def main():
         return False
     
     # Get existing collection (should be created via AstraDB UI with vector support)
-    collection_name = "allpeople_embedding"
+    collection_name = "allpeople_embedding"  # NEW: Changed to use multilingual-e5-large (1024 dim)
     try:
         # Try to connect with keyspace first, if fails try without
         try:
@@ -77,8 +77,8 @@ def main():
         else:
             print(f"❌ Collection {collection_name} not found!")
             print("Please create the collection via AstraDB UI with vector support:")
-            print("  - Collection Name: faculty_embeddings")
-            print("  - Vector Dimension: 384")
+            print(f"  - Collection Name: {collection_name}")
+            print("  - Vector Dimension: 1024")  # Updated for multilingual-e5-large
             print("  - Vector Metric: cosine")
             return False
             
@@ -191,9 +191,11 @@ def main():
 
     print(f"📝 Processed {len(docs)} documents")
 
-    # Initialize embeddings
-    print("🧠 Initializing embeddings model...")
-    embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    # Initialize embeddings - Using multilingual-e5-large for better Thai support
+    print("🧠 Initializing embeddings model (multilingual-e5-large)...")
+    print("   ⏳ First run may take 5-10 minutes to download model (~2.2GB)")
+    embedding = HuggingFaceEmbeddings(model_name="intfloat/multilingual-e5-large")
+    print("   ✅ Model loaded successfully!")
 
     # Use incremental indexing
     print("\n🚀 Starting incremental indexing...")
