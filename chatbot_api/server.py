@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from chatbot_api.schemas import ChatRequest, ChatResponse
 from chatbot_api.deps import get_chatbot
+from chatbot_api.feedback import router as feedback_router  # ✅ เพิ่ม
 
 import io
 from contextlib import redirect_stdout, redirect_stderr
@@ -10,6 +11,9 @@ app = FastAPI(
     version="1.0.0",
     description="API สำหรับเรียกใช้งาน Unified RAG Chatbot (AstraDB + Manual QA Chain)"
 )
+
+# ✅ เพิ่ม Feedback Router
+app.include_router(feedback_router, tags=["Feedback"])
 
 @app.get("/api/v1/health")
 def health():

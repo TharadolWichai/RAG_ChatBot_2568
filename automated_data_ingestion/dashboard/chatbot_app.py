@@ -6,6 +6,7 @@ Run: streamlit run chatbot_app.py --server.port 8502
 import json
 import os
 import sys
+import time
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -118,6 +119,13 @@ sys.path.insert(0, os.path.join(PROJECT_ROOT, "main_app"))
 # -----------------------------
 # Session state
 # -----------------------------
+# สร้าง Session ID สำหรับแต่ละผู้ใช้
+if 'session_id' not in st.session_state:
+    import uuid
+    st.session_state.session_id = f"session_{uuid.uuid4().hex[:8]}"
+    st.session_state.session_created_at = datetime.now().isoformat()
+    print(f"✅ New user session: {st.session_state.session_id}")
+
 if "chatbot" not in st.session_state:
     st.session_state.chatbot = None
 if "chatbot_meta" not in st.session_state:
@@ -277,6 +285,9 @@ def ask(question: str):
                         "model": st.session_state.get("chatbot_model")  # ✅ บันทึกโมเดล
                     }
                 })
+                
+                # ✅ Rerun เพื่อให้ chat history loop แสดง feedback form
+                st.rerun()
 
                 if debug_output:
                     with st.expander("🔍 Debug Info"):
@@ -396,6 +407,95 @@ for idx, message in enumerate(st.session_state.chat_history):
                 if md.get("debug_output"):
                     with st.expander("🔍 Debug Info"):
                         st.code(md["debug_output"], language="text")
+            
+            # ⭐ Feedback Section - แสดงเฉพาะข้อความล่าสุด
+            is_last_message = (idx == len(st.session_state.chat_history) - 1)
+            
+            if is_last_message and message["role"] == "assistant":
+                st.markdown("---")
+                
+                feedback_key = f"feedback_{idx}"
+                
+                # Initialize session state
+                if f"submitted_{feedback_key}" not in st.session_state:
+                    st.session_state[f"submitted_{feedback_key}"] = False
+                if f"rating_{feedback_key}" not in st.session_state:
+                    st.session_state[f"rating_{feedback_key}"] = None
+                if f"comment_{feedback_key}" not in st.session_state:
+                    st.session_state[f"comment_{feedback_key}"] = ""
+                
+                if not st.session_state[f"submitted_{feedback_key}"]:
+                    # ใช้ Expander เพื่อให้กดแล้วฟอร์มแสดง
+                    with st.expander("📊 **ประเมินคำตอบนี้** (กดเพื่อเปิดฟอร์ม)", expanded=True):
+                        col1, col2 = st.columns([2, 3])
+                        
+                        with col1:
+                            st.markdown("**ให้คะแนน:**")
+                            # ใช้ callback เพื่อเก็บค่า rating
+                            def save_rating():
+                                st.session_state[f"rating_{feedback_key}"] = st.session_state[f"stars_{feedback_key}"]
+                            
+                            rating = st.feedback(
+                                "stars",
+                                key=f"stars_{feedback_key}",
+                                on_change=save_rating
+                            )
+                        
+                        with col2:
+                            comment = st.text_input(
+                                "💬 ความคิดเห็น (Optional):",
+                                placeholder="ตอบได้ดีหรือยัง? มีข้อเสนอแนะไหม?",
+                                key=f"comment_input_{feedback_key}",
+                                value=st.session_state[f"comment_{feedback_key}"]
+                            )
+                            # เก็บ comment
+                            st.session_state[f"comment_{feedback_key}"] = comment
+                        
+                        if st.button("✅ ส่งคะแนน", key=f"submit_{feedback_key}", type="primary"):
+                            final_rating = st.session_state.get(f"rating_{feedback_key}")
+                            final_comment = st.session_state.get(f"comment_{feedback_key}", "")
+                            
+                            if final_rating is not None:
+                                try:
+                                    # ดึง question จาก history
+                                    question = ""
+                                    if idx > 0 and st.session_state.chat_history[idx-1]["role"] == "user":
+                                        question = st.session_state.chat_history[idx-1]["content"]
+                                    
+                                    md = message.get("metadata", {})
+                                    feedback_payload = {
+                                        "session_id": st.session_state.session_id,
+                                        "question": question,
+                                        "answer": message["content"],
+                                        "model": md.get("model"),
+                                        "intent": md.get("intent"),
+                                        "rating": final_rating + 1,  # 0-4 → 1-5
+                                        "comment": final_comment
+                                    }
+                                    
+                                    feedback_res = requests.post(
+                                        "http://localhost:8000/api/v1/feedback",
+                                        json=feedback_payload,
+                                        timeout=10
+                                    )
+                                    
+                                    if feedback_res.status_code == 200:
+                                        st.session_state[f"submitted_{feedback_key}"] = True
+                                        st.success("✅ ขอบคุณสำหรับการให้คะแนน!")
+                                        st.balloons()
+                                        time.sleep(0.5)
+                                        st.rerun()
+                                    else:
+                                        st.error(f"❌ ไม่สามารถบันทึกได้: {feedback_res.text}")
+                                
+                                except Exception as e:
+                                    st.error(f"❌ เกิดข้อผิดพลาด: {e}")
+                                    import traceback
+                                    st.code(traceback.format_exc())
+                            else:
+                                st.warning("⚠️ กรุณาให้คะแนนก่อนส่ง")
+                else:
+                    st.success("✅ ขอบคุณสำหรับการให้คะแนนแล้ว!")
 
 # Quick prompt
 if st.session_state.pending_question:
