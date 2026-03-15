@@ -8,6 +8,9 @@ tiktoken
 python-dotenv
 requests
 
+# Embeddings (required for vector search)
+sentence-transformers
+
 # BM25 dependencies
 rank-bm25
 
