@@ -1,0 +1,25 @@
+# Core LangChain
+langchain
+langchain-community
+langchain-openai
+openai
+tiktoken
+python-dotenv
+requests
+
+# BM25 dependencies
+rank-bm25
+
+# AstraDB dependencies
+cassio
+langchain-astradb
+astrapy
+
+# FastAPI & Server
+fastapi
+uvicorn[standard]
+pydantic
+
+# Lightweight HTML parsing
+beautifulsoup4
+lxml
