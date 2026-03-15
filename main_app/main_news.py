@@ -40,7 +40,7 @@ except Exception as e:
 class NewsRetriever(BaseRetriever):
     def __init__(self, collection, embedding):
         super().__init__()
-        self._collection = collection
+        self.collection = collection
         self._embedding = embedding
     
     def _get_relevant_documents(
@@ -126,7 +126,7 @@ class NewsRetriever(BaseRetriever):
         
         try:
             print("🔍 ค้นหาจาก news_embedding collection...")
-            results = self._collection.find({}, limit=20)  # Get up to 20 news articles
+            results = self.collection.find({}, limit=20)  # Get up to 20 news articles
             
             for result in results:
                 doc = Document(
@@ -155,7 +155,7 @@ class NewsRetriever(BaseRetriever):
             print(f"📊 Vector Search: สร้าง embedding แล้ว (dimension: {len(query_vector)})")
             
             # Perform vector search
-            results = self._collection.find(
+            results = self.collection.find(
                 {},
                 sort={"$vector": query_vector},
                 limit=10  # Top 10 semantic matches
@@ -192,7 +192,7 @@ class NewsRetriever(BaseRetriever):
             print(f"🔍 Text Search: กำลังใช้ keywords: {keywords}")
             
             # Get documents from collection
-            results = self._collection.find({}, limit=50)  # Get more for text matching
+            results = self.collection.find({}, limit=50)  # Get more for text matching
             collection_docs = []
             
             for result in results:

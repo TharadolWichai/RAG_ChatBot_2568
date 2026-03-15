@@ -163,7 +163,7 @@ class DynamicAstraDBRetriever(BaseRetriever):
     
     def __init__(self, collection, embedding, collection_name: str = ""):
         super().__init__()
-        self._collection = collection
+        self.collection = collection
         self._embedding = embedding
         self._collection_name = collection_name
         self._bm25_retriever = None
@@ -210,7 +210,7 @@ class DynamicAstraDBRetriever(BaseRetriever):
         try:
             print("   🧠 Vector Search...")
             query_vector = self._embedding.embed_query(query)
-            vector_results = list(self._collection.find(
+            vector_results = list(self.collection.find(
                 {},
                 sort={"$vector": query_vector},
                 limit=10
@@ -234,7 +234,7 @@ class DynamicAstraDBRetriever(BaseRetriever):
         # Strategy 3: Text Search (regex)
         try:
             print("   📝 Text Search...")
-            text_results = list(self._collection.find(
+            text_results = list(self.collection.find(
                 {"content": {"$regex": query, "$options": "i"}},
                 limit=10
             ))
@@ -257,7 +257,7 @@ class DynamicAstraDBRetriever(BaseRetriever):
         if not all_documents:
             print("   ⚠️ No search results, trying to get sample documents...")
             try:
-                sample_results = list(self._collection.find({}, limit=5))
+                sample_results = list(self.collection.find({}, limit=5))
                 for result in sample_results:
                     doc = Document(
                         page_content=result.get("content", ""),
@@ -301,7 +301,7 @@ class DynamicAstraDBRetriever(BaseRetriever):
             print(f"      🎯 Meaningful: {meaningful_tokens}")
             
             # 4. Search in documents
-            all_results = list(self._collection.find({}, limit=100))
+            all_results = list(self.collection.find({}, limit=100))
             matched_docs = []
             
             for result in all_results:
@@ -345,7 +345,7 @@ class DynamicAstraDBRetriever(BaseRetriever):
             print(f"      🔑 Keywords: {keywords}")
             
             # Search for documents containing keywords
-            all_results = list(self._collection.find({}, limit=100))
+            all_results = list(self.collection.find({}, limit=100))
             matched_docs = []
             
             for result in all_results:

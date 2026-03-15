@@ -72,7 +72,7 @@ except Exception as e:
 class ContactInfoRetriever(BaseRetriever):
     def __init__(self, collection, embedding):
         super().__init__()
-        self._collection = collection
+        self.collection = collection
         self._embedding = embedding
         self._bm25_retriever = None
         self._documents_cache = None
@@ -201,7 +201,7 @@ class ContactInfoRetriever(BaseRetriever):
         print("🚀 Comprehensive search in contact info collection...")
         docs = []
         try:
-            results = self._collection.find({"metadata.category": "contact"}, limit=50)
+            results = self.collection.find({"metadata.category": "contact"}, limit=50)
             for r in results:
                 docs.append(Document(page_content=r.get("content", ""), metadata=r.get("metadata", {})))
             print(f"📊 Found {len(docs)} contact documents")
@@ -221,7 +221,7 @@ class ContactInfoRetriever(BaseRetriever):
             print(f"📊 Vector Search: สร้าง embedding แล้ว (dimension: {len(query_vector)})")
             
             # Perform vector search with similarity scores (filter เฉพาะ contact)
-            results = self._collection.find(
+            results = self.collection.find(
                 {"metadata.category": "contact"},
                 sort={"$vector": query_vector},
                 limit=10,  # Top 10 semantic matches
@@ -264,7 +264,7 @@ class ContactInfoRetriever(BaseRetriever):
             print("🔧 Initializing Enhanced BM25 retriever with Thai support...")
             try:
                 # Get all documents from collection for BM25 (filter เฉพาะ contact)
-                results = self._collection.find({"metadata.category": "contact"}, limit=100)
+                results = self.collection.find({"metadata.category": "contact"}, limit=100)
                 documents = []
                 
                 for result in results:
@@ -621,7 +621,7 @@ class ContactInfoRetriever(BaseRetriever):
             print(f"   🎯 Meaningful: {meaningful_tokens}")
             
             # 4. Search in documents (filter เฉพาะ contact)
-            all_results = list(self._collection.find({"metadata.category": "contact"}, limit=100))
+            all_results = list(self.collection.find({"metadata.category": "contact"}, limit=100))
             matched_docs = []
             
             for result in all_results:
@@ -716,7 +716,7 @@ class ContactInfoRetriever(BaseRetriever):
             }
             
             # Get all documents from collection (filter เฉพาะ contact)
-            all_results = list(self._collection.find({"metadata.category": "contact"}, limit=100))
+            all_results = list(self.collection.find({"metadata.category": "contact"}, limit=100))
             matched_docs = []
             
             query_lower = query.lower().strip()
@@ -778,7 +778,7 @@ class ContactInfoRetriever(BaseRetriever):
         
         try:
             keywords = self._extract_search_keywords(query)
-            results = self._collection.find({"metadata.category": "contact"}, limit=50)
+            results = self.collection.find({"metadata.category": "contact"}, limit=50)
             
             for result in results:
                 content = result.get("content", "").lower()

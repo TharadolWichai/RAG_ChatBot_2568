@@ -68,7 +68,7 @@ except Exception as e:
 class StudentClubRetriever(BaseRetriever):
     def __init__(self, collection, embedding):
         super().__init__()
-        self._collection = collection
+        self.collection = collection
         self._embedding = embedding
         self._bm25_retriever = None  # Will be initialized when first used
         self._documents_cache = None  # Cache documents for BM25
@@ -204,7 +204,7 @@ class StudentClubRetriever(BaseRetriever):
         
         try:
             print("🔍 ค้นหาจาก student_club_embedding collection...")
-            results = self._collection.find({}, limit=50)  # Get up to 50 documents
+            results = self.collection.find({}, limit=50)  # Get up to 50 documents
             
             for result in results:
                 doc = Document(
@@ -233,7 +233,7 @@ class StudentClubRetriever(BaseRetriever):
             print(f"📊 Vector Search: สร้าง embedding แล้ว (dimension: {len(query_vector)})")
             
             # Perform vector search with similarity scores
-            results = self._collection.find(
+            results = self.collection.find(
                 {},
                 sort={"$vector": query_vector},
                 limit=10,  # Top 10 semantic matches
@@ -277,7 +277,7 @@ class StudentClubRetriever(BaseRetriever):
             print("🔧 Initializing Enhanced BM25 retriever with Thai support...")
             try:
                 # Get all documents from collection for BM25
-                results = self._collection.find({}, limit=100)
+                results = self.collection.find({}, limit=100)
                 documents = []
                 
                 for result in results:
@@ -631,7 +631,7 @@ class StudentClubRetriever(BaseRetriever):
             print(f"   🎯 Meaningful: {meaningful_tokens}")
             
             # 4. Search in documents
-            all_results = list(self._collection.find({}, limit=100))
+            all_results = list(self.collection.find({}, limit=100))
             matched_docs = []
             
             for result in all_results:
@@ -748,7 +748,7 @@ class StudentClubRetriever(BaseRetriever):
             }
             
             # Get all documents from collection
-            all_results = list(self._collection.find({}, limit=100))
+            all_results = list(self.collection.find({}, limit=100))
             matched_docs = []
             
             query_lower = query.lower().strip()
@@ -814,7 +814,7 @@ class StudentClubRetriever(BaseRetriever):
         
         try:
             keywords = self._extract_search_keywords(query)
-            results = self._collection.find({}, limit=50)
+            results = self.collection.find({}, limit=50)
             
             for result in results:
                 content = result.get("content", "").lower()

@@ -68,7 +68,7 @@ except Exception as e:
 class StudentsRetriever(BaseRetriever):
     def __init__(self, collection, embedding):
         super().__init__()
-        self._collection = collection
+        self.collection = collection
         self._embedding = embedding
         self._bm25_retriever = None  # Will be initialized when first used
         self._documents_cache = None  # Cache documents for BM25
@@ -204,7 +204,7 @@ class StudentsRetriever(BaseRetriever):
         
         try:
             print("🔍 ค้นหาจาก services_embedding collection (category: students)...")
-            results = self._collection.find({"metadata.category": "students"}, limit=100)  # Get up to 100 student links
+            results = self.collection.find({"metadata.category": "students"}, limit=100)  # Get up to 100 student links
             
             for result in results:
                 doc = Document(
@@ -233,7 +233,7 @@ class StudentsRetriever(BaseRetriever):
             print(f"📊 Vector Search: สร้าง embedding แล้ว (dimension: {len(query_vector)})")
             
             # Perform vector search with similarity scores (filter เฉพาะ students)
-            results = self._collection.find(
+            results = self.collection.find(
                 {"metadata.category": "students"},
                 sort={"$vector": query_vector},
                 limit=10,  # Top 10 semantic matches
@@ -277,7 +277,7 @@ class StudentsRetriever(BaseRetriever):
             print("🔧 Initializing Enhanced BM25 retriever with Thai support...")
             try:
                 # Get all documents from collection for BM25 (filter เฉพาะ students)
-                results = self._collection.find({"metadata.category": "students"}, limit=100)
+                results = self.collection.find({"metadata.category": "students"}, limit=100)
                 documents = []
                 
                 for result in results:
@@ -671,7 +671,7 @@ class StudentsRetriever(BaseRetriever):
             print(f"   🎯 Meaningful: {meaningful_tokens}")
             
             # 4. Search in documents (filter เฉพาะ students)
-            all_results = list(self._collection.find({"metadata.category": "students"}, limit=100))
+            all_results = list(self.collection.find({"metadata.category": "students"}, limit=100))
             matched_docs = []
             
             for result in all_results:
@@ -782,7 +782,7 @@ class StudentsRetriever(BaseRetriever):
             }
             
             # Get all documents from collection (filter เฉพาะ students)
-            all_results = list(self._collection.find({"metadata.category": "students"}, limit=100))
+            all_results = list(self.collection.find({"metadata.category": "students"}, limit=100))
             matched_docs = []
             
             query_lower = query.lower().strip()
@@ -848,7 +848,7 @@ class StudentsRetriever(BaseRetriever):
         
         try:
             keywords = self._extract_search_keywords(query)
-            results = self._collection.find({"metadata.category": "students"}, limit=50)
+            results = self.collection.find({"metadata.category": "students"}, limit=50)
             
             for result in results:
                 content = result.get("content", "").lower()

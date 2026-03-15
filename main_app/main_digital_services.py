@@ -82,7 +82,7 @@ else:
 class DigitalServicesRetriever(BaseRetriever):
     def __init__(self, collection, embedding):
         super().__init__()
-        self._collection = collection
+        self.collection = collection
         self._embedding = embedding
         self._bm25_retriever = None
         self._documents_cache = None
@@ -91,7 +91,7 @@ class DigitalServicesRetriever(BaseRetriever):
         """Initialize BM25 retriever lazily"""
         if self._bm25_retriever is None:
             try:
-                results = self._collection.find({}, limit=200)
+                results = self.collection.find({}, limit=200)
                 documents = [Document(page_content=r.get("content", ""), metadata=r.get("metadata", {})) for r in results]
                 self._documents_cache = documents
                 
@@ -201,7 +201,7 @@ class DigitalServicesRetriever(BaseRetriever):
         docs = []
         try:
             query_vector = self._embedding.embed_query(query)
-            results = self._collection.find({}, sort={"$vector": query_vector}, limit=50)
+            results = self.collection.find({}, sort={"$vector": query_vector}, limit=50)
             
             for i, r in enumerate(results):
                 doc = Document(page_content=r.get("content", ""), metadata=r.get("metadata", {}))
@@ -384,7 +384,7 @@ class DigitalServicesRetriever(BaseRetriever):
         
         try:
             print("🔍 ค้นหาจาก digital_services_embedding collection...")
-            results = self._collection.find({}, limit=50)  # Get all service records
+            results = self.collection.find({}, limit=50)  # Get all service records
             
             for result in results:
                 doc = Document(

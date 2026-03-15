@@ -52,7 +52,7 @@ else:
 class ResearchGroupRetriever(BaseRetriever):
     def __init__(self, collection, embedding):
         super().__init__()
-        self._collection = collection
+        self.collection = collection
         self._embedding = embedding
         self._bm25_retriever = None
         self._documents_cache = None
@@ -60,7 +60,7 @@ class ResearchGroupRetriever(BaseRetriever):
     def _ensure_bm25_initialized(self):
         if self._bm25_retriever is None:
             try:
-                results = self._collection.find({}, limit=300)
+                results = self.collection.find({}, limit=300)
                 documents = [Document(page_content=r.get("content", ""), metadata=r.get("metadata", {})) for r in results]
                 self._documents_cache = documents
                 from langchain_community.retrievers import BM25Retriever
@@ -90,7 +90,7 @@ class ResearchGroupRetriever(BaseRetriever):
         docs = []
         try:
             query_vector = self._embedding.embed_query(query)
-            results = self._collection.find({}, sort={"$vector": query_vector}, limit=50)
+            results = self.collection.find({}, sort={"$vector": query_vector}, limit=50)
             for r in results:
                 doc = Document(page_content=r.get("content", ""), metadata=r.get("metadata", {}))
                 docs.append(doc)
