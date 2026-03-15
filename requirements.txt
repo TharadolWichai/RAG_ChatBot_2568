@@ -1,24 +1,25 @@
+# Core LangChain
 langchain
 langchain-community
 langchain-openai
 openai
-chromadb
 tiktoken
 python-dotenv
 requests
-streamlit
-sentence-transformers
+
 # BM25 dependencies
 rank-bm25
+
 # AstraDB dependencies
 cassio
 langchain-astradb
 astrapy
-beautifulsoup4
-lxml
+
 # FastAPI & Server
 fastapi
 uvicorn[standard]
 pydantic
-# Web scraping (for data ingestion)
-selenium
+
+# Lightweight HTML parsing
+beautifulsoup4
+lxml
