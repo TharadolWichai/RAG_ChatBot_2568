@@ -22,7 +22,7 @@ astrapy
 # FastAPI & Server
 fastapi
 uvicorn[standard]
-pydantic
+pydantic>=1.10.0,<2.0.0
 
 # Lightweight HTML parsing
 beautifulsoup4
