@@ -15,8 +15,14 @@ app = FastAPI(
 # ✅ เพิ่ม Feedback Router
 app.include_router(feedback_router, tags=["Feedback"])
 
-@app.get("/api/v1/health")
+@app.get("/health")
 def health():
+    """Health check endpoint for Railway"""
+    return {"status": "healthy", "service": "backend"}
+
+@app.get("/api/v1/health")
+def health_v1():
+    """API v1 health check"""
     return {"status": "ok"}
 
 @app.post("/api/v1/chat/completions")

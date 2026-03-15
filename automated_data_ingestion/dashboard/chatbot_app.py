@@ -37,6 +37,8 @@ except ImportError:
 API_URL = os.getenv("CHATBOT_API_URL", "http://localhost:8000/api/v1/chat/completions")
 HEALTH_URL = os.getenv("CHATBOT_HEALTH_URL", "http://localhost:8000/api/v1/health")
 META_URL = os.getenv("CHATBOT_META_URL", "http://localhost:8000/api/v1/chatbot/meta")
+FEEDBACK_API_URL = os.getenv("FEEDBACK_API_URL", "http://localhost:8000/api/v1/feedback")
+FEEDBACK_STATS_URL = os.getenv("FEEDBACK_STATS_URL", "http://localhost:8000/api/v1/feedback/stats")
 
 # -----------------------------
 # Page config (ต้องมาก่อน st.* อื่น ๆ)
@@ -474,7 +476,7 @@ for idx, message in enumerate(st.session_state.chat_history):
                                     }
                                     
                                     feedback_res = requests.post(
-                                        "http://localhost:8000/api/v1/feedback",
+                                        FEEDBACK_API_URL,
                                         json=feedback_payload,
                                         timeout=10
                                     )

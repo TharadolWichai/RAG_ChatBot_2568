@@ -16,6 +16,9 @@ langchain-astradb
 astrapy
 beautifulsoup4
 lxml
+# FastAPI & Server
 fastapi
-uvicorn
+uvicorn[standard]
 pydantic
+# Web scraping (for data ingestion)
+selenium
