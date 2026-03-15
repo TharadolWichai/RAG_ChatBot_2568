@@ -7,7 +7,7 @@ from typing import List
 
 from astrapy import DataAPIClient
 from dotenv import load_dotenv
-from langchain.chains import LLMChain
+from langchain.chains.llm import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain.schema import BaseRetriever, Document
 from langchain_core.callbacks.manager import CallbackManagerForRetrieverRun

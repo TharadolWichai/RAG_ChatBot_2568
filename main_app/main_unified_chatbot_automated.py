@@ -30,7 +30,7 @@ except ImportError:
 
 from astrapy import DataAPIClient
 from langchain_core.callbacks.manager import CallbackManagerForRetrieverRun
-from langchain.chains import LLMChain
+from langchain.chains.llm import LLMChain
 from langchain.prompts import PromptTemplate
 # LangChain imports
 from langchain.schema import BaseRetriever, Document
