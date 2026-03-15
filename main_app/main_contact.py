@@ -6,7 +6,7 @@ from typing import List
 
 from astrapy import DataAPIClient
 from dotenv import load_dotenv
-from langchain_core.callbacks.manager import CallbackManagerForRetrieverRun
+from langchain.callbacks.manager import CallbackManagerForRetrieverRun
 from langchain.prompts import PromptTemplate
 from langchain.schema import BaseRetriever, Document
 from langchain_community.chat_models import ChatOpenAI

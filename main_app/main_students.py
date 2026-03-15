@@ -9,7 +9,7 @@ from langchain_community.chat_models import ChatOpenAI
 from langchain_community.retrievers import BM25Retriever
 from langchain.prompts import PromptTemplate
 from langchain.schema import BaseRetriever, Document
-from langchain_core.callbacks.manager import CallbackManagerForRetrieverRun
+from langchain.callbacks.manager import CallbackManagerForRetrieverRun
 import os
 from dotenv import load_dotenv
 from typing import List 

@@ -1,7 +1,7 @@
-# Core LangChain
-langchain
-langchain-core
-langchain-community
+# Core LangChain (pin to 0.1.x for compatibility)
+langchain>=0.1.0,<0.3.0
+langchain-core>=0.1.0
+langchain-community>=0.0.20
 langchain-openai
 openai
 tiktoken
