@@ -1,11 +1,15 @@
 # Core LangChain
 langchain
+langchain-core
 langchain-community
 langchain-openai
 openai
 tiktoken
 python-dotenv
 requests
+
+# Embeddings (lightweight, no torch)
+langchain-huggingface
 
 # BM25 dependencies
 rank-bm25
