@@ -38,20 +38,32 @@ collection = database.get_collection(COLLECTION_NAME)
 print(f"✅ Connected to AstraDB Collection: {COLLECTION_NAME}")
 
 # -------------------------------
-# LLM Setup (OpenRouter)
+# LLM Setup (KKU IntelSphere first, then OpenRouter fallback)
 # -------------------------------
-openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
-if not openrouter_api_key:
-    print("⚠️ Warning: OPENROUTER_API_KEY not found, LLM responses will not work")
-    llm = None
-else:
+api_key = os.getenv("OPENAI_API_KEY")
+base_url = os.getenv("OPENAI_BASE_URL")
+model_name = os.getenv("CHATBOT_MODEL") or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+if api_key and base_url:
     llm = ChatOpenAI(
-        model="openai/gpt-4o-mini",
+        model=model_name,
         temperature=0.3,
-        openai_api_key=openrouter_api_key,
-        openai_api_base="https://openrouter.ai/api/v1"
+        openai_api_key=api_key,
+        openai_api_base=base_url
     )
-    print("✅ OpenRouter LLM initialized successfully")
+    print("✅ LLM initialized (KKU IntelSphere)")
+else:
+    openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
+    if openrouter_api_key:
+        llm = ChatOpenAI(
+            model="openai/gpt-4o-mini",
+            temperature=0.3,
+            openai_api_key=openrouter_api_key,
+            openai_api_base="https://openrouter.ai/api/v1"
+        )
+        print("✅ OpenRouter LLM initialized")
+    else:
+        llm = None
+        print("⚠️ Warning: No LLM API key (set OPENAI_API_KEY+OPENAI_BASE_URL for KKU, or OPENROUTER_API_KEY), LLM responses will not work")
 
 # -------------------------------
 # Custom Retriever with BM25 + Vector + Thai Tokenizer
@@ -194,7 +206,7 @@ PROMPT = PromptTemplate.from_template('''
 คำตอบ (ภาษาไทย อ่านง่ายและกระชับ):
 ''')
 
-qa_chain = LLMChain(llm=llm, prompt=PROMPT)
+qa_chain = LLMChain(llm=llm, prompt=PROMPT) if llm else None
 
 # -------------------------------
 # Manual QA Chain Function (for Unified Chatbot)
@@ -215,8 +227,7 @@ def manual_qa_chain(question: str) -> str:
         merged_context = "\n\n".join([f"ข้อมูล {i+1}:\n{d.page_content}" for i, d in enumerate(docs)])
         
         # Check if LLM is available
-        if llm is None:
-            # Fallback: Return raw context if no LLM
+        if llm is None or qa_chain is None:
             return f"พบข้อมูลกลุ่มวิจัย:\n\n{docs[0].page_content[:500]}..."
         
         # Generate answer using LLM
@@ -246,8 +257,8 @@ if __name__ == "__main__":
         for i, d in enumerate(docs[:3], 1):
             print(f"📄 Context {i}: {d.page_content[:200]}...\n")
 
-        if llm is None:
-            print("⚠️ ไม่มี API key ของ OpenRouter, ไม่สามารถสร้างคำตอบได้")
+        if llm is None or qa_chain is None:
+            print("⚠️ ไม่มี API key สำหรับ LLM, ไม่สามารถสร้างคำตอบได้")
             continue
 
         try:

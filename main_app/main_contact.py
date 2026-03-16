@@ -875,18 +875,21 @@ PROMPT = PromptTemplate.from_template("""
 # -------------------------------
 # Chat Model
 # -------------------------------
-openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
-
-if not openrouter_api_key:
-    print("⚠️ Warning: OPENROUTER_API_KEY not found, LLM responses will not work")
-    llm = None
+# LLM: KKU IntelSphere first, then OpenRouter fallback
+api_key = os.getenv("OPENAI_API_KEY")
+base_url = os.getenv("OPENAI_BASE_URL")
+model_name = os.getenv("CHATBOT_MODEL") or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+if api_key and base_url:
+    llm = ChatOpenAI(model=model_name, temperature=0, openai_api_key=api_key, openai_api_base=base_url)
+    print("✅ LLM initialized (KKU IntelSphere)")
 else:
-    llm = ChatOpenAI(
-        model="openai/gpt-4o-mini",
-        temperature=0,
-        openai_api_key=openrouter_api_key,
-        openai_api_base="https://openrouter.ai/api/v1"
-    )
+    openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
+    if openrouter_api_key:
+        llm = ChatOpenAI(model="openai/gpt-4o-mini", temperature=0, openai_api_key=openrouter_api_key, openai_api_base="https://openrouter.ai/api/v1")
+        print("✅ OpenRouter LLM initialized")
+    else:
+        llm = None
+        print("⚠️ Warning: No LLM API key (set OPENAI_API_KEY+OPENAI_BASE_URL for KKU, or OPENROUTER_API_KEY), LLM responses will not work")
 
 # -------------------------------
 # Manual QA Chain
