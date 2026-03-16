@@ -39,7 +39,6 @@ except Exception as e:
 # ✅ สร้าง Custom Retriever สำหรับ AstraDB (News Collection)
 class NewsRetriever(BaseRetriever):
     collection: Any = None
-    _embedding: Any = None
     
     class Config:
         arbitrary_types_allowed = True

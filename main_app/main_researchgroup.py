@@ -51,9 +51,6 @@ else:
 # -------------------------------
 class ResearchGroupRetriever(BaseRetriever):
     collection: Any = None
-    _embedding: Any = None
-    _bm25_retriever: Any = None
-    _documents_cache: Any = None
     
     class Config:
         arbitrary_types_allowed = True

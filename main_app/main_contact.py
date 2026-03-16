@@ -71,11 +71,6 @@ except Exception as e:
 # -------------------------------
 class ContactInfoRetriever(BaseRetriever):
     collection: Any = None
-    _embedding: Any = None
-    _bm25_retriever: Any = None
-    _documents_cache: Any = None
-    _thai_bm25: Any = None
-    _thai_bm25_docs: Any = None
     
     class Config:
         arbitrary_types_allowed = True
