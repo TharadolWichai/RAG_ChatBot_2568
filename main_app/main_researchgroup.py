@@ -8,7 +8,14 @@ from langchain.prompts import PromptTemplate
 from langchain.schema import BaseRetriever, Document
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_openai import ChatOpenAI
-from pythainlp import word_tokenize
+
+try:
+    from pythainlp import word_tokenize
+    PYTHAINLP_AVAILABLE = True
+except ImportError:
+    PYTHAINLP_AVAILABLE = False
+    def word_tokenize(text: str, engine: str = "newmm"):
+        return [w for w in text.split() if len(w.strip()) > 0]
 
 load_dotenv()
 
@@ -81,7 +88,10 @@ class ResearchGroupRetriever(BaseRetriever):
                 self.bm25_retriever = None
 
     def _extract_keywords(self, query: str) -> List[str]:
-        tokens = [w for w in word_tokenize(query, engine="newmm") if len(w.strip()) > 1]
+        if PYTHAINLP_AVAILABLE:
+            tokens = [w for w in word_tokenize(query, engine="newmm") if len(w.strip()) > 1]
+        else:
+            tokens = [w for w in query.split() if len(w.strip()) > 1]
         keywords = list(dict.fromkeys(tokens))
         print(f"📝 คำสำคัญที่ใช้ค้นหา: {keywords}")
         return keywords

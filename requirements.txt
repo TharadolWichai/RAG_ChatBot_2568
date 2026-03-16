@@ -14,6 +14,9 @@ sentence-transformers
 # BM25 dependencies
 rank-bm25
 
+# Thai language (better retrieval for Thai queries)
+pythainlp
+
 # AstraDB dependencies
 cassio
 langchain-astradb

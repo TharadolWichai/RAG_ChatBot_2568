@@ -432,7 +432,7 @@ PROMPT = PromptTemplate.from_template('''
 คำตอบ (ภาษาไทย อ่านง่าย):
 ''')
 
-qa_chain = LLMChain(llm=llm, prompt=PROMPT)
+qa_chain = LLMChain(llm=llm, prompt=PROMPT) if llm else None
 
 # -------------------------------
 # Manual QA Chain Function (for Unified Chatbot)
@@ -458,6 +458,8 @@ def manual_qa_chain(question: str) -> str:
             return f"พบข้อมูลบริการดิจิตอล:\n\n{docs[0].page_content[:500]}..."
         
         # Generate answer using LLM
+        if qa_chain is None:
+            return f"พบข้อมูลบริการดิจิตอล:\n\n{docs[0].page_content[:500]}..."
         response = qa_chain.run({"question": question, "context": merged_context})
         return response
         
@@ -504,7 +506,7 @@ if __name__ == "__main__":
             service_name = d.metadata.get('service_name', 'Unknown')
             print(f"📄 Context {i} ({service_name}): {d.page_content[:150]}...\n")
 
-        if llm is None:
+        if llm is None or qa_chain is None:
             print("⚠️ ไม่มี API key ของ OpenRouter, ไม่สามารถสร้างคำตอบได้")
             continue
 
