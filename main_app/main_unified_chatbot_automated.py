@@ -163,6 +163,11 @@ class DynamicAstraDBRetriever(BaseRetriever):
     
     collection: Any = None
     embedding: Any = None
+    collection_name: str = ""
+    bm25_retriever: Any = None
+    documents_cache: Any = None
+    thai_bm25: Any = None
+    thai_bm25_docs: Any = None
     
     class Config:
         arbitrary_types_allowed = True
@@ -171,17 +176,17 @@ class DynamicAstraDBRetriever(BaseRetriever):
         super().__init__()
         self.collection = collection
         self.embedding = embedding
-        self._collection_name = collection_name
-        self._bm25_retriever = None
-        self._documents_cache = None
-        self._thai_bm25 = None
-        self._thai_bm25_docs = None
+        self.collection_name = collection_name
+        self.bm25_retriever = None
+        self.documents_cache = None
+        self.thai_bm25 = None
+        self.thai_bm25_docs = None
     
     def _get_relevant_documents(
         self, query: str, *, run_manager: CallbackManagerForRetrieverRun
     ) -> List[Document]:
         """ค้นหาข้อมูลจาก AstraDB collection"""
-        print(f"🔍 Searching in collection: {self._collection_name}")
+        print(f"🔍 Searching in collection: {self.collection_name}")
         print(f"   Query: {query}")
         
         all_documents = []

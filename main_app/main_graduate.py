@@ -69,6 +69,10 @@ except Exception as e:
 class GraduateRetriever(BaseRetriever):
     collection: Any = None
     embedding: Any = None
+    bm25_retriever: Any = None
+    documents_cache: Any = None
+    thai_bm25: Any = None
+    thai_bm25_docs: Any = None
     
     class Config:
         arbitrary_types_allowed = True
@@ -77,8 +81,10 @@ class GraduateRetriever(BaseRetriever):
         super().__init__()
         self.collection = collection
         self.embedding = embedding
-        self._bm25_retriever = None
-        self._documents_cache = None
+        self.bm25_retriever = None
+        self.documents_cache = None
+        self.thai_bm25 = None
+        self.thai_bm25_docs = None
     
     def _get_relevant_documents(
         self, query: str, *, run_manager: CallbackManagerForRetrieverRun
@@ -288,7 +294,7 @@ class GraduateRetriever(BaseRetriever):
     
     def _ensure_bm25_initialized(self):
         """Initialize BM25 retriever"""
-        if self._bm25_retriever is None:
+        if self.bm25_retriever is None:
             print("🔧 Initializing Enhanced BM25 retriever with Thai support...")
             try:
                 results = self.collection.find({}, limit=100)
@@ -301,22 +307,22 @@ class GraduateRetriever(BaseRetriever):
                     )
                     documents.append(doc)
                 
-                self._documents_cache = documents
+                self.documents_cache = documents
                 print(f"📚 Loaded {len(documents)} graduate program documents for BM25")
                 
                 if documents and PYTHAINLP_AVAILABLE:
                     self._create_thai_bm25(documents)
                     print("✅ Enhanced Thai BM25 initialized successfully")
                 elif documents:
-                    self._bm25_retriever = BM25Retriever.from_documents(documents)
-                    self._bm25_retriever.k = 10
+                    self.bm25_retriever = BM25Retriever.from_documents(documents)
+                    self.bm25_retriever.k = 10
                     print("✅ Standard BM25 initialized successfully")
                 else:
                     print("⚠️ No documents found for BM25 initialization")
                     
             except Exception as e:
                 print(f"❌ Error initializing BM25: {e}")
-                self._bm25_retriever = None
+                self.bm25_retriever = None
     
     def _create_thai_bm25(self, documents: List[Document]):
         """สร้าง BM25 ที่ใช้ Thai tokenization"""
@@ -340,24 +346,24 @@ class GraduateRetriever(BaseRetriever):
                 
                 tokenized_docs.append(filtered_tokens)
             
-            self._thai_bm25 = BM25Okapi(tokenized_docs)
-            self._thai_bm25_docs = documents
+            self.thai_bm25 = BM25Okapi(tokenized_docs)
+            self.thai_bm25_docs = documents
             
             print(f"🇹🇭 Thai BM25 created with {len(tokenized_docs)} tokenized documents")
             
         except Exception as e:
             print(f"❌ Error creating Thai BM25: {e}")
-            self._bm25_retriever = BM25Retriever.from_documents(documents)
-            self._bm25_retriever.k = 10
+            self.bm25_retriever = BM25Retriever.from_documents(documents)
+            self.bm25_retriever.k = 10
     
     def _text_search(self, query: str, filter_category: Optional[str] = None) -> List[Document]:
         """Enhanced BM25 text search"""
         try:
             self._ensure_bm25_initialized()
             
-            if hasattr(self, '_thai_bm25') and PYTHAINLP_AVAILABLE:
-                return self._thai_bm25_search(query, filter_category)
-            elif self._bm25_retriever is not None:
+            if hasattr(self, 'thai_bm25') and self.thai_bm25 is not None and PYTHAINLP_AVAILABLE:
+                return self.thai_bm25_search(query, filter_category)
+            elif self.bm25_retriever is not None:
                 return self._standard_bm25_search(query, filter_category)
             else:
                 print("⚠️ BM25 not available, falling back to keyword search")
@@ -391,12 +397,12 @@ class GraduateRetriever(BaseRetriever):
             print(f"   🔤 Query tokens: {query_tokens}")
             print(f"   🎯 Filtered tokens: {filtered_tokens}")
             
-            bm25_scores = self._thai_bm25.get_scores(filtered_tokens)
+            bm25_scores = self.thai_bm25.get_scores(filtered_tokens)
             
             results = []
             for i, score in enumerate(bm25_scores):
                 if score > 0:
-                    doc = self._thai_bm25_docs[i]
+                    doc = self.thai_bm25_docs[i]
                     
                     # Apply category filter
                     if filter_category and doc.metadata.get("category") != filter_category:
@@ -434,7 +440,7 @@ class GraduateRetriever(BaseRetriever):
             all_bm25_results = []
             seen_content = set()
             
-            variant_results = self._bm25_retriever.get_relevant_documents(query)
+            variant_results = self.bm25_retriever.get_relevant_documents(query)
             scored_results = self._calculate_bm25_scores(variant_results, query)
             
             for doc, bm25_score in scored_results:

@@ -82,6 +82,8 @@ else:
 class DigitalServicesRetriever(BaseRetriever):
     collection: Any = None
     embedding: Any = None
+    bm25_retriever: Any = None
+    documents_cache: Any = None
     
     class Config:
         arbitrary_types_allowed = True
@@ -90,24 +92,24 @@ class DigitalServicesRetriever(BaseRetriever):
         super().__init__()
         self.collection = collection
         self.embedding = embedding
-        self._bm25_retriever = None
-        self._documents_cache = None
+        self.bm25_retriever = None
+        self.documents_cache = None
 
     def _ensure_bm25_initialized(self):
         """Initialize BM25 retriever lazily"""
-        if self._bm25_retriever is None:
+        if self.bm25_retriever is None:
             try:
                 results = self.collection.find({}, limit=200)
                 documents = [Document(page_content=r.get("content", ""), metadata=r.get("metadata", {})) for r in results]
-                self._documents_cache = documents
+                self.documents_cache = documents
                 
                 if documents:
-                    self._bm25_retriever = BM25Retriever.from_documents(documents)
-                    self._bm25_retriever.k = 50
+                    self.bm25_retriever = BM25Retriever.from_documents(documents)
+                    self.bm25_retriever.k = 50
                     print(f"🔧 BM25 retriever initialized with {len(documents)} documents")
             except Exception as e:
                 print(f"❌ BM25 init error: {e}")
-                self._bm25_retriever = None
+                self.bm25_retriever = None
 
     def _extract_keywords(self, query: str) -> List[str]:
         """แยกคำสำคัญจากคำค้นหา (with PyThaiNLP)"""
@@ -135,7 +137,7 @@ class DigitalServicesRetriever(BaseRetriever):
 
     def _advanced_thai_search(self, query: str) -> List[Document]:
         """ค้นหาแบบ Advanced สำหรับภาษาไทย"""
-        if not PYTHAINLP_AVAILABLE or not self._documents_cache:
+        if not PYTHAINLP_AVAILABLE or not self.documents_cache:
             return []
         
         try:
@@ -150,7 +152,7 @@ class DigitalServicesRetriever(BaseRetriever):
             
             # Tokenize all documents
             tokenized_docs = []
-            for doc in self._documents_cache:
+            for doc in self.documents_cache:
                 normalized_content = normalize(doc.page_content)
                 tokens = word_tokenize(normalized_content, engine="newmm")
                 tokens = [w for w in tokens if w not in stopwords and len(w) > 1]
@@ -166,7 +168,7 @@ class DigitalServicesRetriever(BaseRetriever):
             results = []
             for i, score in enumerate(scores):
                 if score > 0:
-                    doc = self._documents_cache[i]
+                    doc = self.documents_cache[i]
                     doc.metadata["thai_advanced_score"] = float(score)
                     doc.metadata["search_type"] = "thai_advanced"
                     results.append((score, doc))
@@ -183,11 +185,11 @@ class DigitalServicesRetriever(BaseRetriever):
     def _text_search(self, query: str) -> List[Document]:
         """BM25 text search"""
         self._ensure_bm25_initialized()
-        if not self._bm25_retriever:
+        if not self.bm25_retriever:
             return []
         
         try:
-            docs = self._bm25_retriever.get_relevant_documents(query)
+            docs = self.bm25_retriever.get_relevant_documents(query)
             print(f"📚 BM25 พบ {len(docs)} เอกสารที่เกี่ยวข้อง")
             
             # Add BM25 scores with proper scoring

@@ -52,6 +52,8 @@ else:
 class ResearchGroupRetriever(BaseRetriever):
     collection: Any = None
     embedding: Any = None
+    bm25_retriever: Any = None
+    documents_cache: Any = None
     
     class Config:
         arbitrary_types_allowed = True
@@ -60,23 +62,23 @@ class ResearchGroupRetriever(BaseRetriever):
         super().__init__()
         self.collection = collection
         self.embedding = embedding
-        self._bm25_retriever = None
-        self._documents_cache = None
+        self.bm25_retriever = None
+        self.documents_cache = None
 
     def _ensure_bm25_initialized(self):
-        if self._bm25_retriever is None:
+        if self.bm25_retriever is None:
             try:
                 results = self.collection.find({}, limit=300)
                 documents = [Document(page_content=r.get("content", ""), metadata=r.get("metadata", {})) for r in results]
-                self._documents_cache = documents
+                self.documents_cache = documents
                 from langchain_community.retrievers import BM25Retriever
                 if documents:
-                    self._bm25_retriever = BM25Retriever.from_documents(documents)
-                    self._bm25_retriever.k = 50
+                    self.bm25_retriever = BM25Retriever.from_documents(documents)
+                    self.bm25_retriever.k = 50
                     print(f"🔧 BM25 retriever initialized with {len(documents)} documents")
             except Exception as e:
                 print(f"❌ BM25 init error: {e}")
-                self._bm25_retriever = None
+                self.bm25_retriever = None
 
     def _extract_keywords(self, query: str) -> List[str]:
         tokens = [w for w in word_tokenize(query, engine="newmm") if len(w.strip()) > 1]
@@ -86,9 +88,9 @@ class ResearchGroupRetriever(BaseRetriever):
 
     def _text_search(self, query: str) -> List[Document]:
         self._ensure_bm25_initialized()
-        if not self._bm25_retriever:
+        if not self.bm25_retriever:
             return []
-        docs = self._bm25_retriever.get_relevant_documents(query)
+        docs = self.bm25_retriever.get_relevant_documents(query)
         print(f"📚 BM25 พบ {len(docs)} เอกสารที่เกี่ยวข้อง")
         return docs
 

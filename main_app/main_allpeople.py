@@ -67,6 +67,10 @@ except Exception as e:
 class AllPeopleRetriever(BaseRetriever):
     collection: Any = None
     embedding: Any = None
+    bm25_retriever: Any = None
+    documents_cache: Any = None
+    thai_bm25: Any = None
+    thai_bm25_docs: Any = None
     
     class Config:
         arbitrary_types_allowed = True
@@ -75,8 +79,10 @@ class AllPeopleRetriever(BaseRetriever):
         super().__init__()
         self.collection = collection
         self.embedding = embedding
-        self._bm25_retriever = None  # Will be initialized when first used
-        self._documents_cache = None  # Cache documents for BM25
+        self.bm25_retriever = None  # Will be initialized when first used
+        self.documents_cache = None  # Cache documents for BM25
+        self.thai_bm25 = None
+        self.thai_bm25_docs = None
     
     def _get_relevant_documents(
         self, query: str, *, run_manager: CallbackManagerForRetrieverRun
@@ -280,7 +286,7 @@ class AllPeopleRetriever(BaseRetriever):
 
     def _ensure_bm25_initialized(self):
         """Initialize BM25 retriever with Thai tokenization support"""
-        if self._bm25_retriever is None:
+        if self.bm25_retriever is None:
             print("🔧 Initializing Enhanced BM25 retriever with Thai support...")
             try:
                 # Get all documents from collection for BM25
@@ -294,7 +300,7 @@ class AllPeopleRetriever(BaseRetriever):
                     )
                     documents.append(doc)
                 
-                self._documents_cache = documents
+                self.documents_cache = documents
                 print(f"📚 Loaded {len(documents)} documents for BM25")
                 
                 # Create Enhanced BM25 with Thai tokenization
@@ -303,15 +309,15 @@ class AllPeopleRetriever(BaseRetriever):
                     print("✅ Enhanced Thai BM25 initialized successfully")
                 elif documents:
                     # Fallback to standard BM25
-                    self._bm25_retriever = BM25Retriever.from_documents(documents)
-                    self._bm25_retriever.k = 15  # Return top 15 results
+                    self.bm25_retriever = BM25Retriever.from_documents(documents)
+                    self.bm25_retriever.k = 15  # Return top 15 results
                     print("✅ Standard BM25 initialized successfully (PyThaiNLP not available)")
                 else:
                     print("⚠️ No documents found for BM25 initialization")
                     
             except Exception as e:
                 print(f"❌ Error initializing BM25: {e}")
-                self._bm25_retriever = None
+                self.bm25_retriever = None
     
     def _create_thai_bm25(self, documents: List[Document]):
         """สร้าง BM25 ที่ใช้ Thai tokenization"""
@@ -340,16 +346,16 @@ class AllPeopleRetriever(BaseRetriever):
                 tokenized_docs.append(filtered_tokens)
             
             # Create BM25 with tokenized documents
-            self._thai_bm25 = BM25Okapi(tokenized_docs)
-            self._thai_bm25_docs = documents  # Keep reference to original docs
+            self.thai_bm25 = BM25Okapi(tokenized_docs)
+            self.thai_bm25_docs = documents  # Keep reference to original docs
             
             print(f"🇹🇭 Thai BM25 created with {len(tokenized_docs)} tokenized documents")
             
         except Exception as e:
             print(f"❌ Error creating Thai BM25: {e}")
             # Fallback to standard BM25
-            self._bm25_retriever = BM25Retriever.from_documents(documents)
-            self._bm25_retriever.k = 15
+            self.bm25_retriever = BM25Retriever.from_documents(documents)
+            self.bm25_retriever.k = 15
 
     def _preprocess_query_for_bm25(self, query: str) -> str:
         """ประมวลผลคำถามก่อนส่งให้ BM25 เพื่อแก้ปัญหาการไม่เว้นวรรค"""
@@ -371,9 +377,9 @@ class AllPeopleRetriever(BaseRetriever):
             self._ensure_bm25_initialized()
             
             # Check if Thai BM25 is available
-            if hasattr(self, '_thai_bm25') and PYTHAINLP_AVAILABLE:
-                return self._thai_bm25_search(query)
-            elif self._bm25_retriever is not None:
+            if hasattr(self, 'thai_bm25') and self.thai_bm25 is not None and PYTHAINLP_AVAILABLE:
+                return self.thai_bm25_search(query)
+            elif self.bm25_retriever is not None:
                 return self._standard_bm25_search(query)
             else:
                 print("⚠️ BM25 not available, falling back to keyword search")
@@ -410,13 +416,13 @@ class AllPeopleRetriever(BaseRetriever):
             print(f"   🎯 Filtered tokens: {filtered_tokens}")
             
             # Get BM25 scores
-            bm25_scores = self._thai_bm25.get_scores(filtered_tokens)
+            bm25_scores = self.thai_bm25.get_scores(filtered_tokens)
             
             # Create results with scores
             results = []
             for i, score in enumerate(bm25_scores):
                 if score > 0:  # Only include documents with positive scores
-                    doc = self._thai_bm25_docs[i]
+                    doc = self.thai_bm25_docs[i]
                     
                     # Add BM25 score to metadata
                     doc.metadata = doc.metadata.copy()  # Avoid modifying original
@@ -469,7 +475,7 @@ class AllPeopleRetriever(BaseRetriever):
             for i, q_variant in enumerate(unique_variations):
                 print(f"🔍 BM25 Variant #{i+1}: '{q_variant}'")
                 try:
-                    variant_results = self._bm25_retriever.get_relevant_documents(q_variant)
+                    variant_results = self.bm25_retriever.get_relevant_documents(q_variant)
                     
                     # Calculate BM25 scores for this variant
                     scored_results = self._calculate_bm25_scores(variant_results, q_variant)

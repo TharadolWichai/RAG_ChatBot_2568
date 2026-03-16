@@ -55,6 +55,8 @@ else:
 class BSCEntranceRetriever(BaseRetriever):
     collection: Any = None
     embedding: Any = None
+    bm25_retriever: Any = None
+    documents_cache: Any = None
     
     class Config:
         arbitrary_types_allowed = True
@@ -63,24 +65,24 @@ class BSCEntranceRetriever(BaseRetriever):
         super().__init__()
         self.collection = collection
         self.embedding = embedding
-        self._bm25_retriever = None
-        self._documents_cache = None
+        self.bm25_retriever = None
+        self.documents_cache = None
 
     # Initialize BM25
     def _ensure_bm25_initialized(self):
-        if self._bm25_retriever is None:
+        if self.bm25_retriever is None:
             try:
                 results = self.collection.find({}, limit=200)
                 documents = [Document(page_content=r.get("content", ""), metadata=r.get("metadata", {})) for r in results]
-                self._documents_cache = documents
+                self.documents_cache = documents
                 from langchain_community.retrievers import BM25Retriever
                 if documents:
-                    self._bm25_retriever = BM25Retriever.from_documents(documents)
-                    self._bm25_retriever.k = 50  # เพิ่ม limit
+                    self.bm25_retriever = BM25Retriever.from_documents(documents)
+                    self.bm25_retriever.k = 50  # เพิ่ม limit
                     print(f"🔧 BM25 retriever initialized with {len(documents)} documents")
             except Exception as e:
                 print(f"❌ BM25 init error: {e}")
-                self._bm25_retriever = None
+                self.bm25_retriever = None
 
     # Preprocess query
     def _preprocess_query_for_bm25(self, query: str) -> str:
@@ -89,14 +91,14 @@ class BSCEntranceRetriever(BaseRetriever):
     # Text search BM25
     def _text_search(self, query: str) -> List[Document]:
         self._ensure_bm25_initialized()
-        if not self._bm25_retriever:
+        if not self.bm25_retriever:
             return []
 
         variants = [query, self._preprocess_query_for_bm25(query)]
         results = []
         seen = set()
         for v in variants:
-            docs = self._bm25_retriever.get_relevant_documents(v)
+            docs = self.bm25_retriever.get_relevant_documents(v)
             for d in docs:
                 if d.page_content not in seen:
                     results.append(d)
