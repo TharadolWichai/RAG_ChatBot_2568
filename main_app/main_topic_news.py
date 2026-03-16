@@ -38,6 +38,12 @@ except Exception as e:
 
 # ✅ สร้าง Custom Retriever สำหรับ AstraDB (Topic News Collection)
 class TopicNewsRetriever(BaseRetriever):
+    collection: any = None
+    _embedding: any = None
+    
+    class Config:
+        arbitrary_types_allowed = True
+    
     def __init__(self, collection, embedding):
         super().__init__()
         self.collection = collection

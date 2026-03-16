@@ -70,6 +70,16 @@ except Exception as e:
 # Custom Retriever
 # -------------------------------
 class ContactInfoRetriever(BaseRetriever):
+    collection: any = None
+    _embedding: any = None
+    _bm25_retriever: any = None
+    _documents_cache: any = None
+    _thai_bm25: any = None
+    _thai_bm25_docs: any = None
+    
+    class Config:
+        arbitrary_types_allowed = True
+    
     def __init__(self, collection, embedding):
         super().__init__()
         self.collection = collection

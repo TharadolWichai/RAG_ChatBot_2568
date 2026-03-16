@@ -161,6 +161,17 @@ class DynamicAstraDBRetriever(BaseRetriever):
     รองรับทั้ง Vector Search, Text Search, และ Advanced Thai Search (Hybrid)
     """
     
+    collection: any = None
+    _embedding: any = None
+    _collection_name: str = ""
+    _bm25_retriever: any = None
+    _documents_cache: any = None
+    _thai_bm25: any = None
+    _thai_bm25_docs: any = None
+    
+    class Config:
+        arbitrary_types_allowed = True
+    
     def __init__(self, collection, embedding, collection_name: str = ""):
         super().__init__()
         self.collection = collection

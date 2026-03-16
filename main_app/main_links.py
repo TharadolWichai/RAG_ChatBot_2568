@@ -66,6 +66,14 @@ except Exception as e:
 
 # ✅ สร้าง Custom Retriever สำหรับ AstraDB (Links Collection)
 class LinksRetriever(BaseRetriever):
+    collection: any = None
+    _embedding: any = None
+    _bm25_retriever: any = None
+    _documents_cache: any = None
+    
+    class Config:
+        arbitrary_types_allowed = True
+    
     def __init__(self, collection, embedding):
         super().__init__()
         self.collection = collection
