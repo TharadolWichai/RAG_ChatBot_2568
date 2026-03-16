@@ -81,6 +81,7 @@ else:
 # -------------------------------
 class DigitalServicesRetriever(BaseRetriever):
     collection: Any = None
+    embedding: Any = None
     
     class Config:
         arbitrary_types_allowed = True
@@ -88,7 +89,7 @@ class DigitalServicesRetriever(BaseRetriever):
     def __init__(self, collection, embedding):
         super().__init__()
         self.collection = collection
-        self._embedding = embedding
+        self.embedding = embedding
         self._bm25_retriever = None
         self._documents_cache = None
 
@@ -205,7 +206,7 @@ class DigitalServicesRetriever(BaseRetriever):
         """Vector similarity search"""
         docs = []
         try:
-            query_vector = self._embedding.embed_query(query)
+            query_vector = self.embedding.embed_query(query)
             results = self.collection.find({}, sort={"$vector": query_vector}, limit=50)
             
             for i, r in enumerate(results):

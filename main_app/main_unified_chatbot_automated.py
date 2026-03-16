@@ -162,6 +162,7 @@ class DynamicAstraDBRetriever(BaseRetriever):
     """
     
     collection: Any = None
+    embedding: Any = None
     
     class Config:
         arbitrary_types_allowed = True
@@ -169,7 +170,7 @@ class DynamicAstraDBRetriever(BaseRetriever):
     def __init__(self, collection, embedding, collection_name: str = ""):
         super().__init__()
         self.collection = collection
-        self._embedding = embedding
+        self.embedding = embedding
         self._collection_name = collection_name
         self._bm25_retriever = None
         self._documents_cache = None
@@ -214,7 +215,7 @@ class DynamicAstraDBRetriever(BaseRetriever):
         # Strategy 2: Vector Search
         try:
             print("   🧠 Vector Search...")
-            query_vector = self._embedding.embed_query(query)
+            query_vector = self.embedding.embed_query(query)
             vector_results = list(self.collection.find(
                 {},
                 sort={"$vector": query_vector},

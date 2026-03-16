@@ -71,6 +71,7 @@ except Exception as e:
 # -------------------------------
 class ContactInfoRetriever(BaseRetriever):
     collection: Any = None
+    embedding: Any = None
     
     class Config:
         arbitrary_types_allowed = True
@@ -78,7 +79,7 @@ class ContactInfoRetriever(BaseRetriever):
     def __init__(self, collection, embedding):
         super().__init__()
         self.collection = collection
-        self._embedding = embedding
+        self.embedding = embedding
         self._bm25_retriever = None
         self._documents_cache = None
         self._thai_bm25 = None
@@ -222,7 +223,7 @@ class ContactInfoRetriever(BaseRetriever):
             print(f"🧠 Vector Search: กำลังสร้าง embedding สำหรับ query: '{query}'")
             
             # Generate query embedding
-            query_vector = self._embedding.embed_query(query)
+            query_vector = self.embedding.embed_query(query)
             print(f"📊 Vector Search: สร้าง embedding แล้ว (dimension: {len(query_vector)})")
             
             # Perform vector search with similarity scores (filter เฉพาะ contact)

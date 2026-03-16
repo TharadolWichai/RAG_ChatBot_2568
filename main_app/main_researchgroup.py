@@ -51,6 +51,7 @@ else:
 # -------------------------------
 class ResearchGroupRetriever(BaseRetriever):
     collection: Any = None
+    embedding: Any = None
     
     class Config:
         arbitrary_types_allowed = True
@@ -58,7 +59,7 @@ class ResearchGroupRetriever(BaseRetriever):
     def __init__(self, collection, embedding):
         super().__init__()
         self.collection = collection
-        self._embedding = embedding
+        self.embedding = embedding
         self._bm25_retriever = None
         self._documents_cache = None
 
@@ -94,7 +95,7 @@ class ResearchGroupRetriever(BaseRetriever):
     def _vector_search(self, query: str) -> List[Document]:
         docs = []
         try:
-            query_vector = self._embedding.embed_query(query)
+            query_vector = self.embedding.embed_query(query)
             results = self.collection.find({}, sort={"$vector": query_vector}, limit=50)
             for r in results:
                 doc = Document(page_content=r.get("content", ""), metadata=r.get("metadata", {}))

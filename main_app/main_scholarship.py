@@ -68,6 +68,7 @@ except Exception as e:
 # ✅ สร้าง Custom Retriever สำหรับ AstraDB (Scholarship Collection)
 class ScholarshipRetriever(BaseRetriever):
     collection: Any = None
+    embedding: Any = None
     
     class Config:
         arbitrary_types_allowed = True
@@ -75,7 +76,7 @@ class ScholarshipRetriever(BaseRetriever):
     def __init__(self, collection, embedding):
         super().__init__()
         self.collection = collection
-        self._embedding = embedding
+        self.embedding = embedding
         self._bm25_retriever = None  # Will be initialized when first used
         self._documents_cache = None  # Cache documents for BM25
     
@@ -237,7 +238,7 @@ class ScholarshipRetriever(BaseRetriever):
             print(f"🧠 Vector Search: กำลังสร้าง embedding สำหรับ query: '{query}'")
             
             # Generate query embedding
-            query_vector = self._embedding.embed_query(query)
+            query_vector = self.embedding.embed_query(query)
             print(f"📊 Vector Search: สร้าง embedding แล้ว (dimension: {len(query_vector)})")
             
             # Perform vector search with similarity scores
