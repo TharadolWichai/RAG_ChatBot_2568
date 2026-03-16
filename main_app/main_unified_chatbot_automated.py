@@ -161,13 +161,13 @@ class DynamicAstraDBRetriever(BaseRetriever):
     รองรับทั้ง Vector Search, Text Search, และ Advanced Thai Search (Hybrid)
     """
     
-    collection: any = None
-    _embedding: any = None
+    collection: Any = None
+    _embedding: Any = None
     _collection_name: str = ""
-    _bm25_retriever: any = None
-    _documents_cache: any = None
-    _thai_bm25: any = None
-    _thai_bm25_docs: any = None
+    _bm25_retriever: Any = None
+    _documents_cache: Any = None
+    _thai_bm25: Any = None
+    _thai_bm25_docs: Any = None
     
     class Config:
         arbitrary_types_allowed = True

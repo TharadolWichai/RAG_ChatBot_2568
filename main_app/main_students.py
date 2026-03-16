@@ -12,7 +12,7 @@ from langchain.schema import BaseRetriever, Document
 from langchain.callbacks.manager import CallbackManagerForRetrieverRun
 import os
 from dotenv import load_dotenv
-from typing import List 
+from typing import List, Any 
 from astrapy import DataAPIClient
 
 # PyThaiNLP imports for advanced Thai processing
@@ -66,10 +66,10 @@ except Exception as e:
 
 # ✅ สร้าง Custom Retriever สำหรับ AstraDB (Students Collection)
 class StudentsRetriever(BaseRetriever):
-    collection: any = None
-    _embedding: any = None
-    _bm25_retriever: any = None
-    _documents_cache: any = None
+    collection: Any = None
+    _embedding: Any = None
+    _bm25_retriever: Any = None
+    _documents_cache: Any = None
     
     class Config:
         arbitrary_types_allowed = True

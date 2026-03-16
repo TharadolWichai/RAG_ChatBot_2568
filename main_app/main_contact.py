@@ -2,7 +2,7 @@
 import os
 import sys
 import uuid
-from typing import List
+from typing import List, Any
 
 from astrapy import DataAPIClient
 from dotenv import load_dotenv
@@ -70,12 +70,12 @@ except Exception as e:
 # Custom Retriever
 # -------------------------------
 class ContactInfoRetriever(BaseRetriever):
-    collection: any = None
-    _embedding: any = None
-    _bm25_retriever: any = None
-    _documents_cache: any = None
-    _thai_bm25: any = None
-    _thai_bm25_docs: any = None
+    collection: Any = None
+    _embedding: Any = None
+    _bm25_retriever: Any = None
+    _documents_cache: Any = None
+    _thai_bm25: Any = None
+    _thai_bm25_docs: Any = None
     
     class Config:
         arbitrary_types_allowed = True

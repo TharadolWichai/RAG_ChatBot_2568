@@ -6,7 +6,7 @@ from langchain.schema import BaseRetriever, Document
 from langchain.callbacks.manager import CallbackManagerForRetrieverRun
 import os
 from dotenv import load_dotenv
-from typing import List 
+from typing import List, Any 
 from astrapy import DataAPIClient
 
 load_dotenv()
@@ -38,8 +38,8 @@ except Exception as e:
 
 # ✅ สร้าง Custom Retriever สำหรับ AstraDB (News Collection)
 class NewsRetriever(BaseRetriever):
-    collection: any = None
-    _embedding: any = None
+    collection: Any = None
+    _embedding: Any = None
     
     class Config:
         arbitrary_types_allowed = True
