@@ -187,17 +187,18 @@ def export_feedbacks():
         if not all_feedbacks:
             raise HTTPException(status_code=404, detail="No feedback found")
         
-        # สร้าง CSV
+        # สร้าง CSV (UTF-8 + BOM เพื่อให้ Excel เปิดภาษาไทยได้ถูกต้อง)
         output = StringIO()
         writer = csv.DictWriter(output, fieldnames=all_feedbacks[0].keys())
         writer.writeheader()
         writer.writerows(all_feedbacks)
+        csv_content = output.getvalue()
+        # เพิ่ม BOM ให้ Excel รู้ว่าเป็น UTF-8
+        body = ("\ufeff" + csv_content).encode("utf-8")
         
-        # Return เป็น downloadable file
-        output.seek(0)
         return StreamingResponse(
-            iter([output.getvalue()]),
-            media_type="text/csv",
+            iter([body]),
+            media_type="text/csv; charset=utf-8",
             headers={
                 "Content-Disposition": f"attachment; filename=feedbacks_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
             }
