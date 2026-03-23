@@ -6,9 +6,31 @@ Run: streamlit run chatbot_app.py --server.port 8502
 import json
 import os
 import sys
+import time
 from datetime import datetime
+
+from dotenv import load_dotenv
+
+# Load environment variables FIRST
+load_dotenv()
+
 import requests
 import streamlit as st
+
+# Add parent directories to path for importing model_manager
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(CURRENT_DIR))
+
+sys.path.insert(0, PROJECT_ROOT)
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "main_app"))
+
+# Import model manager
+try:
+    from automated_data_ingestion.utils.model_manager import get_model_manager
+    MODEL_MANAGER_AVAILABLE = True
+except ImportError:
+    MODEL_MANAGER_AVAILABLE = False
+    print("⚠️ Model manager not available")
 
 # -----------------------------
 # API Config
@@ -16,6 +38,8 @@ import streamlit as st
 API_URL = os.getenv("CHATBOT_API_URL", "http://localhost:8000/api/v1/chat/completions")
 HEALTH_URL = os.getenv("CHATBOT_HEALTH_URL", "http://localhost:8000/api/v1/health")
 META_URL = os.getenv("CHATBOT_META_URL", "http://localhost:8000/api/v1/chatbot/meta")
+FEEDBACK_API_URL = os.getenv("FEEDBACK_API_URL", "http://localhost:8000/api/v1/feedback")
+FEEDBACK_STATS_URL = os.getenv("FEEDBACK_STATS_URL", "http://localhost:8000/api/v1/feedback/stats")
 
 # -----------------------------
 # Page config (ต้องมาก่อน st.* อื่น ๆ)
@@ -24,145 +48,369 @@ st.set_page_config(
     page_title="RAG Chatbot",
     page_icon="💬",
     layout="wide",
-    initial_sidebar_state="collapsed"  # ✅ ลดปัญหาไม่สมส่วน (sidebar ไม่กินพื้นที่)
+    initial_sidebar_state="expanded"
 )
 
 # -----------------------------
 # CSS (UI polish)
 # -----------------------------
 def inject_css():
-    st.markdown("""
-    <style>
+    st.markdown(
+        """
+        <style>
+        :root {
+            --primary: #60a5fa;
+            --primary-2: #3b82f6;
+            --bg: #071224;
+            --bg-soft: #0b1730;
+            --card: rgba(255,255,255,0.08);
+            --card-strong: rgba(255,255,255,0.12);
+            --border: rgba(255,255,255,0.14);
+            --text: #eaf2ff;
+            --muted: #9fb3d9;
+            --sidebar-text: #f8fbff;
+        }
 
-    /* ----------- Layout ----------- */
+        /* ===== App Background ===== */
+        .stApp {
+            background: #ffffff !important;
+            color: #0f172a;
+        }
 
-    .block-container {
-        padding-top: 2.8rem !important;
-        padding-left: 2rem;
-        padding-right: 2rem;
-        max-width: 1050px;
-    }
+        /* ===== Layout ===== */
+        .block-container {
+            padding-left: 2rem;
+            padding-right: 2rem;
+            max-width: 1350px;
+        }
 
-    h1,h2,h3{
-        letter-spacing:-0.02em;
-    }
+        header {
+            background: transparent !important;
+        }
 
-    /* ----------- Buttons ----------- */
+        /* ===== Sidebar ===== */
+        section[data-testid="stSidebar"] {
+            background: linear-gradient(
+                180deg,
+                rgba(17, 43, 138, 0.95) 0%,
+                rgba(30, 64, 175, 0.94) 100%
+            ) !important;
+            border-right: 1px solid rgba(255,255,255,0.08);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+        .quick-prompts-wrap {
+            margin-bottom: 28px;
+        }
+        section[data-testid="stSidebar"] .block-container {
+            padding-top: 1.35rem;
+        }
 
-    .stButton>button{
-        border-radius:12px;
-        height:40px;
-        border:1px solid #e5e7eb;
-        background:white;
-        font-weight:500;
-        transition:all .15s ease;
-    }
+        /* ===== Sidebar text ===== */
+        section[data-testid="stSidebar"],
+        section[data-testid="stSidebar"] p,
+        section[data-testid="stSidebar"] span,
+        section[data-testid="stSidebar"] small,
+        section[data-testid="stSidebar"] div {
+            color: var(--sidebar-text) !important;
+        }
 
-    .stButton>button:hover{
-        border-color:#2563eb;
-        color:#2563eb;
-    }
+        /* ===== Sidebar card ===== */
+        .sidebar-card {
+            background: rgba(255,255,255,0.08);
+            padding: 14px 16px;
+            border-radius: 16px;
+            margin-bottom: 12px;
+            border: 1px solid rgba(255,255,255,0.14);
+            box-shadow:
+                0 8px 24px rgba(0,0,0,0.16),
+                inset 0 1px 0 rgba(255,255,255,0.04);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
 
-    /* ----------- Chat Layout ----------- */
+        /* ===== Sidebar buttons ===== */
+        section[data-testid="stSidebar"] .stButton > button {
+            border-radius: 14px;
+            min-height: 42px;
+            font-weight: 600;
+            border: 1px solid rgba(255,255,255,0.16) !important;
+            background: rgba(255,255,255,0.14) !important;
+            color: #ffffff !important;
+            box-shadow:
+                0 8px 20px rgba(0,0,0,0.12),
+                inset 0 1px 0 rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            transition: all 0.2s ease;
+        }
 
-    [data-testid="stChatMessage"]{
-        padding:10px 0;
-    }
+        section[data-testid="stSidebar"] .stButton > button:hover {
+            background: rgba(255,255,255,0.20) !important;
+            border-color: rgba(255,255,255,0.28) !important;
+            transform: translateY(-1px);
+            box-shadow: 0 10px 24px rgba(0,0,0,0.16);
+        }
 
-    /* avatar / emoji */
+        section[data-testid="stSidebar"] .stButton > button p,
+        section[data-testid="stSidebar"] .stButton > button span,
+        section[data-testid="stSidebar"] .stButton > button div {
+            color: #ffffff !important;
+        }
 
-    [data-testid="stChatMessageAvatar"]{
-        width:32px;
-        height:32px;
-        font-size:16px;
-    }
+        /* ===== Label ===== */
+        section[data-testid="stSidebar"] label,
+        section[data-testid="stSidebar"] .stSelectbox label {
+            color: #dbeafe !important;
+            background: transparent !important;
+            padding: 0 !important;
+            margin-bottom: 6px !important;
+            box-shadow: none !important;
+            font-weight: 600;
+        }
 
-    /* bubble base */
+        /* ===== Selectbox: kill white background ===== */
+        section[data-testid="stSidebar"] .stSelectbox,
+        section[data-testid="stSidebar"] .stSelectbox > div,
+        section[data-testid="stSidebar"] .stSelectbox > div > div {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
 
-    [data-testid="stChatMessageContent"]{
-        border-radius:16px;
-        padding:12px 16px;
-        font-size:15px;
-        line-height:1.65;
-        box-shadow:none;
-        border:none;
-        max-width:720px;
-    }
+        section[data-testid="stSidebar"] div[data-baseweb="select"] {
+            background: transparent !important;
+        }
 
-    /* assistant bubble */
+        section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
+            background: rgba(255,255,255,0.10) !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(255,255,255,0.18) !important;
+            border-radius: 14px !important;
+            min-height: 44px !important;
+            box-shadow:
+                0 8px 20px rgba(0,0,0,0.10),
+                inset 0 1px 0 rgba(255,255,255,0.04) !important;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        /* ===== Quick Prompts Glow Border ===== */
+        .quick-prompts-wrap .stButton > button {
+            border: 1px solid #dbeafe;
+            transition: all 0.2s ease;
+        }
 
-    [data-testid="stChatMessage"][data-testid*="assistant"]
-    [data-testid="stChatMessageContent"]{
-        background:#f8fafc;
-        color:#0f172a;
-    }
+        .quick-prompts-wrap .stButton > button:hover {
+            border-color: #3b82f6 !important;
 
-    /* user bubble */
+        box-shadow:
+            0 0 0 1px rgba(59,130,246,0.4),
+            0 0 10px rgba(59,130,246,0.35),
+            0 4px 14px rgba(37,99,235,0.15);
+        }
+        section[data-testid="stSidebar"] div[data-baseweb="select"] > div:hover,
+        section[data-testid="stSidebar"] div[data-baseweb="select"] > div:focus-within {
+            background: rgba(255,255,255,0.14) !important;
+            border-color: rgba(255,255,255,0.28) !important;
+            box-shadow:
+                0 10px 24px rgba(0,0,0,0.14),
+                inset 0 1px 0 rgba(255,255,255,0.05) !important;
+        }
 
-    [data-testid="stChatMessage"][data-testid*="user"]
-    [data-testid="stChatMessageContent"]{
-        background:#2563eb;
-        color:white;
-    }
+        section[data-testid="stSidebar"] div[data-baseweb="select"] span,
+        section[data-testid="stSidebar"] div[data-baseweb="select"] div,
+        section[data-testid="stSidebar"] div[data-baseweb="select"] input {
+            color: #ffffff !important;
+            background: transparent !important;
+        }
 
-    /* ----------- Chat Input ----------- */
+        section[data-testid="stSidebar"] div[data-baseweb="select"] svg {
+            fill: #ffffff !important;
+        }
 
-    textarea{
-        border-radius:14px !important;
-        border:1px solid #e5e7eb !important;
-        font-size:15px !important;
-        padding:10px !important;
-    }
+        /* ===== Dropdown panel ===== */
+        ul[role="listbox"] {
+            background: rgba(12, 18, 35, 0.96) !important;
+            border: 1px solid rgba(255,255,255,0.14) !important;
+            border-radius: 14px !important;
+            box-shadow: 0 18px 40px rgba(0,0,0,0.28) !important;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+        }
 
-    textarea:focus{
-        border-color:#2563eb !important;
-        box-shadow:none !important;
-    }
+        ul[role="listbox"] li,
+        ul[role="listbox"] div {
+            color: #ffffff !important;
+            background: transparent !important;
+        }
 
-    /* ----------- Metrics ----------- */
+        ul[role="listbox"] li:hover,
+        ul[role="listbox"] [aria-selected="true"] {
+            background: rgba(255,255,255,0.10) !important;
+            border-radius: 10px;
+        }
 
-    [data-testid="stMetric"]{
-        border-radius:12px;
-        padding:12px;
-        background:#ffffff;
-        border:1px solid #f1f5f9;
-    }
+        /* ===== Sidebar inputs / textarea ===== */
+        section[data-testid="stSidebar"] .stTextInput input,
+        section[data-testid="stSidebar"] textarea,
+        section[data-testid="stSidebar"] input {
+            color: #ffffff !important;
+            background: rgba(255,255,255,0.10) !important;
+            border: 1px solid rgba(255,255,255,0.16) !important;
+            border-radius: 14px !important;
+            box-shadow: none !important;
+        }
 
-    /* ----------- Containers ----------- */
+        /* ===== Sidebar metric ===== */
+        section[data-testid="stSidebar"] div[data-testid="stMetric"] {
+            background: rgba(255,255,255,0.10) !important;
+            border: 1px solid rgba(255,255,255,0.14) !important;
+            padding: 16px;
+            border-radius: 16px;
+            box-shadow:
+                0 8px 24px rgba(0,0,0,0.12),
+                inset 0 1px 0 rgba(255,255,255,0.04);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
 
-    div[data-testid="stContainer"]{
-        border-radius:16px;
-    }
+        /* ===== Global Buttons ===== */
+        .stButton > button {
+            border-radius: 12px;
+            min-height: 42px;
+            font-weight: 500;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.90);
+            color: #0f172a;
+            transition: all 0.2s ease;
+        }
 
-    /* ----------- Sidebar ----------- */
+        .stButton > button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 18px rgba(37,99,235,0.12);
+        }
 
-    section[data-testid="stSidebar"] .block-container{
-        padding-top:1.5rem;
-    }
+        /* ===== Topbar ===== */
+        .topbar {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 18px 22px;
+            box-shadow: 0 10px 30px rgba(37,99,235,0.08);
+            border: 1px solid #e2e8f0;
+            margin-bottom: 14px;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+        }
 
-    /* ----------- Badge ----------- */
 
-    .badge{
-        background:#eff6ff;
-        border:1px solid #bfdbfe;
-        color:#1d4ed8;
-        padding:4px 10px;
-        border-radius:8px;
-        font-size:13px;
-        font-weight:500;
-    }
+        /* ===== Feature Section ===== */
+        .feature-section {
+            background: #ffffff;
+            border: 1px solid #dbe4f0;
+            border-radius: 22px;
+            padding: 28px 28px 22px 28px;
+            box-shadow: 0 10px 30px rgba(37, 99, 235, 0.06);
+            margin-bottom: 22px;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+        }
 
-    /* ----------- Cleaner spacing ----------- */
+        .feature-section h3 {
+            color: #0f172a;
+        }
 
-    hr{
-        margin-top:1.2rem;
-        margin-bottom:1.2rem;
-    }
 
-    </style>
-    """, unsafe_allow_html=True)
+        .info-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 28px;
+            margin-top: 8px;
+        }
+
+        .info-item {
+            background: #f8fbff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 12px 14px;
+            color: #0f172a;
+            font-size: 15px;
+            line-height: 1.5;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+        }
+
+
+        /* ===== Metrics ===== */
+        div[data-testid="stMetric"] {
+            background: #ffffff;
+            border: 1px solid #dbe4f0;
+            padding: 16px;
+            border-radius: 16px;
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+            color: #0f172a !important;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+        }
+
+        /* ===== Chat (dark grey bubble) ===== */
+        [data-testid="stChatMessageContent"] {
+            border-radius: 16px;
+            padding: 0.95rem 1.15rem;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;   /* เทาเข้มแบบนุ่ม */
+            color: #0f172a !important;
+        }
+
+        /* ===== Badge ===== */
+        .badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.10);
+            color: #e0edff;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            border: 1px solid rgba(255,255,255,0.14);
+            font-weight: 600;
+            backdrop-filter: blur(8px);
+        }
+
+        /* ===== Input ===== */
+        textarea {
+            border-radius: 14px !important;
+        }
+
+        /* ===== Expander ===== */
+        .streamlit-expanderHeader {
+            font-weight: 600;
+            color: #0f172a !important;
+        }
+        /* ข้อความทั่วไปฝั่ง main */
+        .stMarkdown,
+        .stCaption,
+        [data-testid="stMetricLabel"],
+        [data-testid="stMetricValue"] {
+            color: #0f172a !important;
+        }
+        
+        /* ===== Feedback section ===== */
+        [data-testid="stFeedback"],
+        [data-testid="stTextInput"] input {
+            color: #0f172a !important;
+            background: #ffffff !important;
+        }
+
+        /* label */
+        [data-testid="stFeedback"] label {
+            color: #0f172a !important;
+        }
+                </style>
+        """,
+        unsafe_allow_html=True
+    )
 
 inject_css()
+
 # -----------------------------
 # Path setup (ยังเก็บไว้เพื่อไม่ให้พังโครงสร้างเดิม)
 # -----------------------------
@@ -175,6 +423,13 @@ sys.path.insert(0, os.path.join(PROJECT_ROOT, "main_app"))
 # -----------------------------
 # Session state
 # -----------------------------
+# สร้าง Session ID สำหรับแต่ละผู้ใช้
+if 'session_id' not in st.session_state:
+    import uuid
+    st.session_state.session_id = f"session_{uuid.uuid4().hex[:8]}"
+    st.session_state.session_created_at = datetime.now().isoformat()
+    print(f"✅ New user session: {st.session_state.session_id}")
+
 if "chatbot" not in st.session_state:
     st.session_state.chatbot = None
 if "chatbot_meta" not in st.session_state:
@@ -189,6 +444,10 @@ if "return_contexts" not in st.session_state:
     st.session_state.return_contexts = False
 if "return_debug" not in st.session_state:
     st.session_state.return_debug = True
+if 'chatbot_model' not in st.session_state:
+    st.session_state.chatbot_model = os.getenv("CHATBOT_MODEL", "gpt-5-mini")
+if 'available_models' not in st.session_state:
+    st.session_state.available_models = []
 
 # -----------------------------
 # Helpers
@@ -219,10 +478,10 @@ def initialize_chatbot():
             return False
     return True
 
-st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
 def render_topbar():
-    left, b1, b2 = st.columns([8, 1, 1])
+
+    left, b1, b2, b3 = st.columns([7, 1.2, 1.2, 1.2])
 
     with left:
         logo_col, title_col = st.columns([2, 10], vertical_alignment="center")
@@ -260,6 +519,11 @@ def render_topbar():
                 st.rerun()
 
     with b2:
+        if st.button("🧹 Clear", use_container_width=True):
+            st.session_state.chat_history = []
+            st.rerun()
+
+    with b3:
         if st.button("🔄 Reload", use_container_width=True):
             st.session_state.chatbot = None
             st.session_state.chatbot_meta = None
@@ -280,6 +544,7 @@ def ask(question: str):
                     "strict_mode": st.session_state.get("strict_mode", False),
                     "return_contexts": st.session_state.get("return_contexts", False),
                     "return_debug": st.session_state.get("return_debug", True),
+                    "model": st.session_state.get("chatbot_model"),  # ✅ เพิ่ม: ส่งโมเดลที่เลือก
                 }
                 res = requests.post(API_URL, json=payload, timeout=120)
                 res.raise_for_status()
@@ -301,6 +566,9 @@ def ask(question: str):
                         meta_bits.append(f"**Confidence:** `{confidence:.2f}`")
                     else:
                         meta_bits.append(f"**Confidence:** `{confidence}`")
+                # แสดงโมเดลที่ใช้
+                if st.session_state.get("chatbot_model"):
+                    meta_bits.append(f"**Model:** `{st.session_state.chatbot_model}`")
                 if meta_bits:
                     st.caption(" • ".join(meta_bits))
 
@@ -317,9 +585,13 @@ def ask(question: str):
                         "intent": intent,
                         "confidence": confidence,
                         "contexts": contexts if contexts else None,
-                        "debug_output": debug_output if debug_output else None
+                        "debug_output": debug_output if debug_output else None,
+                        "model": st.session_state.get("chatbot_model")  # ✅ บันทึกโมเดล
                     }
                 })
+                
+                # ✅ Rerun เพื่อให้ chat history loop แสดง feedback form
+                st.rerun()
 
                 if debug_output:
                     with st.expander("🔍 Debug Info"):
@@ -341,47 +613,42 @@ def ask(question: str):
 render_topbar()
 st.divider()
 
-with st.container(border=True):
-    colA, colB = st.columns([3, 2])  # ✅ สมดุลขึ้น
+colA, colB = st.columns([3, 2], gap="large")
 
-    with colA:
-        st.markdown("""
-            <div style="display:flex; align-items:center; gap:10px; font-size:24px; font-weight:700;">
-            <svg xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 -960 960 960"
-            fill="#327ffb">
-            <path d="m381-240 424-424-57-56-368 367-169-170-57 57 227 226Zm0 113L42-466l169-170 170 170 366-367 172 168-538 538Z"/>
-            </svg>ใช้งานเร็ว</div>
-            """, unsafe_allow_html=True)
-        st.markdown(
-            "- กด **Start** เพื่อเริ่มใช้งาน\n"
-            "- พิมพ์คำถามด้านล่าง หรือกดปุ่มตัวอย่าง\n"
-            "- สามารถ Export ประวัติแชทได้จาก Sidebar"
-        )
+with colA:
+    st.markdown("### ใช้งานเร็ว")
+    st.markdown(
+        """
+        <div class="info-list">
+            <div class="info-item">กด <b>Start</b> เพื่อเริ่มใช้งาน</div>
+            <div class="info-item">พิมพ์คำถามด้านล่าง หรือกดปุ่มตัวอย่าง</div>
+            <div class="info-item">สามารถ Export ประวัติแชทได้จาก Sidebar</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
-    with colB:
-        st.markdown("""
-            <div style="display:flex; align-items:center; gap:10px; font-size:24px; font-weight:700;">
-            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#327ffb"><path d="m720-120-56-56 63-64H560v-80h167l-63-64 56-56 160 160-160 160Zm-600 0v-600q0-33 23.5-56.5T200-800h480q33 0 56.5 23.5T760-720v203q-10-2-20-2.5t-20-.5q-10 0-20 .5t-20 2.5v-203H200v400h283q-2 10-2.5 20t-.5 20q0 1₀ .5 2₀t2.5 2₀H24₀L1₂₀-1₂₀Zm16₀-44₀h3₂₀v-8₀H28₀v8₀Zm0 16₀h2₀₀v-8₀H28₀v8₀Zm-8₀ 8₀v-4₀₀ 4₀₀Z"/></svg>Quick Prompts</div>
-            
-            """, unsafe_allow_html=True)
-        qp1, qp2 = st.columns(2)
-        with qp1:
-            if st.button("📞 ติดต่อวิทยาลัย", use_container_width=True):
-                st.session_state.pending_question = "ติดต่อวิทยาลัยได้ช่องทางไหนบ้าง"
-        with qp2:
-            if st.button("🎓 ทุนการศึกษา", use_container_width=True):
-                st.session_state.pending_question = "มีทุนการศึกษาอะไรบ้าง และสมัครอย่างไร"
+with colB:
+    st.markdown('<div class="quick-prompts-wrap">', unsafe_allow_html=True)
+    st.markdown("### Quick Prompts")
 
-        qp3, qp4 = st.columns(2)
-        with qp3:
-            if st.button("🏢 จองห้องประชุม", use_container_width=True):
-                st.session_state.pending_question = "มีลิงก์หรือขั้นตอนจองห้องประชุมไหม"
-        with qp4:
-            if st.button("👩‍🏫 รายชื่ออาจารย์", use_container_width=True):
-                st.session_state.pending_question = "ขอรายชื่ออาจารย์และข้อมูลติดต่อ"
+    qp1, qp2 = st.columns(2)
+    with qp1:
+        if st.button("📞 ติดต่อวิทยาลัย", use_container_width=True):
+            st.session_state.pending_question = "ติดต่อวิทยาลัยได้ช่องทางไหนบ้าง"
+    with qp2:
+        if st.button("🎓 ทุนการศึกษา", use_container_width=True):
+            st.session_state.pending_question = "มีทุนการศึกษาอะไรบ้าง และสมัครอย่างไร"
+
+    qp3, qp4 = st.columns(2)
+    with qp3:
+        if st.button("🏢 จองห้องประชุม", use_container_width=True):
+            st.session_state.pending_question = "มีลิงก์หรือขั้นตอนจองห้องประชุมไหม"
+    with qp4:
+        if st.button("👩‍🏫 รายชื่ออาจารย์", use_container_width=True):
+            st.session_state.pending_question = "ขอรายชื่ออาจารย์และข้อมูลติดต่อ"
+
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # Not ready state
 if st.session_state.chatbot is None:
@@ -389,18 +656,20 @@ if st.session_state.chatbot is None:
     st.info("💡 Tip: ถ้าเจอ 503 จาก AstraDB ให้ลองรอสักครู่แล้วกด Init ใหม่")
 
     with st.container(border=True):
-        st.warning("👆 กด **Start** (ปุ่มด้านบน) เพื่อเริ่มใช้งาน Chatbot")
+        st.warning("👆 กด **Init** (ปุ่มด้านบน) เพื่อเริ่มใช้งาน Chatbot")
         with st.expander("📋 ข้อมูลเพิ่มเติม", expanded=True):
             st.markdown("""
-            ### Features:
+            ### ✨ Features:
             - **Hybrid Intent Classification**: ใช้ Rule-Based + LLM
             - **Auto-Discovery**: ค้นหา collections อัตโนมัติ
             - **Dynamic Retrievers**: สร้าง retrievers แบบ dynamic
             - **Multi-Agent Search**: ค้นหาจากทุก collections เมื่อไม่แน่ใจ
 
-            ### ตัวอย่างคำถาม:
-            - "ฉันจะติดต่อวิทยาลัยการคอมพิวเตอร์ได้อย่างไร?"
-            - "มีทุนการศึกษาอะไรบ้าง และสมัครอย่างไร?"
+            ### 🎯 ตัวอย่างคำถาม:
+            - "อาจารย์สมชาย" → อาจารย์และบุคลากร
+            - "ติดต่อวิทยาลัย" → ข้อมูลติดต่อ
+            - "ลิงก์จองห้องประชุม" → ลิงก์และระบบ
+            - "ทุนการศึกษา" → ทุนการศึกษา
             """)
     st.stop()
 
@@ -435,6 +704,9 @@ for idx, message in enumerate(st.session_state.chat_history):
                         meta_bits.append(f"**Confidence:** `{conf:.2f}`")
                     else:
                         meta_bits.append(f"**Confidence:** `{conf}`")
+                # แสดงโมเดลที่ใช้
+                if md.get("model"):
+                    meta_bits.append(f"**Model:** `{md.get('model')}`")
                 if meta_bits:
                     st.caption(" • ".join(meta_bits))
 
@@ -447,6 +719,95 @@ for idx, message in enumerate(st.session_state.chat_history):
                 if md.get("debug_output"):
                     with st.expander("🔍 Debug Info"):
                         st.code(md["debug_output"], language="text")
+            
+            # ⭐ Feedback Section - แสดงเฉพาะข้อความล่าสุด
+            is_last_message = (idx == len(st.session_state.chat_history) - 1)
+            
+            if is_last_message and message["role"] == "assistant":
+                st.markdown("---")
+                
+                feedback_key = f"feedback_{idx}"
+                
+                # Initialize session state
+                if f"submitted_{feedback_key}" not in st.session_state:
+                    st.session_state[f"submitted_{feedback_key}"] = False
+                if f"rating_{feedback_key}" not in st.session_state:
+                    st.session_state[f"rating_{feedback_key}"] = None
+                if f"comment_{feedback_key}" not in st.session_state:
+                    st.session_state[f"comment_{feedback_key}"] = ""
+                
+                if not st.session_state[f"submitted_{feedback_key}"]:
+                    # ใช้ Expander เพื่อให้กดแล้วฟอร์มแสดง
+                    with st.expander("📊 **ประเมินคำตอบนี้** (กดเพื่อเปิดฟอร์ม)", expanded=True):
+                        col1, col2 = st.columns([2, 3])
+                        
+                        with col1:
+                            st.markdown("**ให้คะแนน:**")
+                            # ใช้ callback เพื่อเก็บค่า rating
+                            def save_rating():
+                                st.session_state[f"rating_{feedback_key}"] = st.session_state[f"stars_{feedback_key}"]
+                            
+                            rating = st.feedback(
+                                "stars",
+                                key=f"stars_{feedback_key}",
+                                on_change=save_rating
+                            )
+                        
+                        with col2:
+                            comment = st.text_input(
+                                "💬 ความคิดเห็น (Optional):",
+                                placeholder="ตอบได้ดีหรือยัง? มีข้อเสนอแนะไหม?",
+                                key=f"comment_input_{feedback_key}",
+                                value=st.session_state[f"comment_{feedback_key}"]
+                            )
+                            # เก็บ comment
+                            st.session_state[f"comment_{feedback_key}"] = comment
+                        
+                        if st.button("✅ ส่งคะแนน", key=f"submit_{feedback_key}", type="primary"):
+                            final_rating = st.session_state.get(f"rating_{feedback_key}")
+                            final_comment = st.session_state.get(f"comment_{feedback_key}", "")
+                            
+                            if final_rating is not None:
+                                try:
+                                    # ดึง question จาก history
+                                    question = ""
+                                    if idx > 0 and st.session_state.chat_history[idx-1]["role"] == "user":
+                                        question = st.session_state.chat_history[idx-1]["content"]
+                                    
+                                    md = message.get("metadata", {})
+                                    feedback_payload = {
+                                        "session_id": st.session_state.session_id,
+                                        "question": question,
+                                        "answer": message["content"],
+                                        "model": md.get("model"),
+                                        "intent": md.get("intent"),
+                                        "rating": final_rating + 1,  # 0-4 → 1-5
+                                        "comment": final_comment
+                                    }
+                                    
+                                    feedback_res = requests.post(
+                                        FEEDBACK_API_URL,
+                                        json=feedback_payload,
+                                        timeout=10
+                                    )
+                                    
+                                    if feedback_res.status_code == 200:
+                                        st.session_state[f"submitted_{feedback_key}"] = True
+                                        st.success("✅ ขอบคุณสำหรับการให้คะแนน!")
+                                        st.balloons()
+                                        time.sleep(0.5)
+                                        st.rerun()
+                                    else:
+                                        st.error(f"❌ ไม่สามารถบันทึกได้: {feedback_res.text}")
+                                
+                                except Exception as e:
+                                    st.error(f"❌ เกิดข้อผิดพลาด: {e}")
+                                    import traceback
+                                    st.code(traceback.format_exc())
+                            else:
+                                st.warning("⚠️ กรุณาให้คะแนนก่อนส่ง")
+                else:
+                    st.success("✅ ขอบคุณสำหรับการให้คะแนนแล้ว!")
 
 # Quick prompt
 if st.session_state.pending_question:
@@ -461,37 +822,101 @@ if user_question:
 
 # Sidebar info (ตอน ready ค่อยมีเนื้อหา)
 with st.sidebar:
+    st.markdown('<div class="sidebar-card"><b>ข้อมูลแชทบอท</b></div>', unsafe_allow_html=True)
+    st.metric("จำนวนข้อความการสนทนา", len(st.session_state.chat_history))
+    
+    # ✅ Model Selection Section
+    st.markdown("---")
+    st.markdown('<div class="sidebar-card"><b>💬 เลือกโมเดลตอบคำถาม</b></div>', unsafe_allow_html=True)
+    
+    # Load available models from KKU API
+    if not st.session_state.available_models:
+        if MODEL_MANAGER_AVAILABLE:
+            try:
+                model_manager = get_model_manager()
+                models = model_manager.get_models_with_fallback()
+                st.session_state.available_models = models if models else []
+                st.caption(f"✅ โหลด {len(models)} โมเดลจาก KKU API")
+            except Exception as e:
+                st.caption(f"⚠️ ไม่สามารถดึงโมเดล: {e}")
+                # Fallback to default list
+                st.session_state.available_models = [
+                    "gpt-5-mini",
+                    "gemini-2.5-flash-lite",
+                    "claude-3-5-sonnet",
+                ]
+        else:
+            # Fallback to default list
+            st.session_state.available_models = [
+                "gpt-5-mini",
+                "gemini-2.5-flash-lite",
+                "claude-3-5-sonnet",
+            ]
+    
+    # Refresh models button
+    if st.button("🔄 รีเฟรชโมเดล", use_container_width=True):
+        if MODEL_MANAGER_AVAILABLE:
+            with st.spinner("กำลังดึงรายการโมเดล..."):
+                try:
+                    model_manager = get_model_manager()
+                    models = model_manager.fetch_available_models()
+                    if models:
+                        st.session_state.available_models = models
+                        st.success(f"✅ พบ {len(models)} โมเดล")
+                    else:
+                        st.warning("⚠️ ไม่พบโมเดล ใช้ default")
+                except Exception as e:
+                    st.error(f"❌ Error: {e}")
+    
+    # Model selector
+    if st.session_state.available_models:
+        try:
+            current_index = st.session_state.available_models.index(st.session_state.chatbot_model)
+        except ValueError:
+            current_index = 0
+            
+        selected_model = st.selectbox(
+            "เลือกโมเดล:",
+            options=st.session_state.available_models,
+            index=current_index,
+            key="model_selector_sidebar"
+        )
+        
+        # Update selected model
+        if selected_model != st.session_state.chatbot_model:
+            st.session_state.chatbot_model = selected_model
+            st.success(f"✅ เปลี่ยนเป็น: **{selected_model}**")
+            st.info("💡 โมเดลจะถูกใช้ในคำถามถัดไป")
+        
+        st.caption(f"🤖 ใช้โมเดล: **{st.session_state.chatbot_model}**")
+    else:
+        st.warning("⚠️ ไม่พบรายการโมเดล")
+    
+    st.markdown("---")
 
-    st.markdown("### ⚙️ Settings")
+    # ✅ คืน sidebar collection/agent list เหมือนเดิม
+    if st.session_state.chatbot_meta and isinstance(st.session_state.chatbot_meta, dict):
+        agents_list = st.session_state.chatbot_meta.get("agents", []) or []
+        if agents_list:
+            st.markdown('<div class="sidebar-card"><b>🧩 Available Agents</b><br>', unsafe_allow_html=True)
+            for a in agents_list[:6]:
+                st.write(f"{a.get('icon','📦')} {a.get('name','-')}")
+                st.caption(f"📦 {a.get('collection','-')}")
+            st.markdown("</div>", unsafe_allow_html=True)
 
-    st.session_state.strict_mode = st.toggle(
-        "Strict mode", value=st.session_state.strict_mode
-    )
-
-    st.session_state.return_contexts = st.toggle(
-        "Return contexts", value=st.session_state.return_contexts
-    )
-
-    st.session_state.return_debug = st.toggle(
-        "Debug", value=st.session_state.return_debug
-    )
-
-    st.divider()
-
-    st.metric("Messages", len(st.session_state.chat_history))
+    st.session_state.strict_mode = st.toggle("Strict mode", value=st.session_state.strict_mode)
+    st.session_state.return_contexts = st.toggle("Return contexts", value=st.session_state.return_contexts)
+    st.session_state.return_debug = st.toggle("Return debug", value=st.session_state.return_debug)
+    st.caption(f"API: {API_URL}")
 
     if st.session_state.chat_history:
-        chat_json = json.dumps(
-            st.session_state.chat_history,
-            ensure_ascii=False,
-            indent=2
-        )
-
+        chat_json = json.dumps(st.session_state.chat_history, ensure_ascii=False, indent=2)
         st.download_button(
-            "📥 Export Chat",
+            label="📥 Export Chat History",
             data=chat_json,
-            file_name=f"chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            file_name=f"chat_history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
             mime="application/json",
             use_container_width=True
         )
 
+    st.markdown('<div class="sidebar-card"><b>🔗 Instant Link</b><br>พอร์ตนี้คือเว็บแยกสำหรับแชร์ลิงก์ให้คนอื่นเข้าใช้งาน</div>', unsafe_allow_html=True)
