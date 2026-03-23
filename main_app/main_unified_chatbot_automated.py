@@ -546,10 +546,25 @@ def create_qa_chain_with_logging(retriever: BaseRetriever, collection_name: str)
             ]
             if not relevant_docs:
                 print(f"⚠️ ไม่พบ keyword match - ใช้เอกสารทั้งหมด (อาจเป็น semantic match)")
-                relevant_docs = docs[:max_docs] if max_docs > 0 else docs
+                relevant_docs = docs
             else:
                 print(f"✅ พบเอกสารที่เกี่ยวข้อง {len(relevant_docs)} เอกสาร")
-                relevant_docs = relevant_docs[:max_docs] if max_docs > 0 else relevant_docs
+
+            # Deduplicate โดย service_name ก่อน เพื่อให้ครอบคลุมทุกบริการ
+            # ถ้าไม่มี metadata service_name ให้ deduplicate ด้วย 50 chars แรกของ content
+            seen_services: dict = {}
+            deduped: list = []
+            for doc in relevant_docs:
+                key = doc.metadata.get("service_name") or doc.page_content[:50]
+                if key not in seen_services:
+                    seen_services[key] = doc
+                    deduped.append(doc)
+                else:
+                    # รวม content ของ section ต่อๆ มาเข้ากับ doc ตัวแรก
+                    seen_services[key].page_content += "\n" + doc.page_content
+
+            print(f"📌 Deduplicated: {len(relevant_docs)} → {len(deduped)} เอกสาร (unique services)")
+            relevant_docs = deduped[:max_docs] if max_docs > 0 else deduped
 
             print(f"\n📝 Step 3: กำลังสร้าง context จากเอกสาร...")
             merged_context = "\n\n".join([f"ข้อมูล {i+1}:\n{d.page_content}" for i, d in enumerate(relevant_docs)])
