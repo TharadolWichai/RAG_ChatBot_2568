@@ -451,182 +451,151 @@ def create_retriever_from_collection(collection_name: str, astradb_manager: Astr
         return None
 
 
+def _build_llm_for_model(model_name: str):
+    """สร้าง ChatOpenAI instance สำหรับโมเดลที่กำหนด"""
+    api_key = os.getenv("OPENAI_API_KEY")
+    base_url = os.getenv("OPENAI_BASE_URL")
+
+    if not api_key or not base_url:
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        base_url = "https://openrouter.ai/api/v1"
+        model_name = "openai/gpt-4o-mini"
+        print("⚠️ Using OpenRouter as fallback (KKU API not configured)")
+
+    return ChatOpenAI(
+        openai_api_key=api_key,
+        openai_api_base=base_url,
+        model_name=model_name,
+        temperature=0.1,
+    )
+
+
 def create_qa_chain_with_logging(retriever: BaseRetriever, collection_name: str) -> callable:
     """
-    สร้าง QA chain จาก retriever
-    
+    สร้าง QA chain จาก retriever โดย LLM จะถูก rebuild อัตโนมัติเมื่อ CHATBOT_MODEL เปลี่ยน
+
     Args:
         retriever: BaseRetriever instance
         collection_name: ชื่อ collection (สำหรับ context)
-        
+
     Returns:
         QA function ที่รับ question และ return answer
     """
-    # Initialize LLM (Using KKU IntelSphere API)
-    try:
-        api_key = os.getenv("OPENAI_API_KEY")
-        base_url = os.getenv("OPENAI_BASE_URL")
-        model_name = os.getenv("CHATBOT_MODEL") or os.getenv("OPENAI_MODEL", "gemini-2.5-flash-lite")
+    # cache LLM ตาม model name — rebuild เฉพาะตอน model เปลี่ยน
+    _llm_cache: dict = {"model": None, "qa_chain": None}
 
-        if not api_key or not base_url:
-            # Fallback to OpenRouter if KKU API not configured
-            api_key = os.getenv("OPENROUTER_API_KEY")
-            base_url = "https://openrouter.ai/api/v1"
-            model_name = "openai/gpt-4o-mini"
-            print("⚠️ Using OpenRouter as fallback (KKU API not configured)")
-
-        llm = ChatOpenAI(
-            openai_api_key=api_key,
-            openai_api_base=base_url,
-            model_name=model_name,
-            temperature=0.1
-        )
-    except Exception as e:
-        print(f"⚠️ Failed to initialize LLM: {e}")
-        return lambda q: f"Error: LLM not available. Collection: {collection_name}"
-    
-    # Create prompt template (improved version)
-    prompt_template = f"""คุณเป็นผู้ช่วยตอบคำถามเกี่ยวกับข้อมูลจาก {collection_name} ของวิทยาลัยการคอมพิวเตอร์ มหาวิทยาลัยขอนแก่น
-
-**คำแนะนำในการตอบ:**
-1. ตอบเฉพาะสิ่งที่ผู้ใช้ถาม ไม่ยัดข้อมูลที่ไม่เกี่ยวข้อง
-2. มีประโยคนำสั้นๆ ได้ (เช่น "อีเมลอาจารย์... คือ ...") ไม่ห้วนจนเหลือแค่ค่าข้อมูลอย่างเดียว
-3. **จัดรูปแบบให้อ่านง่าย:** ถ้ามีหลายรายการหรือหลายฟิลด์ ให้แยกบรรทัด ใช้ bullet (- หรือ •) นำหน้า แต่ละข้อความบรรทัดเดียว ไม่รวมเป็นย่อหน้าเดียวยาวๆ
-4. ใช้ข้อมูลจากบริบทเท่านั้น ไม่ต้องคิดเอง
-5. หากไม่พบข้อมูล ให้ตอบว่า "ขอโทษ ไม่พบข้อมูลที่ตรงกับคำถามของคุณในระบบ"
-6. ตอบเป็นภาษาไทย
-
-**บริบทข้อมูล:**
-{{context}}
-
-**คำถาม:** {{question}}
-
-**คำตอบ (กระชับ จัดรูปแบบเป็นระเบียบ อ่านง่าย):**"""
-    
     PROMPT = PromptTemplate(
-        template=prompt_template,
-        input_variables=["context", "question"]
+        template=(
+            f"คุณเป็นผู้ช่วยตอบคำถามเกี่ยวกับข้อมูลจาก {collection_name} "
+            "ของวิทยาลัยการคอมพิวเตอร์ มหาวิทยาลัยขอนแก่น\n\n"
+            "**คำแนะนำในการตอบ:**\n"
+            "1. ตอบเฉพาะสิ่งที่ผู้ใช้ถาม ไม่ยัดข้อมูลที่ไม่เกี่ยวข้อง\n"
+            "2. มีประโยคนำสั้นๆ ได้ ไม่ห้วนจนเหลือแค่ค่าข้อมูลอย่างเดียว\n"
+            "3. **จัดรูปแบบให้อ่านง่าย:** ถ้ามีหลายรายการให้แยกบรรทัด ใช้ bullet (- หรือ •) นำหน้า\n"
+            "4. ใช้ข้อมูลจากบริบทเท่านั้น ไม่ต้องคิดเอง\n"
+            "5. หากไม่พบข้อมูล ให้ตอบว่า \"ขอโทษ ไม่พบข้อมูลที่ตรงกับคำถามของคุณในระบบ\"\n"
+            "6. ตอบเป็นภาษาไทย\n\n"
+            "**บริบทข้อมูล:**\n{context}\n\n"
+            "**คำถาม:** {question}\n\n"
+            "**คำตอบ (กระชับ จัดรูปแบบเป็นระเบียบ อ่านง่าย):**"
+        ),
+        input_variables=["context", "question"],
     )
-    
-    # Create LLM chain
-    qa_chain = LLMChain(llm=llm, prompt=PROMPT)
-    
+
+    def _get_qa_chain():
+        """คืน qa_chain ที่ตรงกับ CHATBOT_MODEL ปัจจุบัน — rebuild เฉพาะตอน model เปลี่ยน"""
+        current_model = os.getenv("CHATBOT_MODEL") or os.getenv("OPENAI_MODEL", "gemini-2.5-flash-lite")
+        if _llm_cache["model"] != current_model:
+            llm = _build_llm_for_model(current_model)
+            _llm_cache["model"] = current_model
+            _llm_cache["qa_chain"] = LLMChain(llm=llm, prompt=PROMPT)
+            print(f"🔄 LLM rebuilt → model: {current_model} [{collection_name}]")
+        return _llm_cache["qa_chain"], _llm_cache["model"]
+
     def qa_function(question: str) -> str:
         """QA function wrapper with detailed logging"""
         print(f"\n{'='*60}")
         print(f"🔍 เริ่มค้นหาข้อมูลสำหรับคำถาม: '{question}'")
         print(f"📦 Collection: {collection_name}")
         print(f"{'='*60}\n")
-        
+
         try:
-            # Step 1: Retrieve relevant documents
             print("📥 Step 1: กำลังค้นหาเอกสารที่เกี่ยวข้อง...")
             docs = retriever.get_relevant_documents(question)
-            
+
             if not docs:
                 print("❌ ไม่พบเอกสารใดๆ")
                 return f"ขอโทษ ไม่พบข้อมูลใน collection {collection_name} ที่ตรงกับคำถามของคุณ"
-            
+
             print(f"✅ พบเอกสาร {len(docs)} เอกสาร")
-            
-            # Step 2: Show retrieved documents
+
             print(f"\n📄 เอกสารที่ค้นหาได้:")
             for i, doc in enumerate(docs[:5], 1):
                 content_preview = doc.page_content[:100].replace('\n', ' ')
                 search_type = doc.metadata.get("search_type", "unknown")
                 print(f"   {i}. [{search_type}] {content_preview}...")
-            
-            # Step 3: Filter relevant documents
+
             print(f"\n🔍 Step 2: กำลังกรองเอกสารที่เกี่ยวข้อง...")
             question_lower = question.lower()
             question_keywords = set(question_lower.split())
-            
-            relevant_docs = []
-            for doc in docs:
-                doc_content_lower = doc.page_content.lower()
-                # Check if any keyword from question appears in document
-                if any(keyword in doc_content_lower for keyword in question_keywords if len(keyword) > 2):
-                    relevant_docs.append(doc)
-            
-            # If no relevant docs found, use all docs anyway (might be semantic match)
+
+            relevant_docs = [
+                doc for doc in docs
+                if any(kw in doc.page_content.lower() for kw in question_keywords if len(kw) > 2)
+            ]
             if not relevant_docs:
                 print(f"⚠️ ไม่พบ keyword match - ใช้เอกสารทั้งหมด (อาจเป็น semantic match)")
                 relevant_docs = docs[:5]
             else:
                 print(f"✅ พบเอกสารที่เกี่ยวข้อง {len(relevant_docs)} เอกสาร")
-                relevant_docs = relevant_docs[:5]  # Limit to top 5
-            
-            # Step 4: Build context
+                relevant_docs = relevant_docs[:5]
+
             print(f"\n📝 Step 3: กำลังสร้าง context จากเอกสาร...")
             merged_context = "\n\n".join([f"ข้อมูล {i+1}:\n{d.page_content}" for i, d in enumerate(relevant_docs)])
-            print(f"✅ Context length: {len(merged_context)} characters")
-            print(f"   ใช้เอกสาร: {len(relevant_docs)} เอกสาร")
-            
-            # Show context preview
-            print(f"\n📋 Context Preview (200 chars):")
-            print(f"   {merged_context[:200]}...")
-            
-            # Step 5: Generate answer using LLM
+            print(f"✅ Context length: {len(merged_context)} characters ({len(relevant_docs)} เอกสาร)")
+
+            qa_chain, current_model = _get_qa_chain()
             print(f"\n🤖 Step 4: กำลังเรียก LLM เพื่อสร้างคำตอบ...")
-            print(f"   Model: {model_name}")
+            print(f"   Model: {current_model}")
             print(f"   Question: {question}")
-            
+
             try:
                 input_dict = {"question": question, "context": merged_context}
                 response = qa_chain.invoke(input_dict)
-                
-                # Extract text from response if it's a dict
-                if isinstance(response, dict):
-                    answer = response.get("text", str(response))
-                else:
-                    answer = str(response)
-                
+                answer = response.get("text", str(response)) if isinstance(response, dict) else str(response)
                 print(f"✅ LLM สร้างคำตอบสำเร็จ (length: {len(answer)} chars)")
-                
             except Exception as chain_error:
                 print(f"❌ Chain invoke error: {chain_error}")
-                # Fallback: try run method
                 try:
-                    print(f"🔄 ลองใช้ run method...")
                     answer = qa_chain.run({"question": question, "context": merged_context})
                     print(f"✅ LLM สร้างคำตอบสำเร็จ (fallback method)")
                 except Exception as run_error:
                     print(f"❌ Chain run error: {run_error}")
                     return f"เกิดข้อผิดพลาดในการเรียก LLM: {str(run_error)}"
-            
-            # Step 6: Check answer quality
+
             print(f"\n📊 Step 5: กำลังตรวจสอบคุณภาพคำตอบ...")
-            no_info_phrases = [
-                "ไม่มีในข้อมูล", "ไม่พบข้อมูล", "ไม่มีข้อมูล", 
-                "no data", "not found", "ไม่มีในบริบท"
-            ]
-            
+            no_info_phrases = ["ไม่มีในข้อมูล", "ไม่พบข้อมูล", "ไม่มีข้อมูล", "no data", "not found", "ไม่มีในบริบท"]
             if any(phrase in answer.lower() for phrase in no_info_phrases):
                 print(f"⚠️ LLM บอกว่าไม่พบข้อมูล แต่มีเอกสาร {len(docs)} เอกสาร")
-                # If LLM says no info, but we have docs, show a sample
                 if relevant_docs:
                     sample_content = relevant_docs[0].page_content[:300]
                     answer = f"{answer}\n\n**หมายเหตุ:** พบเอกสารที่เกี่ยวข้อง แต่ข้อมูลอาจไม่ตรงกับคำถามของคุณ\n\nตัวอย่างข้อมูลที่พบ:\n{sample_content}..."
             else:
                 print(f"✅ คำตอบดูดี (มีข้อมูล)")
-            
-            # Add source information
-            if docs:
-                answer += f"\n\n(พบข้อมูลจาก {len(docs)} เอกสาร)"
-            
+
+            answer += f"\n\n(พบข้อมูลจาก {len(docs)} เอกสาร)"
             print(f"\n{'='*60}")
             print(f"✅ เสร็จสิ้น - คำตอบพร้อมแล้ว")
             print(f"{'='*60}\n")
-            
             return answer
-            
+
         except Exception as e:
             import traceback
             error_details = traceback.format_exc()
             print(f"\n❌ เกิดข้อผิดพลาด: {e}")
             print(f"Traceback:\n{error_details}")
             return f"เกิดข้อผิดพลาด: {str(e)}\n\nDebug: {error_details[:500]}"
-    
+
     return qa_function
 
 # ==========================================
@@ -1150,14 +1119,15 @@ class UnifiedChatbotAutomated:
             try:
                 metadata = intent_metadata.get(intent, {"name": intent, "icon": "📦"})
                 
-                # ใช้ retriever จาก module ถ้ามี (เหมือน hybrid version)
-                if metadata.get("module_retriever") and metadata.get("module_qa"):
-                    print(f"✅ Using module retriever for {intent}")
+                # ใช้ retriever จาก module แต่สร้าง qa_chain แบบ dynamic เพื่อให้ model เปลี่ยนได้
+                if metadata.get("module_retriever"):
+                    print(f"✅ Using module retriever (dynamic LLM) for {intent}")
+                    qa_function = create_qa_chain_with_logging(metadata["module_retriever"], collection_name)
                     self.chatbot_map[intent] = {
                         "name": metadata["name"],
                         "icon": metadata["icon"],
                         "collection": collection_name,
-                        "qa_function": metadata["module_qa"],
+                        "qa_function": qa_function,
                         "retriever": metadata["module_retriever"]
                     }
                 else:
