@@ -1071,7 +1071,12 @@ class UnifiedChatbotAutomated:
     
     def _build_default_collection_mapping(self, available_collections: List[str]) -> Dict[str, str]:
         """Build default collection mapping from available collections"""
-        # Default mapping patterns
+        # ระบุ collection ที่ต้องการใช้โดยตรง (override pattern matching)
+        pinned_collections = {
+            "digital_services": "newdigital_services_embedding",
+        }
+
+        # Default mapping patterns (สำหรับ intent ที่ไม่ได้ pin)
         default_patterns = {
             "allpeople": ["allpeople", "faculty", "staff"],
             "contact": ["contact", "services"],
@@ -1081,22 +1086,28 @@ class UnifiedChatbotAutomated:
             "students": ["students", "student"],
             "research": ["research", "researchgroup"],
             "bsc_entrance": ["bsc", "entrance", "admission"],
-            "digital_services": ["digital", "services"],
             "graduate": ["graduate"]
         }
-        
+
         mapping = {}
-        
+
+        # ใส่ pinned collections ก่อน (เฉพาะที่มีอยู่จริงใน AstraDB)
+        for intent, collection_name in pinned_collections.items():
+            if collection_name in available_collections:
+                mapping[intent] = collection_name
+                print(f"📌 Pinned: {intent} → {collection_name}")
+            else:
+                print(f"⚠️ Pinned collection '{collection_name}' not found in AstraDB (intent: {intent})")
+
+        # Pattern matching สำหรับ intent ที่เหลือ
         for intent, patterns in default_patterns.items():
             for collection in available_collections:
                 collection_lower = collection.lower()
-                # Check if collection name matches any pattern
                 if any(pattern in collection_lower for pattern in patterns):
-                    # Prefer collections with "_embedding" suffix
                     if "_embedding" in collection_lower:
                         mapping[intent] = collection
                         break
-        
+
         return mapping
     
     def _build_chatbot_map(self):

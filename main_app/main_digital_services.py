@@ -49,7 +49,7 @@ embedding = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L
 
 ASTRA_TOKEN = os.getenv("ASTRA_DB_APPLICATION_TOKEN")
 ASTRA_ENDPOINT = os.getenv("ASTRA_DB_API_ENDPOINT")
-COLLECTION_NAME = "digital_services_embedding"
+COLLECTION_NAME = "newdigital_services_embedding"
 
 if not ASTRA_TOKEN or not ASTRA_ENDPOINT:
     print("❌ Missing AstraDB credentials in .env")
@@ -388,12 +388,12 @@ class DigitalServicesRetriever(BaseRetriever):
     
     def _get_comprehensive_search(self) -> List[Document]:
         """ค้นหาข้อมูลบริการแบบครอบคลุมทั้งหมดจาก collection"""
-        print("🚀 เริ่มการค้นหาบริการดิจิตอลแบบครอบคลุมจาก digital_services_embedding collection...")
+        print("🚀 เริ่มการค้นหาบริการดิจิตอลแบบครอบคลุมจาก newdigital_services_embedding collection...")
         
         all_documents = []
         
         try:
-            print("🔍 ค้นหาจาก digital_services_embedding collection...")
+            print("🔍 ค้นหาจาก newdigital_services_embedding collection...")
             results = self.collection.find({}, limit=50)  # Get all service records
             
             for result in results:
@@ -403,7 +403,7 @@ class DigitalServicesRetriever(BaseRetriever):
                 )
                 all_documents.append(doc)
             
-            print(f"📊 จาก digital_services_embedding: {len(all_documents)} รายการ")
+            print(f"📊 จาก newdigital_services_embedding: {len(all_documents)} รายการ")
             
         except Exception as e:
             print(f"❌ Error in comprehensive search: {e}")
