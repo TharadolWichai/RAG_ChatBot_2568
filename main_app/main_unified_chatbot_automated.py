@@ -1229,56 +1229,68 @@ class UnifiedChatbotAutomated:
             return f"ขอโทษ เกิดข้อผิดพลาดจาก Agent {chatbot_config['name']}"
     
     def _multi_agent_search(self, question: str) -> str:
-        """ค้นหาจากทุก Agent และรวมผลลัพธ์"""
-        print("🔍 กำลังค้นหาจากทุก Agent...\n")
-        print(f"📊 Total agents to search: {len(self.chatbot_map)}")
-        
-        results = []
-        
-        for i, (intent, config) in enumerate(self.chatbot_map.items(), 1):
-            print(f"\n{'='*60}")
-            print(f"🔸 Agent {i}/{len(self.chatbot_map)}: {config['icon']} {config['name']} ({config['collection']})")
-            print(f"{'='*60}")
+        """ค้นหาจากทุก Agent พร้อมกัน (parallel) และรวมผลลัพธ์"""
+        from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeoutError
+        import os
+
+        agents = list(self.chatbot_map.items())
+        per_agent_timeout = int(os.getenv("AGENT_TIMEOUT", "40"))
+        max_workers = min(len(agents), int(os.getenv("AGENT_MAX_WORKERS", "5")))
+
+        print("🔍 กำลังค้นหาจากทุก Agent (parallel)...\n")
+        print(f"📊 Total agents: {len(agents)} | workers: {max_workers} | timeout/agent: {per_agent_timeout}s")
+
+        def call_agent(intent_config):
+            intent, config = intent_config
+            name = config["name"]
+            icon = config["icon"]
+            print(f"▶ เริ่ม Agent: {icon} {name}")
             try:
                 answer = config["qa_function"](question)
-                
-                # Check if answer is meaningful
                 is_meaningful = len(answer.strip()) > 50 and not any(
                     phrase in answer.lower() for phrase in [
                         "ไม่พบข้อมูล", "ไม่มีข้อมูล", "no data", "not found",
                         "ขอโทษ", "sorry", "ไม่สามารถ", "error"
                     ]
                 )
-                
-                if answer and is_meaningful:
-                    results.append({
-                        "agent": config["name"],
-                        "icon": config["icon"],
-                        "answer": answer
-                    })
-                    print(f"   ✅ พบข้อมูลที่มีความหมาย!")
-                else:
-                    print(f"   ⚪ ไม่พบข้อมูลที่มีความหมาย")
-                    
+                status = "✅ พบข้อมูล" if is_meaningful else "⚪ ไม่พบข้อมูล"
+                print(f"{status}: {icon} {name}")
+                return {"agent": name, "icon": icon, "answer": answer} if is_meaningful else None
             except Exception as e:
-                print(f"   ❌ Error: {e}")
-        
-        # Combine results
+                print(f"❌ Error [{name}]: {e}")
+                return None
+
+        results = []
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_map = {executor.submit(call_agent, item): item for item in agents}
+            for future in as_completed(future_map, timeout=per_agent_timeout + 5):
+                try:
+                    result = future.result(timeout=per_agent_timeout)
+                    if result:
+                        results.append(result)
+                except FuturesTimeoutError:
+                    intent, config = future_map[future]
+                    print(f"⏱️ Timeout: {config['name']} ใช้เวลานานเกินไป")
+                except Exception as e:
+                    intent, config = future_map[future]
+                    print(f"❌ Exception [{config['name']}]: {e}")
+
+        print(f"\n📋 สรุป: พบข้อมูลจาก {len(results)}/{len(agents)} agents")
+
         if not results:
             return "ขอโทษ ไม่พบข้อมูลที่ตรงกับคำถามของคุณในระบบ"
-        
+
         if len(results) == 1:
             result = results[0]
             return f"{result['icon']} [{result['agent']}]\n\n{result['answer']}"
-        
-        # Multiple results
+
         combined = "พบข้อมูลจากหลาย Agent:\n\n"
         for i, result in enumerate(results, 1):
             combined += f"{result['icon']} **{result['agent']}**\n"
             combined += f"{result['answer']}\n\n"
             if i < len(results):
                 combined += f"{'-'*60}\n\n"
-        
+
         return combined
     
     def answer_with_contexts(self, question: str) -> Tuple[str, List[str], Dict[str, Any]]:
