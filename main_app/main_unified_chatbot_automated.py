@@ -539,16 +539,17 @@ def create_qa_chain_with_logging(retriever: BaseRetriever, collection_name: str)
             question_lower = question.lower()
             question_keywords = set(question_lower.split())
 
+            max_docs = int(os.getenv("MAX_CONTEXT_DOCS", "15"))
             relevant_docs = [
                 doc for doc in docs
                 if any(kw in doc.page_content.lower() for kw in question_keywords if len(kw) > 2)
             ]
             if not relevant_docs:
                 print(f"⚠️ ไม่พบ keyword match - ใช้เอกสารทั้งหมด (อาจเป็น semantic match)")
-                relevant_docs = docs[:15]
+                relevant_docs = docs[:max_docs] if max_docs > 0 else docs
             else:
                 print(f"✅ พบเอกสารที่เกี่ยวข้อง {len(relevant_docs)} เอกสาร")
-                relevant_docs = relevant_docs[:15]
+                relevant_docs = relevant_docs[:max_docs] if max_docs > 0 else relevant_docs
 
             print(f"\n📝 Step 3: กำลังสร้าง context จากเอกสาร...")
             merged_context = "\n\n".join([f"ข้อมูล {i+1}:\n{d.page_content}" for i, d in enumerate(relevant_docs)])

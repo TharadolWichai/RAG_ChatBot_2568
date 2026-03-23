@@ -101,13 +101,13 @@ class DigitalServicesRetriever(BaseRetriever):
         """Initialize BM25 retriever lazily"""
         if self.bm25_retriever is None:
             try:
-                results = self.collection.find({}, limit=200)
+                results = self.collection.find({}, limit=2000)
                 documents = [Document(page_content=r.get("content", ""), metadata=r.get("metadata", {})) for r in results]
                 self.documents_cache = documents
                 
                 if documents:
                     self.bm25_retriever = BM25Retriever.from_documents(documents)
-                    self.bm25_retriever.k = 50
+                    self.bm25_retriever.k = len(documents)
                     print(f"🔧 BM25 retriever initialized with {len(documents)} documents")
             except Exception as e:
                 print(f"❌ BM25 init error: {e}")
@@ -178,7 +178,7 @@ class DigitalServicesRetriever(BaseRetriever):
             # Sort by score
             results.sort(key=lambda x: x[0], reverse=True)
             
-            return [doc for score, doc in results[:10]]
+            return [doc for score, doc in results]
             
         except Exception as e:
             print(f"❌ Advanced Thai search error: {e}")
@@ -211,7 +211,7 @@ class DigitalServicesRetriever(BaseRetriever):
         docs = []
         try:
             query_vector = self.embedding.embed_query(query)
-            results = self.collection.find({}, sort={"$vector": query_vector}, limit=50)
+            results = self.collection.find({}, sort={"$vector": query_vector}, limit=1000)
             
             for i, r in enumerate(results):
                 doc = Document(page_content=r.get("content", ""), metadata=r.get("metadata", {}))
@@ -303,7 +303,7 @@ class DigitalServicesRetriever(BaseRetriever):
         
         # Add Thai advanced search results first (highest priority)
         if thai_results:
-            for i, doc in enumerate(thai_results[:5]):  # Top 5 Thai matches
+            for i, doc in enumerate(thai_results):  # All Thai matches
                 if doc.page_content not in seen_content:
                     # Get Thai score (could be advanced or exact)
                     thai_score = doc.metadata.get("thai_advanced_score", 0.0)
@@ -384,7 +384,8 @@ class DigitalServicesRetriever(BaseRetriever):
         
         print(f"📊 สรุป: Text={len(text_results)}, Vector={len(vector_results)}, รวม={len(all_documents)} (unique)")
         
-        return all_documents[:8]  # Return top 8 results (reduce for better LLM processing)
+        print(f"📦 ส่งเอกสารทั้งหมด {len(all_documents)} รายการเข้า LLM")
+        return all_documents
     
     def _get_comprehensive_search(self) -> List[Document]:
         """ค้นหาข้อมูลบริการแบบครอบคลุมทั้งหมดจาก collection"""
@@ -394,7 +395,7 @@ class DigitalServicesRetriever(BaseRetriever):
         
         try:
             print("🔍 ค้นหาจาก newdigital_services_embedding collection...")
-            results = self.collection.find({}, limit=50)  # Get all service records
+            results = self.collection.find({}, limit=2000)  # Get all service records
             
             for result in results:
                 doc = Document(
