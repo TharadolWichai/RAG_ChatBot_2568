@@ -14,6 +14,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 import streamlit as st
 
 # Add parent directories to path for importing model_manager
@@ -35,6 +37,25 @@ except ImportError:
 # API Config
 # -----------------------------
 API_URL = os.getenv("CHATBOT_API_URL", "http://localhost:8000/api/v1/chat/completions")
+
+# Timeout: (connect timeout, read timeout) วินาที
+API_CONNECT_TIMEOUT = int(os.getenv("API_CONNECT_TIMEOUT", "15"))
+API_READ_TIMEOUT = int(os.getenv("API_READ_TIMEOUT", "180"))
+
+def make_session() -> requests.Session:
+    """Session พร้อม retry สำหรับ network error (ไม่ retry ReadTimeout เพื่อไม่ให้ซ้ำคำถาม)"""
+    session = requests.Session()
+    retry = Retry(
+        total=2,
+        backoff_factor=1.5,
+        status_forcelist=[502, 503, 504],  # retry เฉพาะ server error ชั่วคราว
+        allowed_methods=["POST", "GET"],
+        raise_on_status=False,
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    return session
 HEALTH_URL = os.getenv("CHATBOT_HEALTH_URL", "http://localhost:8000/api/v1/health")
 META_URL = os.getenv("CHATBOT_META_URL", "http://localhost:8000/api/v1/chatbot/meta")
 FEEDBACK_API_URL = os.getenv("FEEDBACK_API_URL", "http://localhost:8000/api/v1/feedback")
@@ -242,9 +263,14 @@ def ask(question: str):
                     "strict_mode": st.session_state.get("strict_mode", False),
                     "return_contexts": st.session_state.get("return_contexts", False),
                     "return_debug": st.session_state.get("return_debug", True),
-                    "model": st.session_state.get("chatbot_model"),  # ✅ เพิ่ม: ส่งโมเดลที่เลือก
+                    "model": st.session_state.get("chatbot_model"),
                 }
-                res = requests.post(API_URL, json=payload, timeout=120)
+                session = make_session()
+                res = session.post(
+                    API_URL,
+                    json=payload,
+                    timeout=(API_CONNECT_TIMEOUT, API_READ_TIMEOUT),
+                )
                 res.raise_for_status()
                 data = res.json()
 
@@ -295,11 +321,35 @@ def ask(question: str):
                     with st.expander("🔍 Debug Info"):
                         st.code(debug_output, language="text")
 
+            except requests.exceptions.ReadTimeout:
+                error_msg = (
+                    f"⏱️ เซิร์ฟเวอร์ใช้เวลานานเกินไป ({API_READ_TIMEOUT} วินาที)\n\n"
+                    "ลองทำสิ่งต่อไปนี้:\n"
+                    "- ถามคำถามสั้นลง หรือเจาะจงมากขึ้น\n"
+                    "- รอสักครู่แล้วลองใหม่ (เซิร์ฟเวอร์อาจโหลดสูง)\n"
+                    "- กด **Reload** แล้วเริ่มใหม่"
+                )
+                st.warning(error_msg)
+                st.session_state.chat_history.append({"role": "assistant", "content": error_msg})
+
+            except requests.exceptions.ConnectionError:
+                error_msg = "🔌 ไม่สามารถเชื่อมต่อ API ได้ กรุณาตรวจสอบว่าเซิร์ฟเวอร์ทำงานอยู่"
+                st.error(error_msg)
+                st.session_state.chat_history.append({"role": "assistant", "content": error_msg})
+
+            except requests.exceptions.HTTPError as e:
+                code = e.response.status_code if e.response is not None else "?"
+                error_msg = f"❌ API ตอบกลับ error {code}: {str(e)}"
+                st.error(error_msg)
+                st.session_state.chat_history.append({"role": "assistant", "content": error_msg})
+                import traceback
+                with st.expander("🔍 ดู Error Details"):
+                    st.code(traceback.format_exc())
+
             except Exception as e:
                 error_msg = f"❌ เกิดข้อผิดพลาด: {str(e)}"
                 st.error(error_msg)
                 st.session_state.chat_history.append({"role": "assistant", "content": error_msg})
-
                 import traceback
                 with st.expander("🔍 ดู Error Details"):
                     st.code(traceback.format_exc())

@@ -1,10 +1,16 @@
+import asyncio
+import io
+import os
+from contextlib import redirect_stdout, redirect_stderr
+from concurrent.futures import ThreadPoolExecutor
+
 from fastapi import FastAPI, HTTPException
 from chatbot_api.schemas import ChatRequest, ChatResponse
 from chatbot_api.deps import get_chatbot
-from chatbot_api.feedback import router as feedback_router  # ✅ เพิ่ม
+from chatbot_api.feedback import router as feedback_router
 
-import io
-from contextlib import redirect_stdout, redirect_stderr
+SERVER_ANSWER_TIMEOUT = int(os.getenv("SERVER_ANSWER_TIMEOUT", "150"))
+_executor = ThreadPoolExecutor(max_workers=4)
 
 app = FastAPI(
     title="CoC Unified RAG Chatbot API",
@@ -25,29 +31,48 @@ def health_v1():
     """API v1 health check"""
     return {"status": "ok"}
 
+def _run_bot_answer(bot, question: str, strict_mode: bool, return_contexts: bool):
+    """รัน bot.answer() พร้อมจับ stdout/stderr (ฟังก์ชัน blocking ที่ถูกรันใน thread)"""
+    output_buffer = io.StringIO()
+    with redirect_stdout(output_buffer), redirect_stderr(output_buffer):
+        try:
+            result = bot.answer(
+                question,
+                strict_mode=strict_mode,
+                return_contexts=return_contexts,
+            )
+        except TypeError:
+            result = bot.answer(question)
+    return result, output_buffer.getvalue()
+
+
 @app.post("/api/v1/chat/completions")
-def chat(req: ChatRequest):
+async def chat(req: ChatRequest):
     try:
-        # Get chatbot with specified model (or use default)
         bot = get_chatbot(model=req.model)
+        loop = asyncio.get_event_loop()
 
-        output_buffer = io.StringIO()
-        with redirect_stdout(output_buffer), redirect_stderr(output_buffer):
-            # automated version ใช้ hybrid classifier ภายใน bot อยู่แล้ว
-            # ส่ง flags เข้าไปเฉพาะใน API layer (ถ้า bot ไม่รองรับ flags นี้ จะ fallback เองด้านล่าง)
-            try:
-                result = bot.answer(
+        try:
+            result, debug_output = await asyncio.wait_for(
+                loop.run_in_executor(
+                    _executor,
+                    _run_bot_answer,
+                    bot,
                     req.question,
-                    strict_mode=req.strict_mode,
-                    return_contexts=req.return_contexts
-                )
-            except TypeError:
-                # ถ้า bot.answer ไม่รับพารามิเตอร์เพิ่ม ให้เรียกแบบเดิม
-                result = bot.answer(req.question)
+                    req.strict_mode,
+                    req.return_contexts,
+                ),
+                timeout=SERVER_ANSWER_TIMEOUT,
+            )
+        except asyncio.TimeoutError:
+            raise HTTPException(
+                status_code=504,
+                detail=(
+                    f"การประมวลผลใช้เวลานานเกิน {SERVER_ANSWER_TIMEOUT} วินาที "
+                    "กรุณาลองใหม่หรือถามคำถามที่สั้นกว่านี้"
+                ),
+            )
 
-        debug_output = output_buffer.getvalue()
-
-        # รองรับทั้งกรณีคืน str หรือ dict
         answer = None
         intent = None
         confidence = None
@@ -63,19 +88,19 @@ def chat(req: ChatRequest):
         else:
             answer = str(result)
 
-        # ถ้า request ไม่ต้องการ contexts ให้ปิดทิ้ง
         if not req.return_contexts:
             contexts = None
 
-        # ส่ง debug_output กลับไปให้หน้าเว็บโชว์ได้เหมือนเดิม
         return ChatResponse(
             answer=answer,
             intent=intent,
             confidence=confidence,
             contexts=contexts,
-            debug_output=debug_output if debug_output else None
+            debug_output=debug_output if debug_output else None,
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
