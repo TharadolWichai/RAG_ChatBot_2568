@@ -966,26 +966,48 @@ class HybridIntentClassifier:
         
         try:
             prompt = self._build_llm_prompt(query)
-            
+
+            messages = [
+                {
+                    "role": "system",
+                    "content": "You are an intent classifier. Respond ONLY with valid JSON."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+
+            # บาง provider/model อาจไม่รองรับ response_format=json_object เสมอ
+            # จึงลองแบบบังคับ JSON ก่อน แล้ว fallback แบบธรรมดาถ้าจำเป็น
             response = self.llm_client.chat.completions.create(
                 model=self.llm_model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an intent classifier. Respond ONLY with valid JSON."
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
+                messages=messages,
                 temperature=0.1,
                 max_tokens=150,
                 response_format={"type": "json_object"}
             )
-            
-            result_text = response.choices[0].message.content.strip()
-            result = json.loads(result_text)
+
+            result_text = (response.choices[0].message.content or "").strip()
+            if not result_text:
+                response = self.llm_client.chat.completions.create(
+                    model=self.llm_model,
+                    messages=messages,
+                    temperature=0.1,
+                    max_tokens=150,
+                )
+                result_text = (response.choices[0].message.content or "").strip()
+
+            # เผื่อโมเดลตอบนอก JSON format ให้พยายามดึงช่วง {...} มา parse
+            if not result_text:
+                raise ValueError("Empty response from LLM")
+            try:
+                result = json.loads(result_text)
+            except json.JSONDecodeError:
+                match = re.search(r"\{.*\}", result_text, re.DOTALL)
+                if not match:
+                    raise
+                result = json.loads(match.group(0))
             
             intent = result.get("intent", "unknown")
             confidence = float(result.get("confidence", 0.0))
