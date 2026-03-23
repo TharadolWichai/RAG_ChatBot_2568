@@ -52,7 +52,7 @@ st.set_page_config(
 )
 
 # -----------------------------
-# CSS (UI polish)
+# CSS 
 # -----------------------------
 def inject_css():
     st.markdown(
@@ -194,20 +194,7 @@ def inject_css():
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
         }
-        /* ===== Quick Prompts Glow Border ===== */
-        .quick-prompts-wrap .stButton > button {
-            border: 1px solid #dbeafe;
-            transition: all 0.2s ease;
-        }
 
-        .quick-prompts-wrap .stButton > button:hover {
-            border-color: #3b82f6 !important;
-
-        box-shadow:
-            0 0 0 1px rgba(59,130,246,0.4),
-            0 0 10px rgba(59,130,246,0.35),
-            0 4px 14px rgba(37,99,235,0.15);
-        }
         section[data-testid="stSidebar"] div[data-baseweb="select"] > div:hover,
         section[data-testid="stSidebar"] div[data-baseweb="select"] > div:focus-within {
             background: rgba(255,255,255,0.14) !important;
@@ -403,6 +390,24 @@ def inject_css():
         /* label */
         [data-testid="stFeedback"] label {
             color: #0f172a !important;
+        }
+        
+        /* ปุ่มใน main area เท่านั้น */
+        section[data-testid="stSidebar"] ~ div .stButton > button,
+        div[data-testid="stAppViewContainer"] .main .stButton > button {
+            border: 1px solid #cbd5e1 !important;
+            background: #ffffff !important;
+            color: #0f172a !important;
+        }
+
+        /* hover เรืองแสง */
+        section[data-testid="stSidebar"] ~ div .stButton > button:hover,
+        div[data-testid="stAppViewContainer"] .main .stButton > button:hover {
+            border-color: #60a5fa !important;
+            box-shadow:
+                0 0 0 1px rgba(96,165,250,0.45),
+                0 0 10px rgba(96,165,250,0.28),
+                0 4px 14px rgba(37,99,235,0.12) !important;
         }
                 </style>
         """,
