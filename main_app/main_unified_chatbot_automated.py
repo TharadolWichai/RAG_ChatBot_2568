@@ -224,7 +224,7 @@ class DynamicAstraDBRetriever(BaseRetriever):
             vector_results = list(self.collection.find(
                 {},
                 sort={"$vector": query_vector},
-                limit=10
+                limit=15
             ))
             
             for i, result in enumerate(vector_results):
@@ -247,7 +247,7 @@ class DynamicAstraDBRetriever(BaseRetriever):
             print("   📝 Text Search...")
             text_results = list(self.collection.find(
                 {"content": {"$regex": query, "$options": "i"}},
-                limit=10
+                limit=15
             ))
             
             for result in text_results:
@@ -530,7 +530,7 @@ def create_qa_chain_with_logging(retriever: BaseRetriever, collection_name: str)
             print(f"✅ พบเอกสาร {len(docs)} เอกสาร")
 
             print(f"\n📄 เอกสารที่ค้นหาได้:")
-            for i, doc in enumerate(docs[:5], 1):
+            for i, doc in enumerate(docs[:15], 1):
                 content_preview = doc.page_content[:100].replace('\n', ' ')
                 search_type = doc.metadata.get("search_type", "unknown")
                 print(f"   {i}. [{search_type}] {content_preview}...")
@@ -545,10 +545,10 @@ def create_qa_chain_with_logging(retriever: BaseRetriever, collection_name: str)
             ]
             if not relevant_docs:
                 print(f"⚠️ ไม่พบ keyword match - ใช้เอกสารทั้งหมด (อาจเป็น semantic match)")
-                relevant_docs = docs[:5]
+                relevant_docs = docs[:15]
             else:
                 print(f"✅ พบเอกสารที่เกี่ยวข้อง {len(relevant_docs)} เอกสาร")
-                relevant_docs = relevant_docs[:5]
+                relevant_docs = relevant_docs[:15]
 
             print(f"\n📝 Step 3: กำลังสร้าง context จากเอกสาร...")
             merged_context = "\n\n".join([f"ข้อมูล {i+1}:\n{d.page_content}" for i, d in enumerate(relevant_docs)])
