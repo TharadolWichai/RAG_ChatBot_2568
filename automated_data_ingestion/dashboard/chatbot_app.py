@@ -518,18 +518,18 @@ def render_topbar():
             st.markdown('<span class="badge">Status: Ready</span>', unsafe_allow_html=True)
 
     with b1:
-        if st.button("🚀 Start", type="primary", use_container_width=True):
+        if st.button("START", type="primary", use_container_width=True):
             if initialize_chatbot():
                 st.success("✅ Initialized!")
                 st.rerun()
 
     with b2:
-        if st.button("🧹 Clear", use_container_width=True):
+        if st.button("CLEAR", use_container_width=True):
             st.session_state.chat_history = []
             st.rerun()
 
     with b3:
-        if st.button("🔄 Reload", use_container_width=True):
+        if st.button("RELOAD", use_container_width=True):
             st.session_state.chatbot = None
             st.session_state.chatbot_meta = None
             st.session_state.chat_history = []
@@ -625,7 +625,7 @@ with colA:
     st.markdown(
         """
         <div class="info-list">
-            <div class="info-item">กด <b>Start</b> เพื่อเริ่มใช้งาน</div>
+            <div class="info-item">กด <b>START</b> เพื่อเริ่มใช้งาน</div>
             <div class="info-item">พิมพ์คำถามด้านล่าง หรือกดปุ่มตัวอย่าง</div>
             <div class="info-item">สามารถ Export ประวัติแชทได้จาก Sidebar</div>
         </div>
@@ -658,10 +658,10 @@ with colB:
 # Not ready state
 if st.session_state.chatbot is None:
     # ✅ ย้าย Tip มา main กัน sidebar โล่ง
-    st.info("💡 Tip: ถ้าเจอ 503 จาก AstraDB ให้ลองรอสักครู่แล้วกด Init ใหม่")
+    st.info("💡 Tip: ถ้าเจอ 503 จาก AstraDB ให้ลองรอสักครู่แล้วกด Start ใหม่")
 
     with st.container(border=True):
-        st.warning("👆 กด **Init** (ปุ่มด้านบน) เพื่อเริ่มใช้งาน Chatbot")
+        st.warning("👆 กด **START** (ปุ่มด้านบน) เพื่อเริ่มใช้งาน Chatbot")
         with st.expander("📋 ข้อมูลเพิ่มเติม", expanded=True):
             st.markdown("""
             ### ✨ Features:
