@@ -1,0 +1,147 @@
+[
+  {
+    "index": 1,
+    "question": "ระบบจัดการโครงงานนักศึกษา",
+    "expected_answer": "https://eproject.computing.kku.ac.th/"
+  },
+  {
+    "index": 2,
+    "question": "คะแนนรอบ 3 สาขาภูมิสารสนเทศศาสตร์",
+    "expected_answer": "TGAT\n- TGAT2 20\n- TGAT3 5\nA-Level\n- 61 คณิตฯ 1 25\n- 64 ฟิสิกส์ 15\n- 65 เคมี 10\n- 66 ชีววิทยา 10\n- 82 อังกฤษ 15"
+  },
+  {
+    "index": 3,
+    "question": "ค่าเทอมของหลักสูตรวิทยาการคอมพิวเตอร์เท่าไหร่",
+    "expected_answer": "ภาคปกติ 15,000 บาท, โครงการพิเศษ 30,000 บาทต่อภาคการศึกษา"
+  },
+  {
+    "index": 4,
+    "question": "อยากถอนรายวิชาต้องทำยังไง",
+    "expected_answer": "CP-การขอถอนรายวิชาโดยได้สัญลักษณ์ W ลิงค์ https://drive.google.com/file/d/1it1BCE3mYSEOXNI1POAI0vK0vwtUNHuN/view"
+  },
+  {
+    "index": 5,
+    "question": "อยากติดต่อมหาวิทยาลัย",
+    "expected_answer": "123 อาคารวิทยวิภาส ถ.มิตรภาพ ต.ในเมือง อ.เมืองขอนแก่น จ.ขอนแก่น 40002\nโทรศัพท์ 043-009700 ต่อ 50528\nHot Line. 089-7102651, 089-7102645\nEmail : computing.kku@kku.ac.thHot Line. 089-7102651, 089-7102645 \nEmail : computing.kku@kku.ac.th"
+  },
+  {
+    "index": 6,
+    "question": "ขอเบอร์โทรวิทยาลัยหน่อย",
+    "expected_answer": "เบอร์โทรศัพท์สำหรับติดต่อส่วนงานต่างๆ ของวิทยาลัยมีดังนี้ครับ\n\n   ด้านบริหารธุรการ: ต่อ 50525, 50527\n   ด้านบริการการศึกษา: ต่อ 50526\n   ด้านการเงินและบัญชี: ต่อ 51025, 50535\n   ด้านพัฒนานักศึกษา: ต่อ 50523\n   ด้านพัสดุ: ต่อ 51021"
+  },
+  {
+    "index": 7,
+    "question": "ขอข้อมูลอาจารย์พงษ์ศธร",
+    "expected_answer": "ชื่อ-สกุล: พงษ์ศธร จันทร์ยอย (Pongsathon Janyoi)\n   ตำแหน่ง: หลักสูตรความมั่นคงปลอดภัยไซเบอร์\n   อีเมล: pongsathon@kku.ac.th\n   ความเชี่ยวชาญ:\n       Speech Synthesis\n       Natural Language Processing\n       Deep Learning"
+  },
+  {
+    "index": 8,
+    "question": "อาจารย์พงษ์ศธรเชี่ยวชาญอะไร",
+    "expected_answer": "Speech Synthesis\n   Natural Language Processing\n   Deep Learning"
+  },
+  {
+    "index": 9,
+    "question": "ผลงานทางวิชาการของอาจารย์พุธษดีมีอะไรบ้าง",
+    "expected_answer": "ตำรา หนังสือ และเอกสารประกอบการสอน\n- พุธษดี ศิริแสงตระกูล. (2552). เอกสารประกอบการสอนการเขียนโปรแกรมเบื้องต้น.\n- พุธษดี ศิริแสงตระกูล. (2536). ระบบจัดการฐานข้อมูล.\n\nงานวิจัย และบทความทางวิชาการ\n- Pariwat, T. & Seresangtakul, P. (2021) Multi-stroke thai finger-spelling sign language recognition system with deep learning. Symmetry, 13(2), 1-19.\n- Khamphakdee, N., & Seresangtakul, P. (2021). Sentiment Analysis for Thai Language in Hotel Domain Using Machine Learning Algorithms. Acta Informatica Pragensia, 10(2), 155-171.\n- Khamphakdee, N. & Seresangtakul, P. (2021). A Framework for Constructing Thai Sentiment Corpus using the Cosine Similarity Technique. KST 2021 - 2021 13th International Conference Knowledge and Smart Technology, 202-207."
+  },
+  {
+    "index": 10,
+    "question": "จองห้องประชุม",
+    "expected_answer": "ระบบจองห้องประชุม (Reservation): https://appcs.kku.ac.th/rroom"
+  },
+  {
+    "index": 11,
+    "question": "ขอรายละเอียดการรับเข้าศึกษา",
+    "expected_answer": "รอบที่ 1 Portfolio\n    โครงการที่เปิดรับ:\n    - โครงการทุนช้างเผือก\n    - ทุนผู้มีความสามารถดีเด่นด้านคอมพิวเตอร์และเทคโนโลยีสารสนเทศ\n    - โครงการผู้มีศักยภาพด้านคอมพิวเตอร์\n\n   รอบที่ 2 โควตาภาคตะวันออกเฉียงเหนือ\n    - ใช้คะแนน NETSAT ในการคัดเลือก\n    - คะแนนรวมขั้นต่ำไม่น้อยกว่า 30%\n    - สัดส่วนคะแนนสำหรับแต่ละหลักสูตร:\n        - วิทยาการคอมพิวเตอร์ / ปัญญาประดิษฐ์: SAT 1 (ความรู้ทั่วไป) 40%, SAT 2 (คณิตศาสตร์) 25%, SAT 2 (ฟิสิกส์) 15%, SAT 2 (อังกฤษ) 15%, SAT 2 (ภาษาไทย) 5%\n        - เทคโนโลยีสารสนเทศและนวัตกรรมอัจฉริยะ: SAT 1 (ความรู้ทั่วไป) 40%, SAT 2 (คณิตศาสตร์) 20%, SAT 2 (ฟิสิกส์) 20%, SAT 2 (อังกฤษ) 10%, SAT 2 (ภาษาไทย) 10%\n        - ภูมิสารสนเทศศาสตร์: SAT 1 (ความรู้ทั่วไป) 45%, SAT 2 (คณิตศาสตร์) 20%, SAT 2 (ฟิสิกส์) 10%, SAT 2 (อังกฤษ) 10%, SAT 2 (ภาษาไทย) 15%\n        - ความมั่นคงปลอดภัยไซเบอร์: SAT 1 (ความรู้ทั่วไป) 40%, SAT 2 (คณิตศาสตร์) 20%, SAT 2 (ฟิสิกส์) 15%, SAT 2 (อังกฤษ) 10%, SAT 2 (ภาษาไทย) 15%\n\n รอบที่ 3 Admission\n    - ใช้คะแนน TGAT และ A-Level ในการคัดเลือก\n    - คะแนนรวมขั้นต่ำไม่น้อยกว่า 30%\n    - สัดส่วนคะแนนสำหรับแต่ละหลักสูตร:\n        - วิทยาการคอมพิวเตอร์ / ปัญญาประดิษฐ์: TGAT2 20%, TGAT3 5%, A-Level คณิตฯ 1 35%, A-Level ฟิสิกส์ 15%, A-Level อังกฤษ 25%\n        - เทคโนโลยีสารสนเทศและนวัตกรรมอัจฉริยะ: TGAT2 20%, A-Level คณิตฯ 1 30%, A-Level ฟิสิกส์ 25%, A-Level อังกฤษ 25%\n        - ภูมิสารสนเทศศาสตร์: TGAT2 20%, TGAT3 5%, A-Level คณิตฯ 1 25%, A-Level ฟิสิกส์ 15%, A-Level เคมี 10%, A-Level ชีววิทยา 10%, A-Level อังกฤษ 15%\n        - ความมั่นคงปลอดภัยไซเบอร์: TGAT2 30%, A-Level คณิตฯ 1 35%, A-Level ฟิสิกส์ 10%, A-Level อังกฤษ 25%\n\nค่าธรรมเนียมการศึกษา (สำหรับนักศึกษาใหม่ตั้งแต่ปี 2565)\n\n- หลักสูตรวิทยาการคอมพิวเตอร์ (CS): ภาคปกติ 15,000 บาท, โครงการพิเศษ 30,000 บาท\n- หลักสูตรเทคโนโลยีสารสนเทศและนวัตกรรมอัจฉริยะ (ITII):ภาคปกติ 15,000 บาท\n- หลักสูตรภูมิสารสนเทศศาสตร์ (GIS):ภาคปกติ 15,000 บาท\n-หลักสูตรปัญญาประดิษฐ์ (AI):ภาคปกติ 30,000 บาท, โครงการพิเศษ 40,000 บาท\n- หลักสูตรความมั่นคงปลอดภัยไซเบอร์ (Cyber):ภาคปกติ 30,000 บาท, โครงการพิเศษ 40,000 บาท"
+  },
+  {
+    "index": 12,
+    "question": "อยากรู้เกณฑ์คะแนนรับเข้าของรอบที่ 2",
+    "expected_answer": "ใช้คะแนน NETSAT โดยมีคะแนนรวมขั้นต่ำไม่น้อยกว่า 30% และมีสัดส่วนค่าน้ำหนักในแต่ละหลักสูตรดังนี้\n\n   วิทยาการคอมพิวเตอร์ (ภาคปกติ/โครงการพิเศษ)\n       ภาษาไทย: 5%\n       อังกฤษ: 15%\n       คณิตศาสตร์: 25%\n       วิทยาศาสตร์และเทคโนโลยี: 40%\n       ฟิสิกส์: 15%\n\n   เทคโนโลยีสารสนเทศและนวัตกรรมอัจฉริยะ (ภาคปกติ)\n       ภาษาไทย: 10%\n       อังกฤษ: 10%\n       คณิตศาสตร์: 20%\n       วิทยาศาสตร์และเทคโนโลยี: 40%\n       ฟิสิกส์: 20%\n\n   ภูมิสารสนเทศศาสตร์ (ภาคปกติ)\n       ภาษาไทย: 15%\n       อังกฤษ: 10%\n       คณิตศาสตร์: 20%\n       วิทยาศาสตร์และเทคโนโลยี: 45%\n       ฟิสิกส์: 10%\n\n   ปัญญาประดิษฐ์ (ภาคปกติ/โครงการพิเศษ)\n       ภาษาไทย: 5%\n       อังกฤษ: 15%\n       คณิตศาสตร์: 25%\n       วิทยาศาสตร์และเทคโนโลยี: 40%\n       ฟิสิกส์: 15%\n\n   ความมั่นคงปลอดภัยไซเบอร์ (ภาคปกติ/โครงการพิเศษ)\n       ภาษาไทย: 15%\n       อังกฤษ: 10%\n       คณิตศาสตร์: 20%\n       วิทยาศาสตร์และเทคโนโลยี: 40%"
+  },
+  {
+    "index": 13,
+    "question": "เกณฑ์คะแนนรายวิชาของหลักสูตรปัญญาประดิษฐ์",
+    "expected_answer": "รอบที่ 3 Admission (คะแนนรวมขั้นต่ำไม่น้อยกว่า 30%)\n   TGAT2: 20%\n   TGAT3: 5%\n   A-Level 61 คณิตฯ 1: 35%\n   A-Level 64 ฟิสิกส์: 15%\n   A-Level 82 อังกฤษ: 25%\n\nรอบที่ 2 โควตาภาคตะวันออกเฉียงเหนือ (ใช้คะแนน NETSAT, คะแนนรวมขั้นต่ำไม่น้อยกว่า 30%)\n   SAT 1 (101 ภาษาไทย): 5%\n   SAT 1 (102 อังกฤษ): 15%\n   SAT 1 (103 คณิตศาสตร์): 25%\n   SAT 2 (201 วิทยาศาสตร์และเทคโนโลยี): 40%\n   SAT 2 (204 ฟิสิกส์): 15%"
+  },
+  {
+    "index": 14,
+    "question": "ข้อมูลเกี่ยวกับสหกิจศึกษา",
+    "expected_answer": "คู่มือสหกิจศึกษา\n       URL: https://docs.google.com/document/d/1zffD4H7ssXpMRImTay9FbD53TADwetWl/edit?usp=sharing&ouid=111733404484503575729&rtpof=true&sd=true\n   ใบคำร้องขอเข้าร่วมโครงการสหกิจศึกษา(update)\n       URL: https://docs.google.com/document/d/1KOC2RQ84izj_5PexnLmFLWmdfgGoyLLf/edit?usp=sharing&ouid=111733404484503575729&rtpof=true&sd=true\n   KKUCP-T003_แบบแผนและโครงร่างรายงานการปฏิบัติงานสหกิจศึกษา-Proposal\n       URL: https://docs.google.com/document/d/1Iyfy25PyGQ-sLIFPdva2E6SJ2HmGoC0E/edit?usp=sharing&ouid=111733404484503575729&rtpof=true&sd=true\n   KKUCP-T004_แบบบันทึกการนิเทศงานนักศึกษาสหกิจศึกษา\n       URL: https://docs.google.com/document/d/1oI_mDqWWjcs_IxMUuo7AqAUUzeTPtkHQ/edit?usp=sharing&ouid=111733404484503575729&rtpof=true&sd=true\n   KKUCP-T007_แบบฟอร์มรายงานการปฏิบัติสหกิจศึกษา\n       URL: https://docs.google.com/document/d/1gD1AAI1CYTc6-ciTCyRPQ1ePZNWwpJIk/edit?usp=sharing&ouid=111733404484503575729&rtpof=true&sd=true"
+  },
+  {
+    "index": 15,
+    "question": "อยากรู้เกณฑ์คะแนนรับเข้าของรอบที่ 3",
+    "expected_answer": "ผู้สมัครต้องมีคะแนนรวมขั้นต่ำไม่น้อยกว่า 30% โดยมีสัดส่วนค่าน้ำหนักคะแนนของแต่ละหลักสูตรดังนี้\n\n   วิทยาการคอมพิวเตอร์ (ภาคปกติ/โครงการพิเศษ)\n       TGAT2: 20%\n       TGAT3: 5%\n       A-Level 61 คณิตฯ 1: 35%\n       A-Level 64 ฟิสิกส์: 15%\n       A-Level 82 อังกฤษ: 25%\n\n   เทคโนโลยีสารสนเทศและนวัตกรรมอัจฉริยะ (ภาคปกติ)\n       TGAT2: 20%\n       A-Level 61 คณิตฯ 1: 30%\n       A-Level 64 ฟิสิกส์: 25%\n       A-Level 82 อังกฤษ: 25%\n\n   ภูมิสารสนเทศศาสตร์ (ภาคปกติ)\n       TGAT2: 20%\n       TGAT3: 5%\n       A-Level 61 คณิตฯ 1: 25%\n       A-Level 64 ฟิสิกส์: 15%\n       A-Level 65 เคมี: 10%\n       A-Level 66 ชีววิทยา: 10%\n       A-Level 82 อังกฤษ: 15%\n\n   ปัญญาประดิษฐ์ (ภาคปกติ/โครงการพิเศษ)\n       TGAT2: 20%\n       TGAT3: 5%\n       A-Level 61 คณิตฯ 1: 35%\n       A-Level 64 ฟิสิกส์: 15%\n       A-Level 82 อังกฤษ: 25%\n\n   ความมั่นคงปลอดภัยไซเบอร์ (ภาคปกติ/โครงการพิเศษ)\n       TGAT2: 30%\n       A-Level 61 คณิตฯ 1: 35%\n       A-Level 64 ฟิสิกส์: 10%\n       A-Level 82 อังกฤษ: 25%"
+  },
+  {
+    "index": 16,
+    "question": "ทุนการศึกษาทั้งหมด",
+    "expected_answer": "ASEAN & GMS Scholarship\n College of Computing International Program Scholarship\n College of Computing Research Scholarship\n รางวัลผลการเรียนดีเยี่ยมระดับบัณฑิตศึกษา"
+  },
+  {
+    "index": 17,
+    "question": "รายละเอียดของทุนการศึกษาทั้งหมด",
+    "expected_answer": "1. ทุน ASEAN & GMS Scholarship\n   สำหรับระดับปริญญาโท (ไม่เกิน 2 ปี) และปริญญาเอก (ไม่เกิน 3 ปี)\n   ครอบคลุมค่าธรรมเนียมการศึกษาและค่าธรรมเนียมนักศึกษาต่างชาติ (ตามจ่ายจริง)\n   ค่าทำวิจัยและวิทยานิพนธ์ ไม่เกิน 18,000 บาทต่อปี\n\n  2. ทุน College of Computing International Program Scholarship\n    ประเภททุนเต็มจำนวน:\n       ปริญญาโท (ไม่เกิน 2 ปี): ค่าธรรมเนียมการศึกษาไม่เกิน 30,000 บาท/ภาคการศึกษา และค่าใช้จ่ายส่วนตัว 10,000 บาท/เดือน\n       ปริญญาเอก (ไม่เกิน 3 ปี): ค่าธรรมเนียมการศึกษาไม่เกิน 40,000 บาท/ภาคการศึกษา และค่าใช้จ่ายส่วนตัว 15,000 บาท/เดือน\n   ประเภททุนบางส่วน:\n       ปริญญาโท (ไม่เกิน 2 ปี): อาจสนับสนุนอย่างใดอย่างหนึ่งหรือมากกว่า เช่น ค่าธรรมเนียมการศึกษา (ไม่เกิน 30,000 บาท/ภาคการศึกษา), ค่าใช้จ่ายส่วนตัว (10,000 บาท/เดือน) หรือค่าเดินทางระหว่างประเทศ\n       ปริญญาเอก (ไม่เกิน 3 ปี): อาจสนับสนุนอย่างใดอย่างหนึ่งหรือมากกว่า เช่น ค่าธรรมเนียมการศึกษา (ไม่เกิน 40,000 บาท/ภาคการศึกษา), ค่าใช้จ่ายส่วนตัว (15,000 บาท/เดือน) หรือค่าเดินทางระหว่างประเทศ\n\n3. ทุน College of Computing Research Scholarship\n  ประเภททุนเต็มจำนวน:\n       ปริญญาโท (ไม่เกิน 2 ปี): ค่าธรรมเนียมการศึกษาไม่เกิน 100,000 บาท/ภาคการศึกษา และค่าใช้จ่ายส่วนตัว 10,000 บาท/เดือน\n       ปริญญาเอก (ไม่เกิน 3 ปี): ค่าธรรมเนียมการศึกษาไม่เกิน 100,000 บาท/ภาคการศึกษา และค่าใช้จ่ายส่วนตัว 15,000 บาท/เดือน\n   ประเภททุนบางส่วน:\n       ปริญญาโท (ไม่เกิน 2 ปี): อาจสนับสนุนอย่างใดอย่างหนึ่งหรือมากกว่า เช่น ค่าธรรมเนียมการศึกษา (ไม่เกิน 100,000 บาท/ภาคการศึกษา), ค่าใช้จ่ายส่วนตัว (10,000 บาท/เดือน), ค่าทำวิจัย (ไม่เกิน 12,000 บาท/ปี) หรือค่าเดินทาง (ไม่เกิน 5,000 บาท)\n       ปริญญาเอก (ไม่เกิน 3 ปี): อาจสนับสนุนอย่างใดอย่างหนึ่งหรือมากกว่า เช่น ค่าธรรมเนียมการศึกษา (ไม่เกิน 100,000 บาท/ภาคการศึกษา) หรือค่าใช้จ่ายส่วนตัว (15,000 บาท/เดือน)\n\n4. รางวัลผลการเรียนดีเยี่ยมระดับบัณฑิตศึกษา\n   ผลการเรียนสูงสุด และเกรดเฉลี่ยไม่ต่ำกว่า 3.75: ได้รับเกียรติบัตร พร้อมทุนการศึกษา 10,000 บาท\n   ผลการเรียนสูงสุด และเกรดเฉลี่ยไม่ต่ำกว่า 3.50: ได้รับเกียรติบัตร พร้อมทุนการศึกษา 5,000 บาท"
+  },
+  {
+    "index": 18,
+    "question": "บริการดิจิตอลมีอะไรบ้าง",
+    "expected_answer": "บริการ Virtual Machine\n*   บริการ Google Play for Education\n*   บริการ Web Hosting\n*   บริการ Apple Store for Education\n*   บริการ ChatGPT Plus\n*   บริการ Grammarly Premium\n*   บริการ Server สำหรับ Data Science และ AI\n*   บริการ H100 GPU\n*   บริการ KKU Snapdrop\n*   บริการ NAS (Network Attached Storage)"
+  },
+  {
+    "index": 19,
+    "question": "h100",
+    "expected_answer": "**URL:** https://computing.kku.ac.th/h100"
+  },
+  {
+    "index": 20,
+    "question": "บริการ web hosting",
+    "expected_answer": "ใช้เวลาตรวจสอบคำร้องของการใช้งาน Web Hosting ไม่เกิน 3 วันทำการ\n\nการอนุมัติการใช้งาน Web Hosting เจ้าหน้าที่จะตอบกลับไปยัง E-mail ของนักศึกษา (E-mail ที่นักศึกษากรอกไว้ใน Google Form) ซึ่งจะแจ้งชื่อ domain, username, และ password ในการใช้งาน\n\nชื่อ domain นักศึกษาจะได้ชื่อตัวอย่างนี้ https://IT-WEB11_66.cpkkuhost.com  ซึ่งเกิดจากชื่อหลักสูตรตามด้วยรหัสกลุ่ม project (ตามด้วย Track) และ ปี พ.ศ. ตามลำดับ เช่น นักศึกษาหลักสูตร IT Track Web ลำดับที่ 11 ปี พ.ศ. 2566 ตามด้วย cpkkuhost.com\n\nการตอน deploy web โปรเจคของนักศึกษาขึ้น Web Hosting สามารถเข้าดำเนินกงานได้โดยเข้าสู่ระบบCpanelด้วย username และ passwordที่ได้รับ\n\nกรณีลืม password เข้าใช้ระบบ web hosting ให้นักศึกษาติดต่อเจ้าหน้าที่ผ่านทาง E-mail: sutoch@kku.ac.th โดยระบุชื่อ subject ของ e-mail ว่าลืม password Web Hosting ตามด้วยชื่อ domain ที่นักศึกษาได้รับ ในเนื้อหาของ e-mail ให้ระบุข้อมูลรหัสประจำตัวนักศึกษา ชื่อ-นามสกุล\n\nหากต้องการพื้นที่เพิ่มจากเดิม 2 GB วิทยาลัยจะขยายให้เป็น 4 GB ให้นักศึกษาติดต่อเจ้าหน้าที่ผ่านทาง E-mail: sutoch@kku.ac.th  โดยระบุชื่อ subject ของ e-mail ว่าต้องการพื้นที่จัดเก็บ Web Hosting เพิ่ม ตามด้วยชื่อ domain ที่นักศึกษาได้รับ ในเนื้อหาของ e-mail ให้ระบุข้อมูลรหัสประจำตัวนักศึกษา ชื่อ-นามสกุล และเหตุผลในการข้อใช้พื้นที่เพิ่ม\n\nกรณีที่ต้องการยกเลิกใช้งานพื้นที่ web hosting ให้ติดต่อเจ้าหน้าโดยส่งข้อมูลมาที่ E-mail: sutoch@kku.ac.th  โดยระบุชื่อ subject ของ e-mail ว่า ขอยกเลิกการขอใช้พื้นที่ Web Hosting ตามด้วยชื่อ domain ที่นักศึกษาได้รับในเนื้อหาของ e-mail ให้ระบุข้อมูลรหัสประจำตัวนักศึกษา ชื่อ-นามสกุล\n\nเว็บจะถูกจัดเก็บใน Host เป็นระยะเวลา 2 ปี หากต้องการใช้งานต่อ สามารถแจ้งที่ E-mail: sutoch@kku.ac.th  โดยระบุชื่อ subject ของ e-mail ว่า ต้องการใช้งาน Web Hosting ตามด้วยชื่อ domain ที่นักศึกษาได้รับ ในเนื้อหาของ e-mail ให้ระบุข้อมูลรหัสประจำตัวนักศึกษา ชื่อ-นามสกุล"
+  },
+  {
+    "index": 21,
+    "question": "บริการ server สำหรับ data science",
+    "expected_answer": "เป็นบริการสำหรับขอใช้งานเครื่อง Server เพื่อการประมวลผลด้านปัญญาประดิษฐ์\n*   **URL:** https://computing.kku.ac.th/server-ds-ai\n*   **ข้อตกลงในการใช้บริการ:**\n    *   ผู้ใช้งานจะต้องไม่ทำให้เกิดความเสียหายแก่บุคคลอื่น หรือกระทำผิดกฎหมาย\n    *   ผู้ใช้งานต้องรักษารหัสผ่านที่ได้รับเป็นอย่างดี และห้ามให้บุคคลภายนอกใช้งาน\n    *   ห้ามใช้โปรแกรมที่ทำให้ทรัพยากรของระบบลดลงอย่างมาก\n    *   ผู้ใช้งานต้องมีความพร้อมในการสำรองข้อมูลและสามารถแก้ปัญหาต่างๆ ได้ด้วยตนเอง"
+  },
+  {
+    "index": 22,
+    "question": "ขอรายชื่อกลุ่มวิจัยทั้งหมด",
+    "expected_answer": "Hardware-Human Interface and Communications Lab\n*   Advanced Intelligent Interdisciplinary Integration (AIII) / การบูรณาการสหวิทยาการอัจฉริยะขั้นสูง\n*   Advanced Smart Computing / กลุ่มวิจัยการคำนวณแบบฉลาดชั้นนำ\n*   Advanced GIS Technology (AGT) / กลุ่มปฏิบัติการเทคโนโลยีภูมิสารสนเทศขั้นสูง\n*   การประมวลผลภาษาธรรมชาติและเสียง (Natural Language and Speech Processing : NLSP)\n*   Applied Intelligence and Data Analytics (AIDA) / การประยุกต์อัฉริยะและการวิเคราะห์ข้อมูล (AIDA LAB)\n*   Intelligent Software Engineering Research Group (I-SERG) / กลุ่มวิจัยวิศวกรรมซอฟต์แวร์อัจฉริยะ"
+  },
+  {
+    "index": 23,
+    "question": "รายละเอียดของกลุ่มวิจัย Hardware-Human Interface and Communications Lab",
+    "expected_answer": "มีเป้าหมายในการออกแบบ สร้าง และประเมินเครื่องมือที่เป็นมิตรต่อผู้ใช้ มีประโยชน์ และเป็นนวัตกรรมใหม่ โดยมุ่งเน้นการทำงานในลักษณะสหวิทยาการ\n\nหัวข้อวิจัยหลักของกลุ่มประกอบด้วย:\n*   Internet technologies\n*   Wireless communications\n*   Cryptography and security\n*   Robotics\n*   Digital signal processing for robotics\n*   Hardware implementation\n*   UX/UI design\n*   Human-Computer Interaction and UX Design\n*   Smart Technology and Artificial Intelligence in Healthcare\n*   Data Mining and Machine Learning for Health Informatics\n*   Persuasive Technology\n*   Health Information Systems\n*   CPRobot – Smart Rubber CPR Manikin for Lifesaving Training\n*   HEALTH AI for Biological Age and Importance Organs"
+  },
+  {
+    "index": 24,
+    "question": "รายละเอียดของกลุ่มวิจัย Applied Intelligence and Data Analytics (AIDA)",
+    "expected_answer": "กลุ่มงานวิจัยนี้ได้เกิดจากการบูรณาการงานวิจัยจากหลากหลายสาขา เช่น งานวิจัยด้านวิทยาศาสตร์ข้อมูลและการวิเคราะห์ข้อมูล (Data Science & Data Analytics) เหมืองข้อมูล (Data Mining) เหมืองข้อความ (Text Mining) เหมืองความคิด (Opinion Mining) ธุรกิจอัฉริยะ (Business Intelligence) ระบบการวางแผนจัดการห่วงโซ่อุปทาน (ERP Systems) การบริหารด้านเทคโนโลยีสารสนเทศ (IT Management) เว็บแบบสื่อความหมาย (Semantic Web) การวิเคราะห์อารมณ์หรือความรู้สึก (Sentiment Analysis) การประมวลผลภาพ (Image Processing) การเรียนรู้ในสภาพแวดล้อมคอมพิวเตอร์ทุกแห่งหนและทุกเวลา (Ubiquitous Learning), การเรียนรู้แบบผสมผสาน (Blended Learning) และชีวสารสนเทศ (Bioinformatics)\n\nหัวข้อวิจัยที่เป็นจุดเน้นของกลุ่ม\n    วิทยาศาสตร์ข้อมูลและการวิเคราะห์ข้อมูล\n    ธุรกิจอัฉริยะ\n    ระบบการวางแผนจัดการห่วงโซ่อุปทาน\n    เว็บแบบสื่อความหมาย\n    การวิเคราะห์อารมณ์หรือความรู้สึก\n    การประมวลผลภาพ\n    การเรียนรู้ในสภาพแวดล้อมคอมพิวเตอร์ทุกแห่งหนและทุกเวลาและการเรียนรู้แบบผสมผสาน\n    เหมืองข้อมูลและเหมืองข้อความ"
+  },
+  {
+    "index": 25,
+    "question": "สมาชิกกลุ่มวิจัย Advanced Smart Computing มีใครบ้าง",
+    "expected_answer": "ผศ. ดร.คำรณ สุนัติ (หัวหน้ากลุ่มวิจัย) ,รศ. ดร.สิรภัทร เชี่ยวชาญวัฒนา ,รศ. ดร.ปัญญาพล หอระตะ ,อ.ธนพล ตั้งชูพงศ์ ,อ. ดร.ไพรสันต์ ผดุงเวียง ,อ. ดร.ภัคราช มุสิกะวัน ,อ. ดร.ญานิกา คงโสรส"
+  },
+  {
+    "index": 26,
+    "question": "โครงการที่เปิดรับในรอบ Portfolio มีอะไรบ้าง",
+    "expected_answer": "โครงการทุนช้างเผือก,ทุนผู้มีความสามารถดีเด่นด้านคอมพิวเตอร์และเทคโนโลยีสารสนเทศ,โครงการผู้มีศักยภาพด้านคอมพิวเตอร์"
+  },
+  {
+    "index": 27,
+    "question": "กลุ่มวิจัย Advanced Intelligent Interdisciplinary Integration (AIII) วิจัยเกี่ยวกับอะไร",
+    "expected_answer": "หัวข้อวิจัยที่เป็นจุดเน้นของกลุ่ม\nApplied Machine Learning in X\nApplied AI in X\nApplied Optimization in X\nIntelligent Cybersecurity Applications\nIntelligent Supply Chain\nSmart (Smart X) Digital Token, Decentralized Applications"
+  },
+  {
+    "index": 28,
+    "question": "ระบบ Network ห้องปฏิบัติการ ติดต่อที่ใคร",
+    "expected_answer": "นายนันทสิทธิ์ บางใบ (นักวิชาการคอมพิวเตอร์)\n  ด้านดิจิทัลระบบ Network ห้องปฏิบัติการ\n ต่อ: 44464"
+  },
+  {
+    "index": 29,
+    "question": "ขอสำเร็จการศึกษา ระดับปริญญาตรี",
+    "expected_answer": "- CP-CG00155 B.Sc. CS 2555 ตรวจสอบการสำเร็จการศึกษา (รหัส 55 เป็นต้นไป)\nLink https://drive.google.com/file/d/1bKuM9Y8tNnBIlSDjqVq2G3szIV3NZSCl/view\n- CP-CG00160 B.Sc. CS 2560 ตรวจสอบการสำเร็จการศึกษา (รหัส 60 เป็นต้นไป)\nLink https://drive.google.com/file/d/1sxakHd-HN38h4wjn8qj1yIzNGqTsZ2T2/view\n- CP-CG00254 B.Sc. ICT 2554 ตรวจสอบการสำเร็จการศึกษา (รหัส 54 เป็นต้นไป)\nLink https://drive.google.com/file/d/1PSr1VpUQU3vmZ1ZAKToSzy2_XJ3ngBJo/view\n- CP-CG00259 B.Sc. IT 2559 ตรวจสอบการสำเร็จการศึกษา (รหัส 59 เป็นต้นไป)\n- CP-CG00264 B.Sc. IT 2564 ตรวจสอบการสำเร็จการศึกษา (รหัส 64 เป็นต้นไป)\n- CP-CG00355 B.Sc. GIS 2555 ตรวจสอบการสำเร็จการศึกษา (รหัส 55 เป็นต้นไป)\n- CP-CG00360 B.Sc. GIS 2560 ตรวจสอบการสำเร็จการศึกษา (รหัส 60 เป็นต้นไป)"
+  }
+]

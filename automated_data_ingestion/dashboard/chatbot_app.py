@@ -8,14 +8,13 @@ import os
 import sys
 import time
 from datetime import datetime
+
 from dotenv import load_dotenv
 
 # Load environment variables FIRST
 load_dotenv()
 
 import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 import streamlit as st
 
 # Add parent directories to path for importing model_manager
@@ -37,25 +36,6 @@ except ImportError:
 # API Config
 # -----------------------------
 API_URL = os.getenv("CHATBOT_API_URL", "http://localhost:8000/api/v1/chat/completions")
-
-# Timeout: (connect timeout, read timeout) วินาที
-API_CONNECT_TIMEOUT = int(os.getenv("API_CONNECT_TIMEOUT", "15"))
-API_READ_TIMEOUT = int(os.getenv("API_READ_TIMEOUT", "180"))
-
-def make_session() -> requests.Session:
-    """Session พร้อม retry สำหรับ network error (ไม่ retry ReadTimeout เพื่อไม่ให้ซ้ำคำถาม)"""
-    session = requests.Session()
-    retry = Retry(
-        total=2,
-        backoff_factor=1.5,
-        status_forcelist=[502, 503, 504],  # retry เฉพาะ server error ชั่วคราว
-        allowed_methods=["POST", "GET"],
-        raise_on_status=False,
-    )
-    adapter = HTTPAdapter(max_retries=retry)
-    session.mount("https://", adapter)
-    session.mount("http://", adapter)
-    return session
 HEALTH_URL = os.getenv("CHATBOT_HEALTH_URL", "http://localhost:8000/api/v1/health")
 META_URL = os.getenv("CHATBOT_META_URL", "http://localhost:8000/api/v1/chatbot/meta")
 FEEDBACK_API_URL = os.getenv("FEEDBACK_API_URL", "http://localhost:8000/api/v1/feedback")
@@ -68,17 +48,17 @@ st.set_page_config(
     page_title="RAG Chatbot",
     page_icon="💬",
     layout="wide",
-    initial_sidebar_state="collapsed"  # ✅ ลดปัญหาไม่สมส่วน (sidebar ไม่กินพื้นที่)
+    initial_sidebar_state="expanded"
 )
 
 # -----------------------------
-# CSS (UI polish)
+# CSS 
 # -----------------------------
 def inject_css():
     st.markdown(
         """
         <style>
-          :root {
+        :root {
             --primary: #60a5fa;
             --primary-2: #3b82f6;
             --bg: #071224;
@@ -429,10 +409,11 @@ def inject_css():
                 0 0 10px rgba(96,165,250,0.28),
                 0 4px 14px rgba(37,99,235,0.12) !important;
         }
-        </style>
+                </style>
         """,
         unsafe_allow_html=True
     )
+
 inject_css()
 
 # -----------------------------
@@ -469,7 +450,7 @@ if "return_contexts" not in st.session_state:
 if "return_debug" not in st.session_state:
     st.session_state.return_debug = True
 if 'chatbot_model' not in st.session_state:
-    st.session_state.chatbot_model = os.getenv("CHATBOT_MODEL", "gemini-2.5-pro")
+    st.session_state.chatbot_model = os.getenv("CHATBOT_MODEL", "gpt-5-mini")
 if 'available_models' not in st.session_state:
     st.session_state.available_models = []
 
@@ -502,9 +483,9 @@ def initialize_chatbot():
             return False
     return True
 
-st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
 def render_topbar():
+
     left, b1, b2, b3 = st.columns([7, 1.2, 1.2, 1.2])
 
     with left:
@@ -537,18 +518,18 @@ def render_topbar():
             st.markdown('<span class="badge">Status: Ready</span>', unsafe_allow_html=True)
 
     with b1:
-        if st.button("🚀 Start", type="primary", use_container_width=True):
+        if st.button("START", type="primary", use_container_width=True):
             if initialize_chatbot():
                 st.success("✅ Initialized!")
                 st.rerun()
 
     with b2:
-        if st.button("🧹 Clear", use_container_width=True):
+        if st.button("CLEAR", use_container_width=True):
             st.session_state.chat_history = []
             st.rerun()
 
     with b3:
-        if st.button("🔄 Reload", use_container_width=True):
+        if st.button("RELOAD", use_container_width=True):
             st.session_state.chatbot = None
             st.session_state.chatbot_meta = None
             st.session_state.chat_history = []
@@ -568,14 +549,9 @@ def ask(question: str):
                     "strict_mode": st.session_state.get("strict_mode", False),
                     "return_contexts": st.session_state.get("return_contexts", False),
                     "return_debug": st.session_state.get("return_debug", True),
-                    "model": st.session_state.get("chatbot_model"),
+                    "model": st.session_state.get("chatbot_model"),  # ✅ เพิ่ม: ส่งโมเดลที่เลือก
                 }
-                session = make_session()
-                res = session.post(
-                    API_URL,
-                    json=payload,
-                    timeout=(API_CONNECT_TIMEOUT, API_READ_TIMEOUT),
-                )
+                res = requests.post(API_URL, json=payload, timeout=120)
                 res.raise_for_status()
                 data = res.json()
 
@@ -626,35 +602,11 @@ def ask(question: str):
                     with st.expander("🔍 Debug Info"):
                         st.code(debug_output, language="text")
 
-            except requests.exceptions.ReadTimeout:
-                error_msg = (
-                    f"⏱️ เซิร์ฟเวอร์ใช้เวลานานเกินไป ({API_READ_TIMEOUT} วินาที)\n\n"
-                    "ลองทำสิ่งต่อไปนี้:\n"
-                    "- ถามคำถามสั้นลง หรือเจาะจงมากขึ้น\n"
-                    "- รอสักครู่แล้วลองใหม่ (เซิร์ฟเวอร์อาจโหลดสูง)\n"
-                    "- กด **Reload** แล้วเริ่มใหม่"
-                )
-                st.warning(error_msg)
-                st.session_state.chat_history.append({"role": "assistant", "content": error_msg})
-
-            except requests.exceptions.ConnectionError:
-                error_msg = "🔌 ไม่สามารถเชื่อมต่อ API ได้ กรุณาตรวจสอบว่าเซิร์ฟเวอร์ทำงานอยู่"
-                st.error(error_msg)
-                st.session_state.chat_history.append({"role": "assistant", "content": error_msg})
-
-            except requests.exceptions.HTTPError as e:
-                code = e.response.status_code if e.response is not None else "?"
-                error_msg = f"❌ API ตอบกลับ error {code}: {str(e)}"
-                st.error(error_msg)
-                st.session_state.chat_history.append({"role": "assistant", "content": error_msg})
-                import traceback
-                with st.expander("🔍 ดู Error Details"):
-                    st.code(traceback.format_exc())
-
             except Exception as e:
                 error_msg = f"❌ เกิดข้อผิดพลาด: {str(e)}"
                 st.error(error_msg)
                 st.session_state.chat_history.append({"role": "assistant", "content": error_msg})
+
                 import traceback
                 with st.expander("🔍 ดู Error Details"):
                     st.code(traceback.format_exc())
@@ -666,42 +618,50 @@ def ask(question: str):
 render_topbar()
 st.divider()
 
-with st.container(border=True):
-    colA, colB = st.columns([3, 2])  # ✅ สมดุลขึ้น
+colA, colB = st.columns([3, 2], gap="large")
 
-    with colA:
-        st.markdown("### ✨ ใช้งานเร็ว")
-        st.markdown(
-            "- กด **Start** เพื่อเริ่มใช้งาน\n"
-            "- พิมพ์คำถามด้านล่าง หรือกดปุ่มตัวอย่าง\n"
-            "- สามารถ Export ประวัติแชทได้จาก Sidebar"
-        )
+with colA:
+    st.markdown("### ใช้งานเร็ว")
+    st.markdown(
+        """
+        <div class="info-list">
+            <div class="info-item">กด <b>START</b> เพื่อเริ่มใช้งาน</div>
+            <div class="info-item">พิมพ์คำถามด้านล่าง หรือกดปุ่มตัวอย่าง</div>
+            <div class="info-item">สามารถ Export ประวัติแชทได้จาก Sidebar</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
-    with colB:
-        st.markdown("### ⚡ Quick Prompts")
-        qp1, qp2 = st.columns(2)
-        with qp1:
-            if st.button("📞 ติดต่อวิทยาลัย", use_container_width=True):
-                st.session_state.pending_question = "ติดต่อวิทยาลัยได้ช่องทางไหนบ้าง"
-        with qp2:
-            if st.button("🎓 ทุนการศึกษา", use_container_width=True):
-                st.session_state.pending_question = "มีทุนการศึกษาอะไรบ้าง และสมัครอย่างไร"
+with colB:
+    st.markdown('<div class="quick-prompts-wrap">', unsafe_allow_html=True)
+    st.markdown("### Quick Prompts")
 
-        qp3, qp4 = st.columns(2)
-        with qp3:
-            if st.button("🏢 จองห้องประชุม", use_container_width=True):
-                st.session_state.pending_question = "มีลิงก์หรือขั้นตอนจองห้องประชุมไหม"
-        with qp4:
-            if st.button("👩‍🏫 รายชื่ออาจารย์", use_container_width=True):
-                st.session_state.pending_question = "ขอรายชื่ออาจารย์และข้อมูลติดต่อ"
+    qp1, qp2 = st.columns(2)
+    with qp1:
+        if st.button("📞 ติดต่อวิทยาลัย", use_container_width=True):
+            st.session_state.pending_question = "ติดต่อวิทยาลัยได้ช่องทางไหนบ้าง"
+    with qp2:
+        if st.button("🎓 ทุนการศึกษา", use_container_width=True):
+            st.session_state.pending_question = "มีทุนการศึกษาอะไรบ้าง และสมัครอย่างไร"
+
+    qp3, qp4 = st.columns(2)
+    with qp3:
+        if st.button("🏢 จองห้องประชุม", use_container_width=True):
+            st.session_state.pending_question = "มีลิงก์หรือขั้นตอนจองห้องประชุมไหม"
+    with qp4:
+        if st.button("👩‍🏫 รายชื่ออาจารย์", use_container_width=True):
+            st.session_state.pending_question = "ขอรายชื่ออาจารย์และข้อมูลติดต่อ"
+
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # Not ready state
 if st.session_state.chatbot is None:
     # ✅ ย้าย Tip มา main กัน sidebar โล่ง
-    st.info("💡 Tip: ถ้าเจอ 503 จาก AstraDB ให้ลองรอสักครู่แล้วกด Init ใหม่")
+    st.info("💡 Tip: ถ้าเจอ 503 จาก AstraDB ให้ลองรอสักครู่แล้วกด Start ใหม่")
 
     with st.container(border=True):
-        st.warning("👆 กด **Init** (ปุ่มด้านบน) เพื่อเริ่มใช้งาน Chatbot")
+        st.warning("👆 กด **START** (ปุ่มด้านบน) เพื่อเริ่มใช้งาน Chatbot")
         with st.expander("📋 ข้อมูลเพิ่มเติม", expanded=True):
             st.markdown("""
             ### ✨ Features:
@@ -867,12 +827,12 @@ if user_question:
 
 # Sidebar info (ตอน ready ค่อยมีเนื้อหา)
 with st.sidebar:
-    st.markdown('<div class="sidebar-card"><b>🤖 Chatbot Info</b></div>', unsafe_allow_html=True)
-    st.metric("Chat Messages", len(st.session_state.chat_history))
+    st.markdown('<div class="sidebar-card"><b>ข้อมูลแชทบอท</b></div>', unsafe_allow_html=True)
+    st.metric("จำนวนข้อความการสนทนา", len(st.session_state.chat_history))
     
     # ✅ Model Selection Section
     st.markdown("---")
-    st.markdown('<div class="sidebar-card"><b>💬 Model Selection</b></div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-card"><b>💬 เลือกโมเดลตอบคำถาม</b></div>', unsafe_allow_html=True)
     
     # Load available models from KKU API
     if not st.session_state.available_models:
@@ -886,24 +846,20 @@ with st.sidebar:
                 st.caption(f"⚠️ ไม่สามารถดึงโมเดล: {e}")
                 # Fallback to default list
                 st.session_state.available_models = [
-                    "gemini-2.5-pro",
-                    "gemini-2.5-flash",
-                    "gemini-2.5-flash-lite",
                     "gpt-5-mini",
+                    "gemini-2.5-flash-lite",
                     "claude-3-5-sonnet",
                 ]
         else:
             # Fallback to default list
             st.session_state.available_models = [
-                "gemini-2.5-pro",
-                "gemini-2.5-flash",
-                "gemini-2.5-flash-lite",
                 "gpt-5-mini",
+                "gemini-2.5-flash-lite",
                 "claude-3-5-sonnet",
             ]
     
     # Refresh models button
-    if st.button("🔄 Refresh Models", use_container_width=True):
+    if st.button("🔄 รีเฟรชโมเดล", use_container_width=True):
         if MODEL_MANAGER_AVAILABLE:
             with st.spinner("กำลังดึงรายการโมเดล..."):
                 try:
@@ -969,4 +925,3 @@ with st.sidebar:
         )
 
     st.markdown('<div class="sidebar-card"><b>🔗 Instant Link</b><br>พอร์ตนี้คือเว็บแยกสำหรับแชร์ลิงก์ให้คนอื่นเข้าใช้งาน</div>', unsafe_allow_html=True)
- 
