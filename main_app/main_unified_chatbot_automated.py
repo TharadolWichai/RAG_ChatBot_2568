@@ -451,6 +451,67 @@ def create_retriever_from_collection(collection_name: str, astradb_manager: Astr
         return None
 
 
+def _metadata_source_url(meta: Optional[dict]) -> Optional[str]:
+    if not meta:
+        return None
+    for key in ("source", "url", "link", "page_url", "source_url", "href"):
+        val = meta.get(key)
+        if isinstance(val, str):
+            v = val.strip()
+            if v.startswith("http://") or v.startswith("https://"):
+                return v
+    return None
+
+
+def _metadata_source_title(meta: Optional[dict], url: Optional[str]) -> str:
+    if meta:
+        for key in ("title", "service_name", "page_title", "name", "program_name"):
+            val = meta.get(key)
+            if isinstance(val, str) and val.strip():
+                return val.strip()[:200]
+    if url:
+        try:
+            from urllib.parse import urlparse
+
+            netloc = urlparse(url).netloc
+            if netloc:
+                return netloc
+        except Exception:
+            pass
+        return url[:80]
+    return "แหล่งข้อมูล"
+
+
+def _sources_from_documents(docs: Optional[List[Document]]) -> List[Dict[str, str]]:
+    """ดึง URL ไม่ซ้ำจาก metadata ของเอกสารที่นำไปสร้างคำตอบ"""
+    if not docs:
+        return []
+    out: List[Dict[str, str]] = []
+    seen: set = set()
+    for doc in docs:
+        meta = getattr(doc, "metadata", None) or {}
+        url = _metadata_source_url(meta)
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        out.append({"url": url, "title": _metadata_source_title(meta, url)})
+    return out
+
+
+def _format_sources_markdown(sources: List[Dict[str, str]]) -> str:
+    if not sources:
+        return ""
+    lines = ["**แหล่งอ้างอิง** *(กดลิงก์เพื่อดูรายละเอียดเพิ่มเติมบนเว็บไซต์ต้นทาง)*"]
+    for s in sources:
+        url = (s.get("url") or "").strip()
+        title = (s.get("title") or url or "ลิงก์").strip()
+        if url.startswith("http://") or url.startswith("https://"):
+            lines.append(f"- [{title}]({url})")
+        elif url:
+            lines.append(f"- {title}: `{url}`")
+    return "\n".join(lines)
+
+
 def _build_llm_for_model(model_name: str):
     """สร้าง ChatOpenAI instance สำหรับโมเดลที่กำหนด"""
     api_key = os.getenv("OPENAI_API_KEY")
@@ -512,8 +573,8 @@ def create_qa_chain_with_logging(retriever: BaseRetriever, collection_name: str)
             print(f"🔄 LLM rebuilt → model: {current_model} [{collection_name}]")
         return _llm_cache["qa_chain"], _llm_cache["model"]
 
-    def qa_function(question: str) -> str:
-        """QA function wrapper with detailed logging"""
+    def qa_function(question: str) -> Tuple[str, List[Dict[str, str]]]:
+        """QA function wrapper with detailed logging — คืน (คำตอบ, แหล่งอ้างอิง)"""
         print(f"\n{'='*60}")
         print(f"🔍 เริ่มค้นหาข้อมูลสำหรับคำถาม: '{question}'")
         print(f"📦 Collection: {collection_name}")
@@ -525,7 +586,7 @@ def create_qa_chain_with_logging(retriever: BaseRetriever, collection_name: str)
 
             if not docs:
                 print("❌ ไม่พบเอกสารใดๆ")
-                return f"ขอโทษ ไม่พบข้อมูลใน collection {collection_name} ที่ตรงกับคำถามของคุณ"
+                return f"ขอโทษ ไม่พบข้อมูลใน collection {collection_name} ที่ตรงกับคำถามของคุณ", []
 
             print(f"✅ พบเอกสาร {len(docs)} เอกสาร")
 
@@ -566,6 +627,8 @@ def create_qa_chain_with_logging(retriever: BaseRetriever, collection_name: str)
             print(f"📌 Deduplicated: {len(relevant_docs)} → {len(deduped)} เอกสาร (unique services)")
             relevant_docs = deduped[:max_docs] if max_docs > 0 else deduped
 
+            sources = _sources_from_documents(relevant_docs)
+
             print(f"\n📝 Step 3: กำลังสร้าง context จากเอกสาร...")
             merged_context = "\n\n".join([f"ข้อมูล {i+1}:\n{d.page_content}" for i, d in enumerate(relevant_docs)])
             print(f"✅ Context length: {len(merged_context)} characters ({len(relevant_docs)} เอกสาร)")
@@ -587,7 +650,7 @@ def create_qa_chain_with_logging(retriever: BaseRetriever, collection_name: str)
                     print(f"✅ LLM สร้างคำตอบสำเร็จ (fallback method)")
                 except Exception as run_error:
                     print(f"❌ Chain run error: {run_error}")
-                    return f"เกิดข้อผิดพลาดในการเรียก LLM: {str(run_error)}"
+                    return f"เกิดข้อผิดพลาดในการเรียก LLM: {str(run_error)}", []
 
             print(f"\n📊 Step 5: กำลังตรวจสอบคุณภาพคำตอบ...")
             no_info_phrases = ["ไม่มีในข้อมูล", "ไม่พบข้อมูล", "ไม่มีข้อมูล", "no data", "not found", "ไม่มีในบริบท"]
@@ -599,18 +662,23 @@ def create_qa_chain_with_logging(retriever: BaseRetriever, collection_name: str)
             else:
                 print(f"✅ คำตอบดูดี (มีข้อมูล)")
 
-            answer += f"\n\n(พบข้อมูลจาก {len(docs)} เอกสาร)"
+            src_md = _format_sources_markdown(sources)
+            if src_md:
+                answer = answer.rstrip() + "\n\n---\n" + src_md
+            else:
+                answer = answer.rstrip() + f"\n\n*(อ้างอิงจากข้อมูลในระบบ {len(docs)} รายการที่เกี่ยวข้อง)*"
+
             print(f"\n{'='*60}")
             print(f"✅ เสร็จสิ้น - คำตอบพร้อมแล้ว")
             print(f"{'='*60}\n")
-            return answer
+            return answer, sources
 
         except Exception as e:
             import traceback
             error_details = traceback.format_exc()
             print(f"\n❌ เกิดข้อผิดพลาด: {e}")
             print(f"Traceback:\n{error_details}")
-            return f"เกิดข้อผิดพลาด: {str(e)}\n\nDebug: {error_details[:500]}"
+            return f"เกิดข้อผิดพลาด: {str(e)}\n\nDebug: {error_details[:500]}", []
 
     return qa_function
 
@@ -1204,51 +1272,129 @@ class UnifiedChatbotAutomated:
                 import traceback
                 traceback.print_exc()
     
-    def answer(self, question: str) -> str:
-        """ตอบคำถามโดยใช้ Hybrid Classification (with detailed logging)"""
-        
+    @staticmethod
+    def _unpack_qa_result(res: Any) -> Tuple[str, List[Dict[str, str]]]:
+        if isinstance(res, tuple) and len(res) == 2:
+            return str(res[0]), list(res[1] or [])
+        return str(res), []
+
+    def _merge_unique_sources(self, items: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        seen: set = set()
+        out: List[Dict[str, str]] = []
+        for s in items:
+            u = (s.get("url") or "").strip()
+            if not u or u in seen:
+                continue
+            seen.add(u)
+            out.append({"url": u, "title": (s.get("title") or u).strip()})
+        return out
+
+    def _gather_context_strings(self, intent: str, question: str) -> List[str]:
+        contexts: List[str] = []
+        if intent == "unknown" or intent not in self.chatbot_map:
+            for _ik, config in self.chatbot_map.items():
+                try:
+                    r = config.get("retriever")
+                    if r:
+                        docs = r.get_relevant_documents(question)
+                        contexts.extend(d.page_content for d in docs)
+                except Exception as e:
+                    print(f"      ⚠️ Error gathering context: {e}")
+            seen = set()
+            unique: List[str] = []
+            for c in contexts:
+                if c not in seen:
+                    seen.add(c)
+                    unique.append(c)
+            return unique
+        config = self.chatbot_map.get(intent)
+        if not config:
+            return []
+        r = config.get("retriever")
+        if not r:
+            return []
+        try:
+            docs = r.get_relevant_documents(question)
+            return [d.page_content for d in docs]
+        except Exception as e:
+            print(f"⚠️ _gather_context_strings: {e}")
+            return []
+
+    def answer(
+        self,
+        question: str,
+        strict_mode: bool = False,
+        return_contexts: bool = False,
+        as_dict: bool = False,
+    ):
+        """
+        ตอบคำถามโดยใช้ Hybrid Classification (with detailed logging)
+
+        - ค่าเริ่มต้น: คืนข้อความ (str) เพื่อความเข้ากันได้กับสคริปต์เดิม
+        - as_dict=True: คืน dict สำหรับ API (answer, intent, confidence, contexts?, sources)
+        strict_mode: สงวนไว้สำหรับ API (ยังไม่ใช้ในตัว classifier)
+        """
+        _ = strict_mode
+
         # Step 1: Hybrid Intent Classification
         print(f"\n{'='*60}")
         print(f"🔀 กำลังวิเคราะห์คำถามด้วย Hybrid Classification...")
         print(f"   คำถาม: '{question}'")
         print(f"{'='*60}")
-        
+
         intent, confidence, method, reason = self.classifier.classify(question)
-        
+
         print(f"\n🎯 Hybrid Intent Classification Result:")
         print(f"   ประเภท: {intent}")
         print(f"   ความมั่นใจ: {confidence:.2f}")
         print(f"   วิธีการ: {method}")
         print(f"   เหตุผล: {reason}")
-        
+
+        sources: List[Dict[str, str]] = []
+        answer_text: str
+
         # Step 2: Route to appropriate chatbot
         if intent == "unknown":
             print(f"\n❓ ไม่แน่ใจประเภทคำถาม - จะค้นหาจากทุก Agent")
-            return self._multi_agent_search(question)
-        
-        if intent not in self.chatbot_map:
+            answer_text, sources = self._multi_agent_search_with_sources(question)
+        elif intent not in self.chatbot_map:
             print(f"\n⚠️ Agent '{intent}' ไม่พร้อมใช้งาน - จะค้นหาจากทุก Agent")
-            return self._multi_agent_search(question)
-        
-        # Step 3: Use specific chatbot
-        chatbot_config = self.chatbot_map[intent]
-        print(f"\n{'='*60}")
-        print(f"➡️  เลือก Agent: {chatbot_config['icon']} {chatbot_config['name']}")
-        print(f"📦 Collection: {chatbot_config['collection']}")
-        print(f"{'='*60}\n")
-        
-        try:
-            # Call QA function (which has detailed logging inside)
-            answer = chatbot_config["qa_function"](question)
-            return f"{chatbot_config['icon']} [{chatbot_config['name']}]\n\n{answer}"
-        except Exception as e:
-            print(f"\n❌ Error from {chatbot_config['name']}: {e}")
-            import traceback
-            traceback.print_exc()
-            return f"ขอโทษ เกิดข้อผิดพลาดจาก Agent {chatbot_config['name']}"
-    
+            answer_text, sources = self._multi_agent_search_with_sources(question)
+        else:
+            # Step 3: Use specific chatbot
+            chatbot_config = self.chatbot_map[intent]
+            print(f"\n{'='*60}")
+            print(f"➡️  เลือก Agent: {chatbot_config['icon']} {chatbot_config['name']}")
+            print(f"📦 Collection: {chatbot_config['collection']}")
+            print(f"{'='*60}\n")
+
+            try:
+                raw, sources = self._unpack_qa_result(chatbot_config["qa_function"](question))
+                answer_text = f"{chatbot_config['icon']} [{chatbot_config['name']}]\n\n{raw}"
+            except Exception as e:
+                print(f"\n❌ Error from {chatbot_config['name']}: {e}")
+                import traceback
+                traceback.print_exc()
+                answer_text = f"ขอโทษ เกิดข้อผิดพลาดจาก Agent {chatbot_config['name']}"
+                sources = []
+
+        if as_dict:
+            ctx = self._gather_context_strings(intent, question) if return_contexts else None
+            return {
+                "answer": answer_text,
+                "intent": intent,
+                "confidence": float(confidence),
+                "contexts": ctx,
+                "sources": self._merge_unique_sources(sources),
+            }
+        return answer_text
+
     def _multi_agent_search(self, question: str) -> str:
-        """ค้นหาจากทุก Agent พร้อมกัน (parallel) และรวมผลลัพธ์"""
+        text, _ = self._multi_agent_search_with_sources(question)
+        return text
+
+    def _multi_agent_search_with_sources(self, question: str) -> Tuple[str, List[Dict[str, str]]]:
+        """ค้นหาจากทุก Agent พร้อมกัน (parallel) และรวมผลลัพธ์ พร้อมแหล่งอ้างอิง"""
         from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeoutError
         import os
 
@@ -1265,16 +1411,18 @@ class UnifiedChatbotAutomated:
             icon = config["icon"]
             print(f"▶ เริ่ม Agent: {icon} {name}")
             try:
-                answer = config["qa_function"](question)
-                is_meaningful = len(answer.strip()) > 50 and not any(
-                    phrase in answer.lower() for phrase in [
+                ans_raw, src = self._unpack_qa_result(config["qa_function"](question))
+                is_meaningful = len(ans_raw.strip()) > 50 and not any(
+                    phrase in ans_raw.lower() for phrase in [
                         "ไม่พบข้อมูล", "ไม่มีข้อมูล", "no data", "not found",
                         "ขอโทษ", "sorry", "ไม่สามารถ", "error"
                     ]
                 )
                 status = "✅ พบข้อมูล" if is_meaningful else "⚪ ไม่พบข้อมูล"
                 print(f"{status}: {icon} {name}")
-                return {"agent": name, "icon": icon, "answer": answer} if is_meaningful else None
+                if not is_meaningful:
+                    return None
+                return {"agent": name, "icon": icon, "answer": ans_raw, "sources": src}
             except Exception as e:
                 print(f"❌ Error [{name}]: {e}")
                 return None
@@ -1297,11 +1445,15 @@ class UnifiedChatbotAutomated:
         print(f"\n📋 สรุป: พบข้อมูลจาก {len(results)}/{len(agents)} agents")
 
         if not results:
-            return "ขอโทษ ไม่พบข้อมูลที่ตรงกับคำถามของคุณในระบบ"
+            return "ขอโทษ ไม่พบข้อมูลที่ตรงกับคำถามของคุณในระบบ", []
+
+        merged_sources = self._merge_unique_sources(
+            [s for r in results for s in (r.get("sources") or [])]
+        )
 
         if len(results) == 1:
             result = results[0]
-            return f"{result['icon']} [{result['agent']}]\n\n{result['answer']}"
+            return f"{result['icon']} [{result['agent']}]\n\n{result['answer']}", merged_sources
 
         combined = "พบข้อมูลจากหลาย Agent:\n\n"
         for i, result in enumerate(results, 1):
@@ -1310,8 +1462,8 @@ class UnifiedChatbotAutomated:
             if i < len(results):
                 combined += f"{'-'*60}\n\n"
 
-        return combined
-    
+        return combined, merged_sources
+
     def answer_with_contexts(self, question: str) -> Tuple[str, List[str], Dict[str, Any]]:
         """
         ตอบคำถามพร้อม contexts และ classification info
@@ -1398,8 +1550,8 @@ class UnifiedChatbotAutomated:
                     print(f"   ⚠️ Agent นี้ไม่มี retriever")
                 
                 # Get answer
-                answer = chatbot_config["qa_function"](question)
-                answer = f"{chatbot_config['icon']} [{chatbot_config['name']}]\n\n{answer}"
+                raw_ans, _ = self._unpack_qa_result(chatbot_config["qa_function"](question))
+                answer = f"{chatbot_config['icon']} [{chatbot_config['name']}]\n\n{raw_ans}"
                 
             except Exception as e:
                 print(f"\n❌ Error from {chatbot_config['name']}: {e}")

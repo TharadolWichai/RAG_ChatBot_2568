@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 
 class ChatRequest(BaseModel):
@@ -15,6 +15,7 @@ class ChatResponse(BaseModel):
     intent: Optional[str] = None
     confidence: Optional[float] = None
     contexts: Optional[List[str]] = None
+    sources: Optional[List[Dict[str, str]]] = None  # แหล่งอ้างอิง {url, title} จาก metadata RAG
     debug_output: Optional[str] = None    # ✅ เพิ่ม: debug สำหรับหน้าเว็บ
 
 

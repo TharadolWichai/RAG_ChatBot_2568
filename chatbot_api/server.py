@@ -40,6 +40,7 @@ def _run_bot_answer(bot, question: str, strict_mode: bool, return_contexts: bool
                 question,
                 strict_mode=strict_mode,
                 return_contexts=return_contexts,
+                as_dict=True,
             )
         except TypeError:
             result = bot.answer(question)
@@ -77,6 +78,7 @@ async def chat(req: ChatRequest):
         intent = None
         confidence = None
         contexts = None
+        sources = None
 
         if isinstance(result, str):
             answer = result
@@ -85,6 +87,7 @@ async def chat(req: ChatRequest):
             intent = result.get("intent")
             confidence = result.get("confidence")
             contexts = result.get("contexts")
+            sources = result.get("sources")
         else:
             answer = str(result)
 
@@ -96,6 +99,7 @@ async def chat(req: ChatRequest):
             intent=intent,
             confidence=confidence,
             contexts=contexts,
+            sources=sources,
             debug_output=debug_output if debug_output else None,
         )
 
