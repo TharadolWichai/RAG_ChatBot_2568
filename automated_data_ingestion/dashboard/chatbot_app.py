@@ -469,7 +469,7 @@ if "return_contexts" not in st.session_state:
 if "return_debug" not in st.session_state:
     st.session_state.return_debug = True
 if 'chatbot_model' not in st.session_state:
-    st.session_state.chatbot_model = os.getenv("CHATBOT_MODEL", "gpt-5-mini")
+    st.session_state.chatbot_model = os.getenv("CHATBOT_MODEL", "gemini-2.5-pro")
 if 'available_models' not in st.session_state:
     st.session_state.available_models = []
 
@@ -886,15 +886,19 @@ with st.sidebar:
                 st.caption(f"⚠️ ไม่สามารถดึงโมเดล: {e}")
                 # Fallback to default list
                 st.session_state.available_models = [
-                    "gpt-5-mini",
+                    "gemini-2.5-pro",
+                    "gemini-2.5-flash",
                     "gemini-2.5-flash-lite",
+                    "gpt-5-mini",
                     "claude-3-5-sonnet",
                 ]
         else:
             # Fallback to default list
             st.session_state.available_models = [
-                "gpt-5-mini",
+                "gemini-2.5-pro",
+                "gemini-2.5-flash",
                 "gemini-2.5-flash-lite",
+                "gpt-5-mini",
                 "claude-3-5-sonnet",
             ]
     

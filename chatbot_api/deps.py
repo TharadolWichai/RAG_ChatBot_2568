@@ -24,7 +24,7 @@ def get_chatbot(model: str = None):
     global _chatbot, _current_model
     
     # Get model from parameter or environment
-    requested_model = model or os.getenv("CHATBOT_MODEL", "gpt-5-mini")
+    requested_model = model or os.getenv("CHATBOT_MODEL", "gemini-2.5-pro")
     
     # Recreate if model changed or chatbot doesn't exist
     if _chatbot is None or (requested_model != _current_model):
