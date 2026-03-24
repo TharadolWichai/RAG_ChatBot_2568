@@ -78,52 +78,357 @@ def inject_css():
     st.markdown(
         """
         <style>
-          /* FIX: กันหัวขาด */
+          :root {
+            --primary: #60a5fa;
+            --primary-2: #3b82f6;
+            --bg: #071224;
+            --bg-soft: #0b1730;
+            --card: rgba(255,255,255,0.08);
+            --card-strong: rgba(255,255,255,0.12);
+            --border: rgba(255,255,255,0.14);
+            --text: #eaf2ff;
+            --muted: #9fb3d9;
+            --sidebar-text: #f8fbff;
+        }
+
+        /* ===== App Background ===== */
+        .stApp {
+            background: #ffffff !important;
+            color: #0f172a;
+        }
+
+        /* ===== Layout ===== */
         .block-container {
-            padding-top: 3.2rem !important;
             padding-left: 2rem;
             padding-right: 2rem;
-            max-width: 1400px;
+            max-width: 1350px;
         }
 
-        h1, h2, h3 { letter-spacing: -0.02em; }
-
-        /* buttons / inputs */
-        .stButton>button {
-        border-radius: 14px;
-        padding: 0.6rem 1rem;
-        height: 42px;                     /* ⬅ กันปุ่มโดนตัด */
+        header {
+            background: transparent !important;
         }
 
-          /* chat spacing */
-        [data-testid="stChatMessage"] { padding: 0.35rem 0; }
-        [data-testid="stChatMessageContent"]{
-            border-radius: 18px;
-            padding: 0.9rem 1.1rem;
+        /* ===== Sidebar ===== */
+        section[data-testid="stSidebar"] {
+            background: linear-gradient(
+                180deg,
+                rgba(17, 43, 138, 0.95) 0%,
+                rgba(30, 64, 175, 0.94) 100%
+            ) !important;
+            border-right: 1px solid rgba(255,255,255,0.08);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
         }
-
-        /* sidebar */
+        .quick-prompts-wrap {
+            margin-bottom: 28px;
+        }
         section[data-testid="stSidebar"] .block-container {
-            padding-top: 1.5rem;
+            padding-top: 1.35rem;
         }
 
-        /* card / container */
-        div[data-testid="stMetric"],
+        /* ===== Sidebar text ===== */
+        section[data-testid="stSidebar"],
+        section[data-testid="stSidebar"] p,
+        section[data-testid="stSidebar"] span,
+        section[data-testid="stSidebar"] small,
+        section[data-testid="stSidebar"] div {
+            color: var(--sidebar-text) !important;
+        }
+
+        /* ===== Sidebar card ===== */
         .sidebar-card {
-        background: #ffffff;
+            background: rgba(255,255,255,0.08);
+            padding: 14px 16px;
+            border-radius: 16px;
+            margin-bottom: 12px;
+            border: 1px solid rgba(255,255,255,0.14);
+            box-shadow:
+                0 8px 24px rgba(0,0,0,0.16),
+                inset 0 1px 0 rgba(255,255,255,0.04);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
         }
 
-        /* chat bubble assistant */
+        /* ===== Sidebar buttons ===== */
+        section[data-testid="stSidebar"] .stButton > button {
+            border-radius: 14px;
+            min-height: 42px;
+            font-weight: 600;
+            border: 1px solid rgba(255,255,255,0.16) !important;
+            background: rgba(255,255,255,0.14) !important;
+            color: #ffffff !important;
+            box-shadow:
+                0 8px 20px rgba(0,0,0,0.12),
+                inset 0 1px 0 rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            transition: all 0.2s ease;
+        }
+
+        section[data-testid="stSidebar"] .stButton > button:hover {
+            background: rgba(255,255,255,0.20) !important;
+            border-color: rgba(255,255,255,0.28) !important;
+            transform: translateY(-1px);
+            box-shadow: 0 10px 24px rgba(0,0,0,0.16);
+        }
+
+        section[data-testid="stSidebar"] .stButton > button p,
+        section[data-testid="stSidebar"] .stButton > button span,
+        section[data-testid="stSidebar"] .stButton > button div {
+            color: #ffffff !important;
+        }
+
+        /* ===== Label ===== */
+        section[data-testid="stSidebar"] label,
+        section[data-testid="stSidebar"] .stSelectbox label {
+            color: #dbeafe !important;
+            background: transparent !important;
+            padding: 0 !important;
+            margin-bottom: 6px !important;
+            box-shadow: none !important;
+            font-weight: 600;
+        }
+
+        /* ===== Selectbox: kill white background ===== */
+        section[data-testid="stSidebar"] .stSelectbox,
+        section[data-testid="stSidebar"] .stSelectbox > div,
+        section[data-testid="stSidebar"] .stSelectbox > div > div {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        section[data-testid="stSidebar"] div[data-baseweb="select"] {
+            background: transparent !important;
+        }
+
+        section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
+            background: rgba(255,255,255,0.10) !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(255,255,255,0.18) !important;
+            border-radius: 14px !important;
+            min-height: 44px !important;
+            box-shadow:
+                0 8px 20px rgba(0,0,0,0.10),
+                inset 0 1px 0 rgba(255,255,255,0.04) !important;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        section[data-testid="stSidebar"] div[data-baseweb="select"] > div:hover,
+        section[data-testid="stSidebar"] div[data-baseweb="select"] > div:focus-within {
+            background: rgba(255,255,255,0.14) !important;
+            border-color: rgba(255,255,255,0.28) !important;
+            box-shadow:
+                0 10px 24px rgba(0,0,0,0.14),
+                inset 0 1px 0 rgba(255,255,255,0.05) !important;
+        }
+
+        section[data-testid="stSidebar"] div[data-baseweb="select"] span,
+        section[data-testid="stSidebar"] div[data-baseweb="select"] div,
+        section[data-testid="stSidebar"] div[data-baseweb="select"] input {
+            color: #ffffff !important;
+            background: transparent !important;
+        }
+
+        section[data-testid="stSidebar"] div[data-baseweb="select"] svg {
+            fill: #ffffff !important;
+        }
+
+        /* ===== Dropdown panel ===== */
+        ul[role="listbox"] {
+            background: rgba(12, 18, 35, 0.96) !important;
+            border: 1px solid rgba(255,255,255,0.14) !important;
+            border-radius: 14px !important;
+            box-shadow: 0 18px 40px rgba(0,0,0,0.28) !important;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+        }
+
+        ul[role="listbox"] li,
+        ul[role="listbox"] div {
+            color: #ffffff !important;
+            background: transparent !important;
+        }
+
+        ul[role="listbox"] li:hover,
+        ul[role="listbox"] [aria-selected="true"] {
+            background: rgba(255,255,255,0.10) !important;
+            border-radius: 10px;
+        }
+
+        /* ===== Sidebar inputs / textarea ===== */
+        section[data-testid="stSidebar"] .stTextInput input,
+        section[data-testid="stSidebar"] textarea,
+        section[data-testid="stSidebar"] input {
+            color: #ffffff !important;
+            background: rgba(255,255,255,0.10) !important;
+            border: 1px solid rgba(255,255,255,0.16) !important;
+            border-radius: 14px !important;
+            box-shadow: none !important;
+        }
+
+        /* ===== Sidebar metric ===== */
+        section[data-testid="stSidebar"] div[data-testid="stMetric"] {
+            background: rgba(255,255,255,0.10) !important;
+            border: 1px solid rgba(255,255,255,0.14) !important;
+            padding: 16px;
+            border-radius: 16px;
+            box-shadow:
+                0 8px 24px rgba(0,0,0,0.12),
+                inset 0 1px 0 rgba(255,255,255,0.04);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        /* ===== Global Buttons ===== */
+        .stButton > button {
+            border-radius: 12px;
+            min-height: 42px;
+            font-weight: 500;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.90);
+            color: #0f172a;
+            transition: all 0.2s ease;
+        }
+
+        .stButton > button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 18px rgba(37,99,235,0.12);
+        }
+
+        /* ===== Topbar ===== */
+        .topbar {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 18px 22px;
+            box-shadow: 0 10px 30px rgba(37,99,235,0.08);
+            border: 1px solid #e2e8f0;
+            margin-bottom: 14px;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+        }
+
+
+        /* ===== Feature Section ===== */
+        .feature-section {
+            background: #ffffff;
+            border: 1px solid #dbe4f0;
+            border-radius: 22px;
+            padding: 28px 28px 22px 28px;
+            box-shadow: 0 10px 30px rgba(37, 99, 235, 0.06);
+            margin-bottom: 22px;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+        }
+
+        .feature-section h3 {
+            color: #0f172a;
+        }
+
+
+        .info-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 28px;
+            margin-top: 8px;
+        }
+
+        .info-item {
+            background: #f8fbff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 12px 14px;
+            color: #0f172a;
+            font-size: 15px;
+            line-height: 1.5;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+        }
+
+
+        /* ===== Metrics ===== */
+        div[data-testid="stMetric"] {
+            background: #ffffff;
+            border: 1px solid #dbe4f0;
+            padding: 16px;
+            border-radius: 16px;
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+            color: #0f172a !important;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+        }
+
+        /* ===== Chat (dark grey bubble) ===== */
         [data-testid="stChatMessageContent"] {
-        background: #f8fafc;
+            border-radius: 16px;
+            padding: 0.95rem 1.15rem;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;   /* เทาเข้มแบบนุ่ม */
+            color: #0f172a !important;
         }
 
-        /* badge */
+        /* ===== Badge ===== */
         .badge {
-        background: #eff6ff;
-        border-color: #93c5fd;
-        color: #1d4ed8;
-}
+            display: inline-block;
+            background: rgba(255,255,255,0.10);
+            color: #e0edff;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            border: 1px solid rgba(255,255,255,0.14);
+            font-weight: 600;
+            backdrop-filter: blur(8px);
+        }
+
+        /* ===== Input ===== */
+        textarea {
+            border-radius: 14px !important;
+        }
+
+        /* ===== Expander ===== */
+        .streamlit-expanderHeader {
+            font-weight: 600;
+            color: #0f172a !important;
+        }
+        /* ข้อความทั่วไปฝั่ง main */
+        .stMarkdown,
+        .stCaption,
+        [data-testid="stMetricLabel"],
+        [data-testid="stMetricValue"] {
+            color: #0f172a !important;
+        }
+        
+        /* ===== Feedback section ===== */
+        [data-testid="stFeedback"],
+        [data-testid="stTextInput"] input {
+            color: #0f172a !important;
+            background: #ffffff !important;
+        }
+
+        /* label */
+        [data-testid="stFeedback"] label {
+            color: #0f172a !important;
+        }
+        
+        /* ปุ่มใน main area เท่านั้น */
+        section[data-testid="stSidebar"] ~ div .stButton > button,
+        div[data-testid="stAppViewContainer"] .main .stButton > button {
+            border: 1px solid #cbd5e1 !important;
+            background: #ffffff !important;
+            color: #0f172a !important;
+        }
+
+        /* hover เรืองแสง */
+        section[data-testid="stSidebar"] ~ div .stButton > button:hover,
+        div[data-testid="stAppViewContainer"] .main .stButton > button:hover {
+            border-color: #60a5fa !important;
+            box-shadow:
+                0 0 0 1px rgba(96,165,250,0.45),
+                0 0 10px rgba(96,165,250,0.28),
+                0 4px 14px rgba(37,99,235,0.12) !important;
+        }
         </style>
         """,
         unsafe_allow_html=True
