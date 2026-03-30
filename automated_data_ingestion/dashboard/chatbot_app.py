@@ -409,6 +409,90 @@ def inject_css():
                 0 0 10px rgba(96,165,250,0.28),
                 0 4px 14px rgba(37,99,235,0.12) !important;
         }
+        
+        /* ===== User Guide Section : Minimal ===== */
+        .user-guide-card {
+            background: #ffffff !important;
+            border: 1px solid #e5e7eb !important;
+            border-radius: 20px !important;
+            padding: 22px 22px 18px 22px !important;
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05) !important;
+            height: 100%;
+            transition: all 0.2s ease !important;
+        }
+
+        .user-guide-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(37, 99, 235, 0.08) !important;
+            border-color: #dbeafe !important;
+        }
+
+        .user-guide-top {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .user-guide-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            background: #eff6ff;
+            color: #1d4ed8;
+            flex-shrink: 0;
+        }
+
+        .user-guide-title {
+            font-size: 17px !important;
+            font-weight: 700 !important;
+            color: #0f172a !important;
+            margin: 0 !important;
+        }
+
+        .user-guide-desc {
+            font-size: 14px !important;
+            color: #64748b !important;
+            line-height: 1.65 !important;
+            margin-bottom: 14px !important;
+        }
+
+        .user-guide-list {
+            list-style: none;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .user-guide-list li {
+            color: #0f172a !important;
+            font-size: 14px !important;
+            line-height: 1.6 !important;
+            padding: 8px 0;
+            border-top: 1px solid #f1f5f9;
+        }
+
+        .user-guide-list li:first-child {
+            border-top: none;
+            padding-top: 0;
+        }
+
+        .student-card .user-guide-icon {
+            background: #eff6ff;
+            color: #2563eb;
+        }
+
+        .undergraduate-card .user-guide-icon {
+            background: #eef2ff;
+            color: #4f46e5;
+        }
+
+        div[data-testid="column"] > div {
+            height: 100%;
+        }
                 </style>
         """,
         unsafe_allow_html=True
@@ -678,15 +762,57 @@ if st.session_state.chatbot is None:
             """)
     st.stop()
 
-# Status bar (metrics)
-agents = 0
-if st.session_state.chatbot_meta and isinstance(st.session_state.chatbot_meta, dict):
-    agents = int(st.session_state.chatbot_meta.get("total", 0) or 0)
 
-m1, m2, m3 = st.columns(3)
-m1.metric("Status", "Ready")
-m2.metric("Agents", agents)
-m3.metric("Messages", len(st.session_state.chat_history))
+# -----------------------------
+# User guide section
+# -----------------------------
+st.markdown("### ถามอะไรได้บ้าง")
+
+guide_col1, guide_col2 = st.columns(2, gap="large")
+
+with guide_col1:
+    st.markdown(
+        """
+        <div class="user-guide-card student-card">
+            <div class="user-guide-top">
+                <div class="user-guide-icon">🎒</div>
+                <div class="user-guide-title">สำหรับนักเรียน</div>
+            </div>
+            <div class="user-guide-desc">
+                สอบถามข้อมูลสำหรับผู้ที่สนใจเข้าศึกษาต่อได้อย่างรวดเร็ว
+            </div>
+            <ul class="user-guide-list">
+                <li>การสอบเข้าและรอบรับสมัคร</li>
+                <li>เกณฑ์คะแนนและคุณสมบัติผู้สมัคร</li>
+                <li>ทุนการศึกษา</li>
+                <li>หลักสูตรและสาขาที่เปิดสอน</li>
+            </ul>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+with guide_col2:
+    st.markdown(
+        """
+        <div class="user-guide-card undergraduate-card">
+            <div class="user-guide-top">
+                <div class="user-guide-icon">🎓</div>
+                <div class="user-guide-title">สำหรับนักศึกษา</div>
+            </div>
+            <div class="user-guide-desc">
+                สอบถามข้อมูลการเรียนและบริการที่ใช้งานภายในวิทยาลัยได้
+            </div>
+            <ul class="user-guide-list">
+                <li>สหกิจศึกษาและฝึกงาน</li>
+                <li>ทุนการศึกษา</li>
+                <li>การจองห้องประชุม</li>
+                <li>รายชื่ออาจารย์และข้อมูลติดต่อ</li>
+            </ul>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 st.divider()
 
@@ -924,4 +1050,4 @@ with st.sidebar:
             use_container_width=True
         )
 
-    st.markdown('<div class="sidebar-card"><b>🔗 Instant Link</b><br>พอร์ตนี้คือเว็บแยกสำหรับแชร์ลิงก์ให้คนอื่นเข้าใช้งาน</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-card"><b>🔗 Instant Link</b><br>พอร์ตนี้คือเว็บแยกสำหรับแชร์ลิงก์ให้คนอื่นเข้าใช้งาน</div>', unsafe_allow_html=True)   
