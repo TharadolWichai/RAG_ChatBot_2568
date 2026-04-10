@@ -2,7 +2,7 @@
 eval_chatbot.py — Standalone Evaluation Chatbot (Terminal REPL)
 
 ใช้สำหรับวัดผลโดยเฉพาะ แยก API key และ model ออกจากระบบ deploy
-- Model  : gemini-2.5-pro
+- Model  : gemini-2.5-flash
 - API    : KKU Intelsphere (eval key)
 - ตอบบน terminal แบบ interactive
 - บันทึก Q&A + contexts เป็น JSON ทีละข้อ (เลือกได้)
@@ -28,7 +28,7 @@ load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 # ─── 3. Override ด้วยค่า evaluation โดยเฉพาะ (ต้องทำก่อน import chatbot) ────
 EVAL_API_KEY   = "sk_jagl3qrwlrHFBJYG85fs9nIeVtZM90sq3nuZlnTCNWhMmBKvEU1kXHtf20OHR4Jo"
 EVAL_BASE_URL  = "https://gen.ai.kku.ac.th/api/v1"
-EVAL_MODEL     = "gpt-5-mini"
+EVAL_MODEL     = "gemini-2.5-flash"
 
 os.environ["OPENAI_API_KEY"]   = EVAL_API_KEY
 os.environ["OPENAI_BASE_URL"]  = EVAL_BASE_URL
@@ -63,17 +63,73 @@ def _save_entry(filepath: str, entry: dict) -> None:
 
 # ─── 6. REPL หลัก ────────────────────────────────────────────────────────────
 def main() -> None:
-    # กำหนดชื่อไฟล์ output ตาม timestamp ของ session นี้
-    session_ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = os.path.join(PROJECT_ROOT, "evaluation", "eval_results")
     os.makedirs(output_dir, exist_ok=True)
-    output_file = os.path.join(output_dir, f"eval_session_{session_ts}.json")
-
+    
+    # ถามว่าจะใช้ไฟล์ใหม่หรือไฟล์เดิม
     print("\n" + "=" * 60)
     print("  Evaluation Chatbot — KKU CS")
+    print("=" * 60)
+    print("\nเลือกโหมด:")
+    print("  [1] สร้างไฟล์ใหม่")
+    print("  [2] เพิ่มข้อมูลลงไฟล์เดิม")
+    
+    try:
+        mode = input("\nเลือก (1/2): ").strip()
+    except (KeyboardInterrupt, EOFError):
+        print("\nออกจากโปรแกรม")
+        return
+    
+    entry_index: int = 0
+    
+    if mode == "2":
+        # แสดง list ไฟล์ที่มี
+        existing_files = sorted([f for f in os.listdir(output_dir) if f.startswith("eval_session_") and f.endswith(".json")])
+        
+        if not existing_files:
+            print("\n❌ ไม่มีไฟล์เดิม จะสร้างไฟล์ใหม่แทน")
+            mode = "1"
+        else:
+            print("\nไฟล์ที่มีอยู่:")
+            for i, fname in enumerate(existing_files, 1):
+                # นับจำนวน entries ในไฟล์
+                fpath = os.path.join(output_dir, fname)
+                try:
+                    with open(fpath, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        count = len(data) if isinstance(data, list) else 0
+                except:
+                    count = 0
+                print(f"  [{i}] {fname} ({count} ข้อ)")
+            
+            try:
+                file_idx = input(f"\nเลือกไฟล์ (1-{len(existing_files)}): ").strip()
+                file_idx = int(file_idx)
+                if 1 <= file_idx <= len(existing_files):
+                    output_file = os.path.join(output_dir, existing_files[file_idx - 1])
+                    # โหลดไฟล์เพื่อนับ entry_index
+                    with open(output_file, "r", encoding="utf-8") as f:
+                        existing_data = json.load(f)
+                        entry_index = len(existing_data) if isinstance(existing_data, list) else 0
+                    print(f"\n✅ จะเพิ่มลงไฟล์: {existing_files[file_idx - 1]}")
+                    print(f"   เริ่มต่อจาก index: {entry_index + 1}")
+                else:
+                    print("\n❌ เลือกไม่ถูกต้อง จะสร้างไฟล์ใหม่แทน")
+                    mode = "1"
+            except (ValueError, KeyboardInterrupt, EOFError):
+                print("\n❌ เลือกไม่ถูกต้อง จะสร้างไฟล์ใหม่แทน")
+                mode = "1"
+    
+    if mode == "1" or mode != "2":
+        # สร้างไฟล์ใหม่
+        session_ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_file = os.path.join(output_dir, f"eval_session_{session_ts}.json")
+        print(f"\n✅ จะสร้างไฟล์ใหม่: eval_session_{session_ts}.json")
+
+    print("\n" + "=" * 60)
     print(f"  Model  : {EVAL_MODEL}")
     print(f"  API    : KKU Intelsphere (eval key)")
-    print(f"  Output : evaluation/eval_results/eval_session_{session_ts}.json")
+    print(f"  Output : {os.path.basename(output_file)}")
     print("=" * 60)
     print("คำสั่งพิเศษ:")
     print("  /exit      — ออกจากโปรแกรม")
@@ -86,7 +142,6 @@ def main() -> None:
     last_question: str = ""
     last_answer: str = ""
     last_elapsed: float = 0.0
-    entry_index: int = 0
 
     while True:
         try:
